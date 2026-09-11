@@ -5,6 +5,7 @@ import { useSocketStore } from '@/store/modules/socket'
 import { useAlertStore } from '@/store/modules/alert'
 import { debounce, cloneDeep } from 'lodash-es'
 import { watch, onUnmounted } from 'vue'
+import CallDialog from '@/components/CallDialog.vue'
 
 // Notification.requestPermission().then(permission => {
 //   if (permission === 'granted') {
@@ -45,6 +46,8 @@ watch(() => [alertStore.alerts], debounce(([newAlerts]) => {
 
 <template>
   <router-view></router-view>
+  <!-- 全局语音通话弹窗（来电/拨打/通话中） -->
+  <CallDialog />
 </template>
 
 <style scoped></style>

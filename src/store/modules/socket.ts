@@ -4,6 +4,7 @@ import { useUserStore } from './user'
 import { useFriendStore } from './friend'
 import { useRoomStore } from './room'
 import { useAlertStore } from "./alert";
+import { useCallStore } from './call'
 import { updateTitle } from '@/utils'
 
 const setTitle = updateTitle()
@@ -31,6 +32,8 @@ export const useSocketStore = defineStore('socket', {
                         token: useUserStore().token
                     },
                 })
+                // 注册语音通话信令事件
+                useCallStore().register(this.socket as Socket)
                 this.socket.on('connect', () => {
                     console.log('connect')
                     this.socket && this.socket.emit('init')
