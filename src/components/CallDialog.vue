@@ -138,7 +138,7 @@ watch(() => callStore.remoteStream, (stream) => {
 .call-pop-enter-from,
 .call-pop-leave-to {
   opacity: 0;
-  transform: translate(-50%, -16px);
+  transform: translate(0, -16px);
 }
 
 .call-fade-enter-active,
@@ -148,6 +148,6 @@ watch(() => callStore.remoteStream, (stream) => {
 .call-fade-enter-from,
 .call-fade-leave-to {
   opacity: 0;
-  transform: translate(-50%, -8px);
+  transform: translate(0, -8px);
 }
 </style>
