@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.17",
+    "@vueuse/core": "^14.4.0",
     "axios": "^1.13.2",
     "dayjs": "^1.11.19",
     "js-cookie": "^3.0.5",
