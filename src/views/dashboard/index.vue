@@ -16,7 +16,7 @@
 </template>
 <script setup lang="ts">
 import { useAlertStore } from '@/store/modules/alert'
-import { createDailyCountdown } from '@/utils/DailyCountdown'
+import { createDailyCountdown } from '@/utils/dailyCountdown'
 import dayjs from 'dayjs';
 import { onUnmounted,ref } from 'vue';
 const alertStore = useAlertStore()
