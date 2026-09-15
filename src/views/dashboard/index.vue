@@ -11,11 +11,22 @@
             </svg>
             <div class="flex-1 text-right hidden group-hover:block">{{ dayjs(item.timestamp).format('YYYY/MM/DD HH:mm:ss') }}</div>
         </div>
+        <div class="fixed left-0 bottom-0 w-full text-center">{{dailyCountdown}}</div>
     </div>
 </template>
 <script setup lang="ts">
 import { useAlertStore } from '@/store/modules/alert'
+import { createDailyCountdown } from '@/utils/DailyCountdown'
 import dayjs from 'dayjs';
+import { onUnmounted,ref } from 'vue';
 const alertStore = useAlertStore()
+
+
+const times = ['12:00:00', '18:00:00'];
+const dailyCountdown = ref('')
+const stop = createDailyCountdown(times, (text:string) => {
+    dailyCountdown.value = text
+});
+onUnmounted(stop)
 </script>
 <style lang="scss"></style>
