@@ -53,7 +53,7 @@ export const useSocketStore = defineStore('socket', {
 
 
                 // 接收用户消息
-                this.socket.on('user', (data) => {
+                this.socket.on('message:user', (data) => {
                     const senderMessages = this.userMessageMap.get(data.sender)
                     const messages = senderMessages || []
                     messages.push(data)
@@ -62,7 +62,7 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 接收已发送回显信息
-                this.socket.on('sender', (data) => {
+                this.socket.on('message:sender', (data) => {
                     const receiverMessages = this.userMessageMap.get(data.receiver)
                     const messages = receiverMessages || []
                     messages.push(data)
@@ -70,7 +70,7 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 接收房间消息
-                this.socket.on('room', (data) => {
+                this.socket.on('message:room', (data) => {
                     const roomMessages = this.roomMessageMap.get(data.room)
                     const messages = roomMessages || []
                     messages.push(data)
@@ -79,18 +79,18 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 接收房间成员在线状态
-                this.socket.on('online', (data) => {
+                this.socket.on('online:room', (data) => {
                     this.roomMemberOnlineMap.set(data.room, new Set(data.users || []))
                 })
 
                 // 接收好友状态更新
-                this.socket.on('status', (data) => {
+                this.socket.on('status:firend', (data) => {
                     useFriendStore().setFriendStatus(data.friend, data.status)
                     setTitle(`[${useFriendStore().getFriendMap[data.friend]?.friend_info?.username}] ${data.status ? '上线' : '离线'}`)
                 })
 
                 // 初始化获取所有在线好友
-                this.socket.on('onlineFriends', (data) => {
+                this.socket.on('online:friends', (data) => {
                     data.users.forEach((id: string) => {
                         useFriendStore().setFriendStatus(id, true)
                     })
@@ -102,7 +102,7 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 系统通知
-                this.socket.on('alert', (data) => {
+                this.socket.on('system:alert', (data) => {
                     setTitle(`[${data.sender}] ${data.message}`)
                     useAlertStore().addAlert(data)
                 })
