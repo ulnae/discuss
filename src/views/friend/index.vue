@@ -164,7 +164,7 @@ const handleStartCall = () => {
 
 const handleSend = () => {
   if (!story.value) return;
-  (socketStore.socket as Socket).emit("user", {
+  (socketStore.socket as Socket).emit("send:user", {
     sender: route.params.id,
     content: story.value,
   });
@@ -182,7 +182,7 @@ const uploadImage = (file: Blob) => {
   formData.append("file", file as Blob);
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
-      (socketStore.socket as Socket).emit("user", {
+      (socketStore.socket as Socket).emit("send:user", {
         size: res.data.size,
         sender: route.params.id,
         content: `/${res.data.path}`,
@@ -196,7 +196,7 @@ const uploadFile = (file: Blob) => {
   formData.append("file", file as Blob);
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
-      (socketStore.socket as Socket).emit("user", {
+      (socketStore.socket as Socket).emit("send:user", {
         size: res.data.size,
         sender: route.params.id,
         originalname: res.data.originalname,
