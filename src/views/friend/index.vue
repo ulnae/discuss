@@ -55,7 +55,7 @@
 
            </div>
         </div>
-        <div class="w-full h-60 border-t border-gray-300 p-4 relative">
+        <div ref="inputAreaRef" class="w-full h-60 border-t border-gray-300 p-4 relative">
             <textarea id="story" name="story" placeholder="请输入信息,回车发送..." v-enter="handleSend" v-model.trim="story" rows="5" cols="33" class="w-full h-full  ">
             </textarea>
             <div class="absolute bottom-12 right-12 flex gap-6">
@@ -127,6 +127,7 @@ import serverApi from "@/api";
 import { vEnter } from "@/directives/vEnter";
 import { formatFileSize, scrollToBottom } from "@/utils";
 import { usePaste } from "@/hooks/paste";
+import { useResizable } from "@/hooks/useResizable";
 import { Comment } from "@/components";
 
 const socketStore = useSocketStore();
@@ -134,6 +135,8 @@ const friendStore = useFriendStore();
 const callStore = useCallStore();
 
 const story = ref("");
+const inputAreaRef = ref<HTMLElement | null>(null);
+useResizable(inputAreaRef, { direction: 'vertical', minSize: 180, maxSize: 600, initialSize: 240 });
 const route = useRoute();
 const router = useRouter();
 

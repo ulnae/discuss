@@ -1,6 +1,6 @@
 <template lang="">
   <div class="w-full h-full flex">
-      <div class="w-[240px] border-r border-gray-300 animate__fadeIn animate__animated flex flex-col">
+      <div ref="sidebarRef" class="w-[240px] border-r border-gray-300 animate__fadeIn animate__animated flex flex-col">
         <div class="flex justify-center items-center gap-2 p-2 text-xs border-b border-gray-300">
 
             <input type="text" placeholder="输入房间名" v-model="roomName" class="w-full rounded-md px-2 h-8 flex justify-center items-center focus:outline-none"/>
@@ -38,6 +38,7 @@ import { useSocketStore } from "@/store/modules/socket";
 import router from "@/router";
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
+import { useResizable } from "@/hooks/useResizable";
 // https://heroicons.com/
 // 引入 heroicons 图标
 
@@ -45,6 +46,8 @@ const roomStore = useRoomStore();
 const socketStore = useSocketStore();
 
 const roomName = ref('')
+const sidebarRef = ref<HTMLElement | null>(null);
+useResizable(sidebarRef, { direction: 'horizontal', minSize: 180, maxSize: 480, initialSize: 240 });
 const getRooms = computed(() => {
   return roomStore.rooms.filter((room: any) => room.room_info.name.includes(roomName.value))
 })
