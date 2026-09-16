@@ -155,7 +155,6 @@ watchEffect(() => {
 
 // 发起语音通话
 const handleStartCall = () => {
-  if (!isFriendOnline.value || callStore.isBusy) return;
   callStore.startCall({
     id: route.params.id as string,
     username: getFriendInfo.value.username as string,
