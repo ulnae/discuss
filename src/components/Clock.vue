@@ -69,8 +69,6 @@ const rootStyle = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--tr-gap);
-  font-family: 'SF Mono', 'JetBrains Mono', 'Roboto Mono', ui-monospace,
-    Menlo, Consolas, monospace;
 }
 
 .tr *,
@@ -87,7 +85,7 @@ const rootStyle = computed(() => {
   border-radius: var(--tr-radius);
   overflow: hidden;
   isolation: isolate;
-  background: linear-gradient(
+  /* background: linear-gradient(
     180deg,
     #6e737b 0%,
     #4c5057 16%,
@@ -95,14 +93,13 @@ const rootStyle = computed(() => {
     #2b2e33 100%
   );
   box-shadow:
-    /* 外投影 */
     0 10px 22px -10px rgba(0, 0, 0, 0.55),
     0 3px 8px rgba(0, 0, 0, 0.28),
-    /* 内高光 / 内阴影 —— 让四个圆角更有“内圆角”厚度感 */
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     inset 0 -1px 0 rgba(0, 0, 0, 0.45),
     inset 0 0 0 1px rgba(255, 255, 255, 0.07),
-    inset 0 0 18px rgba(0, 0, 0, 0.35);
+    inset 0 0 18px rgba(0, 0, 0, 0.35); */
+  background: #e0e0e0;
 }
 
 /* 顶部内倒角光带 */
@@ -168,9 +165,9 @@ const rootStyle = computed(() => {
   line-height: 1;
   letter-spacing: -0.02em;
   color: #ffffff;
-  text-shadow:
+  /* text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.16),
-    0 3px 10px rgba(0, 0, 0, 0.55);
+    0 3px 10px rgba(0, 0, 0, 0.55); */
   user-select: none;
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
