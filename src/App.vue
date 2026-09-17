@@ -5,7 +5,7 @@ import { useSocketStore } from '@/store/modules/socket'
 import { useAlertStore } from '@/store/modules/alert'
 import { debounce, cloneDeep } from 'lodash-es'
 import { watch, onUnmounted } from 'vue'
-import CallDialog from '@/components/CallDialog.vue'
+import { CallDialog } from '@/components'
 
 // Notification.requestPermission().then(permission => {
 //   if (permission === 'granted') {

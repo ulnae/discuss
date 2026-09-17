@@ -5,10 +5,14 @@
  */
 export const formatRemain = (ms: number) => {
     const totalSec = Math.max(0, Math.ceil(ms / 1000));
-    const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
-    const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    const s = String(totalSec % 60).padStart(2, '0');
-    return `${h}:${m}:${s}`;
+    const hours = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSec % 60).padStart(2, '0');
+    return {
+        hours,
+        minutes,
+        seconds
+    };
 };
 
 /**

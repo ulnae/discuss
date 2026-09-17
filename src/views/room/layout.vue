@@ -38,7 +38,7 @@ import { useSocketStore } from "@/store/modules/socket";
 import router from "@/router";
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import { useResizable } from "@/hooks/useResizable";
+import { useResizable } from "@/hooks/resizable";
 // https://heroicons.com/
 // 引入 heroicons 图标
 
