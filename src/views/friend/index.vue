@@ -127,7 +127,7 @@ import serverApi from "@/api";
 import { vEnter } from "@/directives/vEnter";
 import { formatFileSize, scrollToBottom } from "@/utils";
 import { usePaste } from "@/hooks/paste";
-import { useResizable } from "@/hooks/useResizable";
+import { useResizable } from "@/hooks/resizable";
 import { Comment } from "@/components";
 
 const socketStore = useSocketStore();

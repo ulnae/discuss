@@ -46,7 +46,7 @@ import { useFriendStore } from "@/store/modules/friend";
 import router from "@/router";
 import { useRoute } from "vue-router";
 import { ref, computed, watchEffect } from "vue";
-import { useResizable } from "@/hooks/useResizable";
+import { useResizable } from "@/hooks/resizable";
 
 const friendStore = useFriendStore();
 const username = ref('')
