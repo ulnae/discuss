@@ -12,7 +12,7 @@
         <img v-else-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['svg', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'])"
             :src="`${VITE_APP_API_BASE_URL}${message.content}`" alt="图片已失效" @click="handlePreviewImage(message.content)"
             class="max-h-24 max-w-sm rounded-md cursor-pointer" />
-        <a v-else class="text-blue-600/75 no-underline hover:underline"
+        <a v-else class="text-blue-600/75 dark:text-blue-600 no-underline hover:underline"
             :href="`${VITE_APP_API_BASE_URL}${message.content}`" alt="" target="_blank">{{ message.originalname }}</a>
     </template>
     <span v-else class="whitespace-pre-wrap">

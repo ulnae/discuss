@@ -4,8 +4,10 @@ import { useDBStore } from '@/store/modules/database'
 import { useSocketStore } from '@/store/modules/socket'
 import { useAlertStore } from '@/store/modules/alert'
 import { debounce, cloneDeep } from 'lodash-es'
-import { watch, onUnmounted } from 'vue'
+import { watch, onUnmounted, onMounted } from 'vue'
 import { CallDialog } from '@/components'
+import { useTheme } from '@/hooks/theme'
+useTheme()
 
 // Notification.requestPermission().then(permission => {
 //   if (permission === 'granted') {

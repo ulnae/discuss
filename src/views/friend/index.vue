@@ -11,7 +11,7 @@
 <template lang="">
   <div class="w-full h-full flex gap-2 p-2">
     <div class="w-full h-full flex flex-col gap-2">
-        <div class="w-full text-center flex border-b border-gray-300 p-2 relative">
+        <div class="w-full text-center flex border-b border-gray-300 dark:border-gray-300/50 p-2 relative">
             <div class="flex-1 text-center animate__flipInX animate__animated">
               {{ getFriendInfo.username }}
             </div>
@@ -27,7 +27,7 @@
             textAlign: message.sender === route.params.id ? 'left' : 'right',
            }">
             <div class="mb-1 ">
-              <div class="text-xs text-gray-700 py-1" >
+              <div class="text-xs text-gray-700 dark:text-white/50 py-1" >
                 <span v-if="message.type && message.sender !== route.params.id" class="px-2 hidden group-hover:inline-block">
                   {{ formatFileSize(message.size) }}
                 </span>
@@ -36,7 +36,7 @@
                   {{ formatFileSize(message.size) }}
                 </span>
               </div>
-              <div class="inline-block bg-gray-200 p-2 py-1 rounded-md relative">
+              <div class="inline-block bg-gray-200 dark:bg-gray-200/50 p-2 py-1 rounded-md relative">
                 <Comment :message="message"/>
 
                 <!-- <div v-if="message.sender === route.params.id" class="absolute top-2 -left-2 w-0 h-0 
@@ -55,7 +55,7 @@
 
            </div>
         </div>
-        <div ref="inputAreaRef" class="w-full h-60 border-t border-gray-300 p-4 relative">
+        <div ref="inputAreaRef" class="w-full h-60 border-t border-gray-300 dark:border-gray-300/50 p-4 relative">
             <textarea id="story" name="story" placeholder="请输入信息,回车发送..." v-enter="handleSend" v-model.trim="story" rows="5" cols="33" class="w-full h-full  ">
             </textarea>
             <div class="absolute bottom-12 right-12 flex gap-6">
@@ -79,8 +79,8 @@
 
         </div>
     </div>
-    <div class="w-[200px] h-full border-l border-gray-300 flex flex-col gap-2 p-2 pt-0 overflow-hidden" v-show="infoVisiable">
-      <div class="border-b border-gray-300 p-2 pl-0 animate__flipInX animate__animated">
+    <div class="w-[200px] h-full border-l border-gray-300 dark:border-gray-300/50 flex flex-col gap-2 p-2 pt-0 overflow-hidden" v-show="infoVisiable">
+      <div class="border-b border-gray-300 dark:border-gray-300/50 p-2 pl-0 animate__flipInX animate__animated">
         <!-- <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
         </svg> -->

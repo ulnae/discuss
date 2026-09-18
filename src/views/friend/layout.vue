@@ -10,8 +10,8 @@
 -->
 <template lang="">
   <div class="w-full h-full flex">
-      <div ref="sidebarRef" class="w-[240px] border-r border-gray-300 animate__fadeIn animate__animated flex flex-col">
-        <div class="flex justify-center items-center gap-2 p-2 text-xs border-b border-gray-300">
+      <div ref="sidebarRef" class="w-[240px] border-r border-gray-300 dark:border-gray-300/50 animate__fadeIn animate__animated flex flex-col">
+        <div class="flex justify-center items-center gap-2 p-2 text-xs border-b border-gray-300 dark:border-gray-300/50">
 
             <input type="text" placeholder="输入用户名" v-model="username" class="w-full rounded-md px-2 h-8 focus:outline-none flex justify-center items-center"/>
 
@@ -27,9 +27,9 @@
           v-for="friend in getFriends" 
           @click="handleFriendClick(friend)" 
           :key="friend.id"
-          class="cursor-pointer p-2 hover:bg-gray-200 truncate animate__flipInX animate__animated flex items-center rounded-md" 
+          class="cursor-pointer p-2 hover:bg-gray-200 dark:hover:bg-gray-200/50 truncate animate__flipInX animate__animated flex items-center rounded-md" 
           :class="{
-            'bg-gray-200': paramsID === friend.friend_info.id, 
+            'bg-gray-200 dark:bg-gray-200/50': paramsID === friend.friend_info.id, 
             'text-green-700': friendStore.getFriendMap[friend.friend_info.id]?.status
           }">
           {{ friend.friend_info.username }}

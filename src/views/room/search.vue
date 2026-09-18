@@ -16,7 +16,7 @@
         placeholder="输入房间名"
         @keyup.enter="handleSearch"
         v-model.trim="roomName"
-        class="w-[400px] rounded-md p-2 text-center focus:bg-gray-200 focus:outline-none"
+        class="w-[400px] rounded-md p-2 text-center focus:bg-gray-200 dark:focus:bg-gray-200/50 focus:outline-none"
       />
     </div>
 
@@ -24,7 +24,7 @@
       <div
         v-for="item in result"
         :key="item.id"
-        class="w-[400px] truncate cursor-pointer p-2 border border-gray-300 rounded-md gap-1 flex flex-col relative"
+        class="w-[400px] truncate cursor-pointer p-2 border border-gray-300 dark:border-gray-300/50 rounded-md gap-1 flex flex-col relative"
       >
         <button
           v-if="!roomStore.getRoomMap[item.id]"

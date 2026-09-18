@@ -1,7 +1,7 @@
 <template lang="">
   <div class="w-full h-full flex gap-2 overflow-hidden p-2">
       <div class="w-full h-full flex-1 flex flex-col gap-2">
-          <div class="w-full text-center flex border-b border-gray-300 p-2 relative">
+          <div class="w-full text-center flex border-b border-gray-300 dark:border-gray-300/50 p-2 relative">
               <div class="flex-1 text-center animate__flipInX animate__animated">
                   {{ getRoomInfo.name }}
               </div>
@@ -16,7 +16,7 @@
           <div class="w-full h-full flex-1 overflow-y-auto" id="messageContainer">
               <div v-for="message in getHistory" :key="message.id" class="w-full h-auto p-2 group"
                   :style="{ textAlign: message.sender === userStore.userInfo.id ? 'right' : 'left', }">
-                  <div class="text-xs text-gray-700 py-1">
+                  <div class="text-xs text-gray-700 dark:text-white/50 py-1">
                     <span v-if="message.sender === userStore.userInfo.id" class="px-2">
                       <span class="hidden group-hover:inline-block" v-if="message.type">{{ formatFileSize(message.size) }}</span>
                       {{ dayjs(message.timestamp).fromNow() }}
@@ -30,7 +30,7 @@
                   </div>
                   <div class="flex mb-1 items-start">
                       <div class="flex-1">
-                          <div class="inline-block bg-gray-200 p-2 py-1 rounded-md relative">
+                          <div class="inline-block bg-gray-200 dark:bg-gray-200/50 p-2 py-1 rounded-md relative">
                               <Comment :message="message"/>
 
                               <!-- <div v-if="message.sender !== userStore.userInfo.id"
@@ -45,7 +45,7 @@
                   
               </div>
           </div>
-          <div ref="inputAreaRef" class="w-full h-60 border-t border-gray-300 p-4 relative">
+          <div ref="inputAreaRef" class="w-full h-60 border-t border-gray-300 dark:border-gray-300/50 p-4 relative">
               <textarea id="story" name="story" placeholder="请输入信息,回车发送..." v-enter="handleSend" v-model.trim="story" rows="5"
                   cols="33" class="w-full h-full "></textarea>
               <button class="absolute bottom-12 right-12 cursor-pointer" @click="handleSendImage">
@@ -64,9 +64,9 @@
 
           </div>
       </div>
-      <div class="w-[200px] h-full border-l border-gray-300 flex flex-col gap-2 p-2 pt-0 overflow-hidden" v-show="infoVisiable">
+      <div class="w-[200px] h-full border-l border-gray-300 dark:border-gray-300/50 flex flex-col gap-2 p-2 pt-0 overflow-hidden" v-show="infoVisiable">
           <div class="flex-1">
-              <div class="border-b border-gray-300 p-2 pl-0 animate__flipInX animate__animated">群成员</div>
+              <div class="border-b border-gray-300 dark:border-gray-300/50 p-2 pl-0 animate__flipInX animate__animated">群成员</div>
               <div v-for="member in getMember" :key="member.user_id"
                   class="group text-sm flex gap-1 items-center py-1" :class="{
                     'underline underline-offset-2': member.user_id === userStore.userInfo.id,

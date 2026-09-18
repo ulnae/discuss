@@ -1,30 +1,30 @@
 <template>
     <div class="w-full text-sm h-full relative px-2">
-        <div class="w-full border border-gray-300 border-t-0 ">
-            <div v-for="(item, k) in userStore.userInfo" :key="k" class="flex border-b border-gray-300 last:border-b-0">
-                <div class="w-[130px] text-right border-r border-gray-300 p-2">{{ k }}:</div>
+        <div class="w-full border border-gray-300 dark:border-gray-300/50 border-t-0 ">
+            <div v-for="(item, k) in userStore.userInfo" :key="k" class="flex border-b border-gray-300 dark:border-gray-300/50 last:border-b-0">
+                <div class="w-[130px] text-right border-r border-gray-300 dark:border-gray-300/50 p-2">{{ k }}:</div>
                 <div class="flex-1 w-full auto-wrap p-2 pl-4">{{ item }}</div>
             </div>
 
-            <div  class="flex border-b border-gray-300 last:border-b-0">
-                <div class="w-[130px] text-right border-r border-gray-300 p-2">Time:</div>
+            <div  class="flex border-b border-gray-300 dark:border-gray-300/50 last:border-b-0">
+                <div class="w-[130px] text-right border-r border-gray-300 dark:border-gray-300/50 p-2">Time:</div>
                 <div class="flex-1 w-full auto-wrap p-2 pl-4">{{__COMMIT_INFO__.time}}</div>
             </div>
-            <div  class="flex border-b border-gray-300 last:border-b-0">
-                <div class="w-[130px] text-right border-r border-gray-300 p-2">Author:</div>
+            <div  class="flex border-b border-gray-300 dark:border-gray-300/50 last:border-b-0">
+                <div class="w-[130px] text-right border-r border-gray-300 dark:border-gray-300/50 p-2">Author:</div>
                 <div class="flex-1 w-full auto-wrap p-2 pl-4">{{__COMMIT_INFO__.author}}</div>
             </div>
-            <div  class="flex border-b border-gray-300 last:border-b-0">
-                <div class="w-[130px] text-right border-r border-gray-300 p-2">Commit:</div>
+            <div  class="flex border-b border-gray-300 dark:border-gray-300/50 last:border-b-0">
+                <div class="w-[130px] text-right border-r border-gray-300 dark:border-gray-300/50 p-2">Commit:</div>
                 <div class="flex-1 w-full auto-wrap p-2 pl-4">{{__COMMIT_INFO__.hash}}</div>
             </div>
 
-            <div  class="flex border-b border-gray-300 last:border-b-0">
-                <div class="w-[130px] text-right border-r border-gray-300 p-2">聊天记录:</div>
+            <div  class="flex border-b border-gray-300 dark:border-gray-300/50 last:border-b-0">
+                <div class="w-[130px] text-right border-r border-gray-300 dark:border-gray-300/50 p-2">聊天记录:</div>
                 <div class="flex-1 w-full auto-wrap p-2 pl-4 text-blue-600 cursor-pointer" @click="handleExport">导出</div>
             </div>
-            <div  class="flex border-b border-gray-300 last:border-b-0">
-                <div class="w-[130px] text-right border-r border-gray-300 p-2">聊天记录:</div>
+            <div  class="flex border-b border-gray-300 dark:border-gray-300/50 last:border-b-0">
+                <div class="w-[130px] text-right border-r border-gray-300 dark:border-gray-300/50 p-2">聊天记录:</div>
                 <div class="flex-1 w-full auto-wrap p-2 pl-4 text-blue-600 cursor-pointer" @click="handleImport">导入</div>
             </div>
         </div>

@@ -1,14 +1,25 @@
 <template>
   <div class="w-full h-full flex">
-    <div class="w-[60px] py-1 flex flex-col border-r border-gray-300 animate__fadeIn animate__animated ">
+    <div class="w-[60px] py-1 flex flex-col border-r border-gray-300 dark:border-gray-300/50 animate__fadeIn animate__animated ">
       <div class="flex-1 px-1 flex flex-col gap-1">
         <div v-for="page in initRoutes" @click="handleClick(page)" :key="page.path"
-          class="cursor-pointer text-center p-2 hover:bg-gray-200 animate__flipInX animate__animated rounded-md" :class="{'bg-gray-200': getPath === page.path}">
+          class="cursor-pointer text-center p-2 hover:bg-gray-200 dark:hover:bg-gray-200/50 animate__flipInX animate__animated rounded-md" :class="{'bg-gray-200 dark:bg-gray-200/50': getPath === page.path}">
           <div class="w-6 py-1 mx-auto " v-html="page.meta.icon"></div>
         </div>
       </div>
       <div class="px-1 flex flex-col gap-1">
-        <div class="cursor-pointer text-center p-2 hover:bg-gray-200 animate__flipInX animate__animated rounded-md" @click="handleSetting" :class="{'bg-gray-200': getPath === 'setting'}">
+        <div class="cursor-pointer text-center p-2 hover:bg-gray-200 dark:hover:bg-gray-200/50 animate__flipInX animate__animated rounded-md" @click="toggleTheme" >
+          <div class="w-6 py-1 mx-auto  ">
+            <svg v-if="theme == 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+            </svg>
+          </div>
+        </div>
+
+        <div class="cursor-pointer text-center p-2 hover:bg-gray-200 dark:hover:bg-gray-200/50 animate__flipInX animate__animated rounded-md" @click="handleSetting" :class="{'bg-gray-200 dark:bg-gray-200/50': getPath === 'setting'}">
           <div class="w-6 py-1 mx-auto  ">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
               stroke="currentColor" class="size-6">
@@ -20,7 +31,7 @@
         </div>
 
 
-        <div class="cursor-pointer text-center p-2 hover:bg-gray-200 animate__flipInX animate__animated rounded-md" @click="handleLogout">
+        <div class="cursor-pointer text-center p-2 hover:bg-gray-200 dark:hover:bg-gray-200/50 animate__flipInX animate__animated rounded-md" @click="handleLogout">
           <div class="w-6 py-1 mx-auto  ">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
               stroke="currentColor" class="size-6">
@@ -41,6 +52,7 @@ import router from "@/router";
 import { computed, ref, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import { initRoutes } from "@/router/routes";
+import { useTheme } from '@/hooks/theme'
 
 function handleClick(page: any) {
   router.push({
@@ -70,7 +82,7 @@ const getPath = computed(() => {
   return routePath.value?.split('/').filter(Boolean)[0]
 })
 
-
+const { theme, toggleTheme } = useTheme()
 // 创建 SSE 连接
 // const eventSource = serverApi.CreateEventSource();
 // onUnmounted(() => {

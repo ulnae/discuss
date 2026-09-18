@@ -11,9 +11,9 @@
 <template >
     <div class="flex flex-col items-center gap-4 h-full">
         <input type="text" placeholder="输入房间名" v-model.trim="room.name"
-            class="w-1/2 rounded-md p-2 focus:bg-gray-200 focus:outline-none" />
+            class="w-1/2 rounded-md p-2 focus:bg-gray-200 dark:focus:bg-gray-200/50 focus:outline-none" />
         <textarea type="text" placeholder="输入房间描述" v-model.trim="room.description"
-            class="w-1/2 rounded-md p-2 focus:bg-gray-200 focus:outline-none" rows="5" />
+            class="w-1/2 rounded-md p-2 focus:bg-gray-200 dark:focus:bg-gray-200/50 focus:outline-none" rows="5" />
 
         <svg @click="handleCreate" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
             stroke="currentColor" class="size-6 cursor-pointer">
