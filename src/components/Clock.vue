@@ -1,18 +1,66 @@
 <template>
-  <div class="tr" role="group" :aria-label="ariaLabel" :style="rootStyle">
-    <div v-for="(pair, ci) in units" :key="ci" class="tr-card">
+  <div
+    class="inline-flex items-center gap-4 max-[480px]:gap-2.5"
+    role="group"
+    :aria-label="ariaLabel"
+    :style="rootStyle"
+  >
+    <div
+      v-for="(pair, ci) in units"
+      :key="ci"
+      class="relative isolate h-[84px] overflow-hidden rounded-xl px-3.5
+             max-[480px]:h-16 max-[480px]:rounded-[14px]
+             bg-[#e0e0e0] transition-colors duration-300
+             dark:bg-[linear-gradient(180deg,#6e737b_0%,#4c5057_16%,#3b3f45_52%,#2b2e33_100%)]
+             dark:shadow-[0_10px_22px_-10px_rgba(0,0,0,0.55),0_3px_8px_rgba(0,0,0,0.28)]
+             after:pointer-events-none after:absolute after:inset-0 after:z-[5]
+             after:rounded-[inherit] after:content-['']
+             after:bg-[linear-gradient(180deg,rgba(255,255,255,0.09)_0%,rgba(255,255,255,0)_42%)]
+             after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+    >
       <!-- 数字滚动区 -->
-      <div class="tr-digits">
-        <div v-for="(digit, di) in pair" :key="di" class="tr-col">
-          <div class="tr-track" :style="{ '--i': digit }">
-            <span v-for="n in 10" :key="n" class="tr-num">{{ n - 1 }}</span>
+      <div class="flex h-full items-stretch">
+        <div
+          v-for="(digit, di) in pair"
+          :key="di"
+          class="relative h-[84px] w-9 overflow-hidden
+                 max-[480px]:h-16 max-[480px]:w-8
+                 [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.12)_0%,#000_26%,#000_74%,rgba(0,0,0,0.12)_100%)]"
+        >
+          <div
+            class="flex flex-col will-change-transform
+                   translate-y-[calc(var(--i,0)*-10%)]
+                   transition-transform duration-[var(--tr-duration)]
+                   ease-[cubic-bezier(0.16,1,0.3,1)]"
+            :style="{ '--i': digit }"
+          >
+            <span
+              v-for="n in 10"
+              :key="n"
+              class="grid h-[84px] place-items-center text-[48px] leading-none font-bold
+                     tracking-[-0.02em] tabular-nums antialiased select-none
+                     text-[#2b2e33] transition-colors duration-300 dark:text-white
+                     max-[480px]:h-16 max-[480px]:text-[36px]"
+            >{{ n - 1 }}</span>
           </div>
         </div>
       </div>
 
       <!-- 上下边缘模糊层 -->
-      <span class="tr-fog tr-fog--top" aria-hidden="true" />
-      <span class="tr-fog tr-fog--bottom" aria-hidden="true" />
+      <span
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-x-0 top-0 z-4 h-2.5 rounded-t-xl
+               backdrop-blur-[3px] backdrop-saturate-[0.92]
+               max-[480px]:h-[22px] max-[480px]:rounded-t-[14px]
+               [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_0%,rgba(0,0,0,0.7)_45%,rgba(0,0,0,0)_100%)]"
+      />
+      <span
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-x-0 bottom-0 z-4 h-2.5 rounded-b-xl
+               backdrop-blur-[3px] backdrop-saturate-[0.92]
+               max-[480px]:h-[22px] max-[480px]:rounded-b-[14px]
+               [mask-image:linear-gradient(to_top,rgba(0,0,0,1)_0%,rgba(0,0,0,0.7)_45%,rgba(0,0,0,0)_100%)]"
+      />
     </div>
   </div>
 </template>
@@ -49,185 +97,9 @@ const ariaLabel = computed(
   () => `${toPad(props.hours)}:${toPad(props.minutes)}:${toPad(props.seconds)}`
 )
 
+/** 唯一需要 JS 注入的变量：动画时长（因为它是 prop 驱动的） */
 const rootStyle = computed(() => {
   const d = Number(props.duration)
   return { '--tr-duration': `${Number.isFinite(d) && d >= 0 ? d : 720}ms` }
 })
 </script>
-
-<style scoped>
-/* ===================== 基础变量 ===================== */
-.tr {
-  --tr-card-h: 84px;      /* 卡片高度 = 单个数字高度 */
-  --tr-digit-w: 36px;     /* 单个数字宽度 */
-  --tr-font-size: 48px;   /* 数字字号 */
-  --tr-radius: 12px;      /* 圆角 */
-  --tr-gap: 16px;         /* 卡片间距 */
-  --tr-fog-h: 10px;       /* 边缘模糊高度 */
-  --tr-duration: 720ms;
-
-  display: inline-flex;
-  align-items: center;
-  gap: var(--tr-gap);
-}
-
-.tr *,
-.tr *::before,
-.tr *::after {
-  box-sizing: border-box;
-}
-
-/* ===================== 灰色方框卡片 ===================== */
-.tr-card {
-  position: relative;
-  height: var(--tr-card-h);
-  padding: 0 14px;
-  border-radius: var(--tr-radius);
-  overflow: hidden;
-  isolation: isolate;
-  /* background: linear-gradient(
-    180deg,
-    #6e737b 0%,
-    #4c5057 16%,
-    #3b3f45 52%,
-    #2b2e33 100%
-  );
-  box-shadow:
-    0 10px 22px -10px rgba(0, 0, 0, 0.55),
-    0 3px 8px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
-    inset 0 0 18px rgba(0, 0, 0, 0.35); */
-  background: #e0e0e0;
-}
-
-/* 顶部内倒角光带 */
-.tr-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 5;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.09) 0%,
-    rgba(255, 255, 255, 0) 42%
-  );
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-/* ===================== 数字列 ===================== */
-.tr-digits {
-  display: flex;
-  height: 100%;
-  align-items: stretch;
-}
-
-.tr-col {
-  position: relative;
-  width: var(--tr-digit-w);
-  height: var(--tr-card-h);
-  overflow: hidden;
-  /* 数字靠近边缘时柔和淡出 */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.12) 0%,
-    #000 26%,
-    #000 74%,
-    rgba(0, 0, 0, 0.12) 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.12) 0%,
-    #000 26%,
-    #000 74%,
-    rgba(0, 0, 0, 0.12) 100%
-  );
-}
-
-.tr-track {
-  display: flex;
-  flex-direction: column;
-  will-change: transform;
-  /* --i 为目标数字，滚动到对应位置 */
-  transform: translateY(calc(var(--i, 0) * var(--tr-card-h) * -1));
-  transition: transform var(--tr-duration) cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tr-num {
-  display: grid;
-  place-items: center;
-  height: var(--tr-card-h);
-  font-size: var(--tr-font-size);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: #ffffff;
-  /* text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.16),
-    0 3px 10px rgba(0, 0, 0, 0.55); */
-  user-select: none;
-  -webkit-font-smoothing: antialiased;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ===================== 边缘模糊 ===================== */
-.tr-fog {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: var(--tr-fog-h);
-  pointer-events: none;
-  z-index: 4;
-  backdrop-filter: blur(3px) saturate(0.92);
-  -webkit-backdrop-filter: blur(3px) saturate(0.92);
-}
-
-.tr-fog--top {
-  top: 0;
-  border-radius: var(--tr-radius) var(--tr-radius) 0 0;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.7) 45%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.7) 45%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
-
-.tr-fog--bottom {
-  bottom: 0;
-  border-radius: 0 0 var(--tr-radius) var(--tr-radius);
-  -webkit-mask-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.7) 45%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  mask-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 1) 0%,
-    rgba(0, 0, 0, 0.7) 45%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
-
-/* 小屏自适应 */
-@media (max-width: 480px) {
-  .tr {
-    --tr-card-h: 64px;
-    --tr-digit-w: 32px;
-    --tr-font-size: 36px;
-    --tr-radius: 14px;
-    --tr-gap: 10px;
-    --tr-fog-h: 22px;
-  }
-}
-</style>
