@@ -16,6 +16,10 @@ import { currentUser } from '../lib/auth.js';
 import { signToken } from '../lib/jwt.js';
 import { hashPassword, verifyPassword, iterationsOf } from '../lib/password.js';
 import { all, first, run, now, uuid, iso, count } from '../lib/sql.js';
+import {
+    uploadLimits, storageUsage, addUsage,
+    REJECT_RATIO, FULL_RATIO, fmtMB, DAY
+} from '../lib/quota.js';
 import { assertCaptcha } from './captcha.js';
 
 export const userView = (row) => ({
@@ -145,52 +149,137 @@ async function remove(request, env, ctx, id) {
  * 前端把 path 拼成 `${VITE_APP_API_BASE_URL}/${path}` 访问，
  * 所以 path 形如 public/<userId>/<file>，由 /public/* 路由从 R2 读回。
  */
+const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif']);
+const DOC_EXT = new Set([
+    '.pdf', '.zip', '.rar', '.7z', '.txt', '.md', '.csv',
+    '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.mp3', '.wav', '.mp4', '.webm'
+]);
+
 async function upload(request, env, ctx) {
     const me = await currentUser(request, env);
     if (!env.UPLOAD) {
         throw notImplemented('当前 Worker 未绑定 R2 存储桶，文件上传功能未启用');
     }
 
+    const limits = uploadLimits(env);
     const form = await request.formData().catch(() => null);
     const file = form && form.get('file');
     if (!file || typeof file === 'string') throw new ApiError('未选择文件', 400);
 
-    const limit = parseInt(env.UPLOAD_MAX_BYTES || '26214400', 10);
-    if (file.size > limit) throw new ApiError(`文件不能超过 ${Math.round(limit / 1048576)}MB`, 400);
-
     const originalname = file.name || 'file';
     const ext = (originalname.match(/\.[^.]+$/) || [''])[0].toLowerCase();
-    const filename = `${Math.round(Math.random() * 1e9)}${ext}`;
+    const mime = String(file.type || '').toLowerCase();
+
+    /* SVG / HTML 会在同域下执行脚本，直接拒绝；只放行图片与常见文档 */
+    if (ext === '.svg' || ext === '.svgz' || mime === 'image/svg+xml' || mime.startsWith('text/html')) {
+        throw new ApiError('不支持该文件类型', 415);
+    }
+    const isImage = IMAGE_EXT.has(ext) || mime.startsWith('image/');
+    if (!isImage && !DOC_EXT.has(ext)) throw new ApiError('不支持该文件类型', 415);
+    if (!file.size) throw new ApiError('文件内容为空', 400);
+
+    const limit = isImage ? limits.maxImage : limits.maxDoc;
+    if (file.size > limit) {
+        throw new ApiError(`文件不能超过 ${fmtMB(limit)}`, 400);
+    }
+
+    /* 三级水位：85% 起拒图片，95% 起拒绝全部上传（文字消息始终不受影响） */
+    const usage = await storageUsage(env);
+    if (usage.ratio >= FULL_RATIO) {
+        throw new ApiError('存储空间已满，暂时无法上传，文字消息不受影响', 507);
+    }
+    if (usage.ratio >= REJECT_RATIO && isImage) {
+        throw new ApiError('图片存储空间已满，暂时无法发送图片，文字消息不受影响', 507);
+    }
+
+    const since = now() - DAY;
+    const daily = await first(
+        env,
+        'SELECT COUNT(*) AS c, COALESCE(SUM(size),0) AS b FROM upload WHERE userId = ? AND createdAt >= ?',
+        me.id, since
+    );
+    if (Number(daily.c) >= limits.userDailyCount) {
+        throw new ApiError(`今日上传次数已达上限（${limits.userDailyCount} 次），请明天再试`, 429);
+    }
+    if (Number(daily.b) + file.size > limits.userDailyBytes) {
+        throw new ApiError(`今日上传流量已达上限（${fmtMB(limits.userDailyBytes)}），请明天再试`, 429);
+    }
+
+    const mine = await first(env, 'SELECT COALESCE(SUM(size),0) AS b FROM upload WHERE userId = ?', me.id);
+    if (Number(mine.b) + file.size > limits.userTotal) {
+        throw new ApiError(`个人存储空间已满（${fmtMB(limits.userTotal)}），旧文件会自动清理`, 507);
+    }
+
+    const filename = `${crypto.randomUUID()}${ext}`;
     const key = `${me.id}/${filename}`;
 
     await env.UPLOAD.put(key, file.stream(), {
-        httpMetadata: { contentType: file.type || 'application/octet-stream' }
+        httpMetadata: {
+            contentType: mime || 'application/octet-stream',
+            contentDisposition: isImage ? 'inline' : 'attachment'
+        }
     });
 
+    await run(
+        env,
+        'INSERT INTO upload (id, userId, key, size, mime, createdAt) VALUES (?,?,?,?,?,?)',
+        uuid(), me.id, key, file.size, mime || null, now()
+    );
+    await addUsage(env, file.size);
+
+    const after = await storageUsage(env);
     return ok({
         code: 200,
         message: '文件上传成功',
         filename,
         originalname,
         size: file.size,
-        mimetype: file.type || 'application/octet-stream',
+        mimetype: mime || 'application/octet-stream',
         path: `public/${key}`,
         userId: me.id,
-        uploadTime: Date.now()
+        uploadTime: Date.now(),
+        storage: { used: after.bytes, quota: after.quota, ratio: Number(after.ratio.toFixed(3)) }
     }, ctx.cors);
 }
 
-/** /public/<userId>/<filename> → R2 */
+/** /public/<userId>/<filename> → R2（带边缘缓存，避免每次浏览都算一次 R2 读） */
 export async function servePublicFile(request, env, ctx, key) {
     if (!env.UPLOAD) throw new ApiError('文件不存在', 404);
-    const object = await env.UPLOAD.get(key);
+
+    let clean = key;
+    try { clean = decodeURIComponent(key); } catch { /* 保持原样 */ }
+    if (!clean || clean.includes('..')) throw new ApiError('文件不存在', 404);
+
+    const isGet = request.method === 'GET';
+    const cache = caches.default;
+    const cacheKey = new Request(`https://public.cache${ctx.url.pathname}`, { method: 'GET' });
+
+    if (isGet) {
+        const hit = await cache.match(cacheKey);
+        if (hit) return hit;
+    }
+
+    const object = await env.UPLOAD.get(clean);
     if (!object) throw new ApiError('文件不存在', 404);
+
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
-    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    /* 7 天：兼顾「少打 R2 / 少占 Worker 请求」与「过期回收后尽快 404」。
+       不要用 1 年，否则删除的文件还能从边缘缓存里读出来。 */
+    headers.set('Cache-Control', 'public, max-age=604800');
+    headers.set('X-Content-Type-Options', 'nosniff');
     headers.set('Access-Control-Allow-Origin', ctx.cors['Access-Control-Allow-Origin'] || '*');
-    return new Response(object.body, { headers });
+
+    const type = headers.get('content-type') || '';
+    if (!type.startsWith('image/')) {
+        headers.set('Content-Disposition', 'attachment');
+    }
+
+    const response = new Response(object.body, { headers });
+    if (isGet) await cache.put(cacheKey, response.clone());
+    return response;
 }
 
 export async function handleUser(request, env, ctx, rest) {

@@ -74,3 +74,25 @@ CREATE TABLE IF NOT EXISTS captcha (
   expire  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_captcha_expire ON captcha(expire);
+
+-- 上传文件登记表：R2 里没有可靠的「按用户/按时间」查询能力，
+-- 所以索引信息落 D1，用于配额判断与过期回收。
+CREATE TABLE IF NOT EXISTS upload (
+  id        TEXT PRIMARY KEY,
+  userId    TEXT NOT NULL,
+  key       TEXT NOT NULL UNIQUE,
+  size      INTEGER NOT NULL,
+  mime      TEXT,
+  createdAt INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_upload_user ON upload(userId, createdAt);
+CREATE INDEX IF NOT EXISTS idx_upload_created ON upload(createdAt);
+
+-- 单行累计值：避免每次上传都 SUM 全表（D1 按行计费，且行数会增长）
+CREATE TABLE IF NOT EXISTS upload_stat (
+  id        INTEGER PRIMARY KEY CHECK (id = 1),
+  bytes     INTEGER NOT NULL DEFAULT 0,
+  files     INTEGER NOT NULL DEFAULT 0,
+  updatedAt INTEGER NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO upload_stat (id, bytes, files, updatedAt) VALUES (1, 0, 0, 0);

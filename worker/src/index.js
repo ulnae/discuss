@@ -20,6 +20,8 @@ import { handleRoom } from './routes/room.js';
 import { handleMember } from './routes/member.js';
 import { handleApply } from './routes/apply.js';
 import { handleFriend } from './routes/friend.js';
+import { storageUsage } from './lib/quota.js';
+import { cleanupStorage } from './cron.js';
 
 export { DiscussHub } from './durable/hub.js';
 
@@ -42,11 +44,24 @@ export default {
             }
 
             if (path === '/' || path === '/api/health') {
+                let storage = null;
+                try {
+                    const usage = await storageUsage(env);
+                    storage = {
+                        usedBytes: usage.bytes,
+                        files: usage.files,
+                        quotaBytes: usage.quota,
+                        percent: Number((usage.ratio * 100).toFixed(1))
+                    };
+                } catch {
+                    storage = null;   // 表未初始化时不影响存活探测
+                }
                 return ok({
                     ok: true,
                     service: 'discuss-api',
                     time: Date.now(),
-                    colo: (request.cf && request.cf.colo) || ''
+                    colo: (request.cf && request.cf.colo) || '',
+                    storage
                 }, cors);
             }
 
@@ -80,6 +95,15 @@ export default {
             console.error(rc.method, path, error);
             return fail('服务内部错误: ' + (error && error.message), 500, cors);
         }
+    },
+
+    /** Cron Trigger：每日回收过期/超额文件（见 src/cron.js） */
+    async scheduled(event, env, ctx) {
+        ctx.waitUntil(
+            cleanupStorage(env)
+                .then(stats => console.log('storage cleanup', JSON.stringify(stats)))
+                .catch(error => console.error('storage cleanup failed', error && error.message))
+        );
     }
 };
 

@@ -164,14 +164,57 @@ wrangler dev --local --var JWT_SECRET:dev-secret               # 起服务
 
 前端把 `.env` 的 `VITE_APP_RUNTIME` 改 `worker`、`VITE_APP_BASE_API` 指到 `http://127.0.0.1:8787/api` 即可联调。
 
-### 可选：开启图片 / 文件上传（R2）
+### 图片 / 文件上传（R2）
+
+R2 必须先**在 Cloudflare 控制台手动开通**（Dashboard → R2 → Enable），否则建桶会报
+`Please enable R2 through the Cloudflare Dashboard [code: 10042]`。开通后：
 
 ```bash
 wrangler r2 bucket create discuss-uploads
+# 平台级兜底：30 天后自动过期，不依赖 Worker 是否在跑
+wrangler r2 bucket lifecycle add discuss-uploads expire-30d --expire-days 30 -y
+wrangler deploy
 ```
 
-然后取消 `wrangler.toml` 里 `[[r2_buckets]]` 的注释并重新 `wrangler deploy`。
-上传成功返回 `path: public/<userId>/<filename>`，前端拼 `${VITE_APP_API_BASE_URL}/${path}` 访问，和 NestJS 的静态目录用法一致。
+上传成功返回 `path: public/<userId>/<filename>`，前端拼 `${VITE_APP_API_BASE_URL}/${path}` 访问，
+与 NestJS 的静态目录用法一致。
+
+**容量参数**（都在 `wrangler.toml` 的 `[vars]` 里，改完重新 deploy 即可）：
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `UPLOAD_MAX_BYTES` | 2 MB | 图片单文件上限；前端会先压到长边 1920，实际 200–500 KB |
+| `UPLOAD_MAX_DOC_BYTES` | 10 MB | 其它文档/音视频上限 |
+| `QUOTA_USER_BYTES` | 128 MB | 单用户总量，防止一个人吃满全局 |
+| `QUOTA_USER_DAILY_BYTES` / `_COUNT` | 30 MB / 50 次 | 单用户日内配额，防脚本刷 Class A |
+| `QUOTA_GLOBAL_BYTES` | 6 GB | 全局软上限（R2 免费 10 GB，留 40% 余量） |
+| `RETENTION_DAYS` | 30 | 保留天数；消息不落库，超期即回收 |
+
+**清理是三层**，从被动兜底到主动回收：
+
+1. **R2 生命周期规则**（平台执行，30 天）——即使 Worker 挂了也会删；
+2. **Cron 每日回收**（`[triggers]`，UTC 19:00 = 北京 03:00）——过期文件 + 超额时按最旧优先删到软上限的 75%；
+3. **统计校准**——每天重算 `upload_stat`，修正累计值漂移。
+
+**水位与降级**（按 `upload_stat.bytes / QUOTA_GLOBAL_BYTES`）：
+
+| 水位 | 动作 |
+|---|---|
+| ≤ 70% | 正常，用量写进 `/api/health` 的 `storage` 字段 |
+| 70–85% | 仅日志告警，不拦用户 |
+| 85–95% | 拒绝新图片（507），文字消息不受影响 |
+| > 95% | 拒绝全部上传，下一次 Cron 强制回收到 75% |
+
+几点实现上的取舍：
+
+- **登记表放 D1 而不是靠 R2 列举**：R2 没有按用户/按时间的索引查询，`upload` 表是配额判断与回收的依据；
+  全局用量走 `upload_stat` 单行累计，避免每次上传都 `SUM` 全表（D1 按行计费）。
+- **`/public/*` 走边缘缓存 7 天**：命中缓存不计 R2 Class B，也不重复读对象；不用 1 年是因为过期文件
+  删掉后还能从缓存里读出来。
+- **拒绝 SVG / HTML**：这两类在同域下会执行脚本，等于给 API 域名开了个 XSS 口子；只放行图片与常见文档，
+  并统一加 `X-Content-Type-Options: nosniff`，非图片强制 `Content-Disposition: attachment`。
+- **超了也不贵**：R2 存储 $0.015/GB-month（20 GB ≈ $0.30/月），Class A $4.50/百万次。
+  所以设计目标是「可预测 + 防滥用」，没必要为了省钱把体验压到不能用。
 
 ---
 
@@ -206,6 +249,16 @@ wrangler r2 bucket create discuss-uploads
 ---
 
 ## 六、常见问题
+
+**Q：上传图片报「当前 Worker 未绑定 R2 存储桶」？**
+两种原因，按顺序排查：① Cloudflare 账号还没开通 R2（Dashboard → R2 → Enable，未开通时建桶会报 `code: 10042`）；
+② 桶没建或 `wrangler.toml` 里 `[[r2_buckets]]` 没生效。执行：
+
+```bash
+wrangler r2 bucket create discuss-uploads
+wrangler deploy
+curl -s https://<你的域名>/api/health   # storage 字段应出现 usedBytes / quotaBytes
+```
 
 **Q：登录接口 500，报 `Imported HMAC key length (0)...`？**
 `JWT_SECRET` 没配。WebCrypto 用空密钥做 HMAC 就会抛这句，和登录逻辑无关。执行：

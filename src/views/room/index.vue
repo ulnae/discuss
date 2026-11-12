@@ -122,6 +122,7 @@ import dayjs from "@/plugin/dayjs";
 import serverApi from "@/api";
 import { vEnter } from "@/directives/vEnter";
 import { formatFileSize, scrollToBottom } from "@/utils";
+import { compressImage, imageFilename } from "@/utils/image";
 import { usePaste } from '@/hooks/paste'
 import { useResizable } from '@/hooks/resizable'
 import { Comment } from '@/components'
@@ -214,9 +215,10 @@ const handleSendFile = () => {
   document.getElementById("chooseFile")?.click();
 };
 
-const uploadImage = (file: Blob) => {
+const uploadImage = async (file: Blob) => {
+  const blob = await compressImage(file);
   const formData = new FormData();
-  formData.append("file", file as Blob);
+  formData.append("file", blob, imageFilename(blob));
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
       (socketStore.socket as Socket).emit("send:room", {
