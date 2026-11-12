@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import routes from './routes'
 import NProgress from 'nprogress';
 
@@ -8,7 +8,11 @@ import { useMenuStore } from '@/store/modules/menu'
 const menuStore = useMenuStore(pinia)
 
 const router = createRouter({
-    history: createWebHistory(import.meta.env.VITE_APP_BASE_URL),
+    // GitHub Pages 是纯静态托管，没有 rewrite：history 模式下刷新 /discuss/friend/1
+    // 会直接 404（服务器找不到该路径的文件）。改用 hash 后 URL 变成 /discuss/#/friend/1，
+    // 刷新永远只请求 /discuss/，由前端自己解析 # 之后的部分。
+    // 旧的 history 深链由 public/404.html 兜底转成 hash。
+    history: createWebHashHistory(import.meta.env.VITE_APP_BASE_URL),
     routes
 })
 

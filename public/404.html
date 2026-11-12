@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Discuss</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      color: #333;
+      font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #000;
+        color: #ddd;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="tip">正在打开…</div>
+  <script>
+    /* GitHub Pages 的兜底页：任何不存在的路径都会返回它。
+       路由已改为 hash 模式，这里负责把旧的 history 深链（/discuss/friend/1）
+       转换成新格式（/discuss/#/friend/1），避免以前分享出去的链接直接 404。
+
+       换部署路径时只需要改 BASE（项目页是 /discuss，独立域名部署则留空字符串）。 */
+    (function () {
+      var BASE = '/discuss';
+      var KEY = '__spa_redirect_at__';
+      var tip = document.getElementById('tip');
+
+      /* 防死循环：3 秒内二次进入 404 说明 BASE 配错了，直接停下并把路径显示出来 */
+      var last = Number(sessionStorage.getItem(KEY) || 0);
+      if (Date.now() - last < 3000) {
+        tip.textContent = '页面不存在：' + location.pathname;
+        return;
+      }
+      sessionStorage.setItem(KEY, Date.now());
+
+      var path = location.pathname;
+      var rest = path.indexOf(BASE) === 0 ? path.slice(BASE.length) : path;
+      if (!rest || rest.charAt(0) !== '/') rest = '/' + (rest || '');
+
+      /* 只保留 search：history 深链里的 hash 在转成 hash 路由后会变成两个 #，
+         徒增歧义，直接丢弃（这类链接在这套应用里没有实际用途）。 */
+      location.replace(BASE + '/#' + rest + location.search);
+    })();
+  </script>
+</body>
+
+</html>

@@ -264,6 +264,13 @@ npm run preview
 | `/apply` | 申请管理 | 是 |
 | `/setting` | 设置页面 | 是 |
 
+> **路由模式为 hash**（`createWebHashHistory`），实际地址形如 `https://ulnae.github.io/discuss/#/friend/1`。
+> 原因：GitHub Pages 是纯静态托管，没有 rewrite 能力，history 模式下刷新 `/discuss/friend/1` 会因为找不到文件直接 404。
+> 改用 hash 后刷新只请求 `/discuss/`，由前端解析 `#` 之后的部分，零服务端依赖。
+>
+> 以前分享出去的 history 深链（`/discuss/friend/1`）由 `public/404.html` 兜底：GitHub 返回它之后，
+> 脚本把路径转成 `#/friend/1` 再跳回首页，因此旧链接不会失效。
+
 ### API 模块
 
 项目采用模块化的 API 设计，各模块职责清晰：
@@ -294,6 +301,8 @@ npm run preview
 项目已配置 GitHub Pages 自动部署，推送到 **master** 分支即触发 `npm run build`（prod 模式 → Cloudflare Worker 接口）。
 
 部署地址：https://ulnae.github.io/discuss/
+
+构建产物里的 `404.html`（源文件 `public/404.html`）会被 GitHub Pages 当作兜底页，用于把旧的 history 深链转成 hash 地址；正常刷新只请求 `/discuss/`，不会再 404。
 
 ### 后端（二选一）
 
