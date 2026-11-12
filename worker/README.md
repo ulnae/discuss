@@ -71,8 +71,9 @@ wrangler d1 create discuss-data
 # 2. 建表（--remote 才是线上）
 wrangler d1 execute discuss-data --remote --file=./schema.sql
 
-# 3. JWT 密钥（必须与前端所在环境的预期一致；填 32 位以上随机串）
-wrangler secret put JWT_SECRET
+# 3. JWT 密钥（必填！不配的话登录接口会 500）
+#    生成 32 字节随机串直接灌进去，值不会回显
+openssl rand -hex 32 | wrangler secret put JWT_SECRET
 
 # 4. 部署
 wrangler deploy
@@ -148,6 +149,17 @@ wrangler r2 bucket create discuss-uploads
 ---
 
 ## 六、常见问题
+
+**Q：登录接口 500，报 `Imported HMAC key length (0)...`？**
+`JWT_SECRET` 没配。WebCrypto 用空密钥做 HMAC 就会抛这句，和登录逻辑无关。执行：
+
+```bash
+cd worker
+printf '%s' "$(openssl rand -hex 32)" | wrangler secret put JWT_SECRET
+```
+
+现在代码里也加了前置检查：没配 secret 时所有 `/api/*` 直接返回「服务端未配置 JWT_SECRET」，
+不会再冒出那句看不懂的报错（`/api/health` 不受影响，可用于存活探测）。
 
 **Q：前端登录一直提示 `Invalid or expired captcha`？**
 验证码 60 秒过期，且每次点图会换新 id。检查前端是否把 `captchaId` 和 `captcha` 一起提交（`src/api/user/index.ts` 已处理）。

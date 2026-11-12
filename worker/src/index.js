@@ -50,6 +50,12 @@ export default {
                 }, cors);
             }
 
+            /* 配置自检：没配 JWT_SECRET 时 HMAC 会以空密钥导入并抛出晦涩错误，
+               这里提前拦下，返回可直接照做的提示（health 不受影响）。 */
+            if (!env.JWT_SECRET) {
+                return fail('服务端未配置 JWT_SECRET：请执行 wrangler secret put JWT_SECRET 后重试', 500, cors);
+            }
+
             if (!path.startsWith('/api/')) throw notFound();
 
             const segments = path.split('/').filter(Boolean);   // ['api', 'user', 'login']

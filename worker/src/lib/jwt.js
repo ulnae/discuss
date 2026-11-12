@@ -8,7 +8,10 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 function importKey(secret) {
-    return crypto.subtle.importKey('raw', encoder.encode(String(secret || '')), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+    const raw = String(secret || '');
+    /* WebCrypto 对空密钥的报错是 "Imported HMAC key length (0)..."，对排查毫无帮助 */
+    if (!raw) throw new Error('JWT_SECRET 未配置（wrangler secret put JWT_SECRET）');
+    return crypto.subtle.importKey('raw', encoder.encode(raw), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
 /** "24h" / "7d" / "3600s" / 3600 → 秒 */
