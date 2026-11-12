@@ -1,9 +1,12 @@
-@use'../font/index.css';
+@use '../font/index.css';
 
 html {
     /* 定义变量 */
     // --bgColor: rgb(226, 227, 228);
-    font-family: JetBrainsMono, PingFangSC-Regular, sans-serif;
+    /* 中文改用系统字体栈：不再下载 5.1MB 的 PingFangSC 字体包。
+       JetBrainsMono 放前面保证代码/数字等宽，中文自动回落到系统字体。 */
+    font-family: JetBrainsMono, -apple-system, BlinkMacSystemFont, 'PingFang SC',
+        'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
     font-weight: 200;
 }
 

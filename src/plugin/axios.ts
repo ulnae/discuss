@@ -4,34 +4,56 @@ import { APIENUM, API_ENUM_SERVICE } from '@/settings'
 import { useUserStore } from '@/store/modules/user'
 import Cookies from 'js-cookie'
 import { pinia } from '@/store'
+import { toast } from '@/components/ui/toast'
+
+/** HTTP 状态码兜底文案：后端没给 msg 时用它，避免把技术细节甩给用户 */
+const HTTP_TIPS: Record<number, string> = {
+    400: '请求参数有误，请检查后重试',
+    401: '登录已过期，请重新登录',
+    403: '没有权限执行该操作',
+    404: '接口不存在或已被移除',
+    408: '请求超时，请稍后重试',
+    413: '内容过大，请压缩后重试',
+    429: '操作太频繁了，请稍后再试',
+    500: '服务器开小差了，请稍后重试',
+    501: '该功能暂未开放',
+    502: '网关异常，请稍后重试',
+    503: '服务暂时不可用，请稍后重试',
+    504: '网关超时，请稍后重试'
+}
+
+/** 把 axios 的原始报错整理成一句用户能看懂的话 */
+function readableMessage(error: any): string {
+    const response = error && error.response
+    const data = response && response.data
+    const serverMsg = data && (data.msg || data.message)
+    if (typeof serverMsg === 'string' && serverMsg.trim()) return serverMsg.trim()
+
+    const status = response && response.status
+    if (status && HTTP_TIPS[status]) return HTTP_TIPS[status]
+
+    const raw = String((error && error.message) || '')
+    if (error && (error.code === 'ECONNABORTED' || raw.includes('timeout'))) {
+        return '请求超时，请检查网络后重试'
+    }
+    if (raw === 'Network Error') return '网络异常，请检查网络连接'
+    return raw || '操作失败，请稍后重试'
+}
 
 // 创建一个错误
 function errorCreate(msg: any, path: any) {
-    const error = new Error(msg)
+    const error = new Error(String(msg || '操作失败，请稍后重试'))
     errorLog(error, path)
     throw error
 }
 
-// 记录和显示错误
+// 记录并提示错误（统一走右上角小窗）
 function errorLog(error: Error, path?: any) {
     // 打印到控制台
     if (import.meta.env.MODE === 'development') {
-        console.log(error)
+        console.log(error, path || 'Error')
     }
-    let errorMsg = error.message
-
-    if (error.message.includes('timeout')) {
-        errorMsg = '[ code: 408 ] ' + error.message
-    }
-
-    // 显示提示
-    console.log(errorMsg, path || 'Error')
-    alert(errorMsg)
-    /// 如果是401那就去登录 并且不能是mock
-    if (error.message.includes('401') && import.meta.env.VITE_APP_BUILD_MODE !== 'true') {
-        useUserStore(pinia).logout()
-        console.log('logout');
-    }
+    toast.error(error.message || '操作失败，请稍后重试')
 }
 interface RequestConfig extends AxiosRequestConfig {
     service?: APIENUM
@@ -124,23 +146,14 @@ service.interceptors.response.use(
         }
     },
     error => {
-        if (error && error.response) {
-            switch (error.response.status) {
-                case 400: error.message = `[ code: 400 ] server error 请求错误 ${error.response.data.msg || ''}`; break
-                case 401: error.message = '[ code: 401 ] server error 未授权，请登录'; break
-                case 403: error.message = '[ code: 403 ] server error 拒绝访问'; break
-                case 404: error.message = `[ code: 404 ] server error 请求地址出错: ${error.response.config.url}`; break
-                case 408: error.message = '[ code: 408 ] server error 请求超时'; break
-                case 413: error.message = `[ code: 413 ] server error Nginx等其他配置文件错误，${error.response.config.url}`; break
-                case 500: error.message = '[ code: 500 ] server error 服务器内部错误'; break
-                case 501: error.message = '[ code: 501 ] server error 服务未实现'; break
-                case 502: error.message = '[ code: 502 ] server error 网关错误'; break
-                case 503: error.message = '[ code: 503 ] server error 服务不可用'; break
-                case 504: error.message = '[ code: 504 ] server error 网关超时'; break
-                case 505: error.message = '[ code: 505 ] server error HTTP版本不受支持'; break
-                default: break
-            }
+        const status = error && error.response && error.response.status
+
+        // 401：清掉本地登录态并回登录页（提示由 errorLog 统一弹出）
+        if (status === 401 && import.meta.env.VITE_APP_BUILD_MODE !== 'true') {
+            useUserStore(pinia).logout()
         }
+
+        error.message = readableMessage(error)
         errorLog(error)
         return Promise.reject(error)
     }

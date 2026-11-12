@@ -36,6 +36,7 @@ import { useUserStore } from '@/store/modules/user'
 import { useDBStore } from '@/store/modules/database'
 import { useSocketStore } from '@/store/modules/socket'
 import { downloadJSON } from '@/utils/index'
+import { toast } from '@/components/ui/toast'
 import { onMounted, reactive } from 'vue'
 import { sortBy, uniqWith, isEqual } from 'lodash-es';
 const userStore = useUserStore()
@@ -72,7 +73,10 @@ onMounted(() => {
     document.getElementById('chooseHistoryFile')?.addEventListener('change', async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0]
         if (!file) return;
-        if (!file.name.startsWith(userStore.userInfo.id as string)) alert('请导入您自己的聊天记录');
+        if (!file.name.startsWith(userStore.userInfo.id as string)) {
+            toast.warning('请导入您自己的聊天记录')
+            return
+        }
 
         try {
             const text = await file.text(); // 读取文件内容为文本
@@ -91,7 +95,7 @@ onMounted(() => {
             });
         } catch (error) {
             console.error('解析失败:', error);
-            alert('文件内容不是有效的 JSON 格式');
+            toast.error('文件内容不是有效的 JSON 格式');
         }
     })
 

@@ -6,6 +6,7 @@ import { useAlertStore } from '@/store/modules/alert'
 import { debounce, cloneDeep } from 'lodash-es'
 import { watch, onUnmounted, onMounted } from 'vue'
 import { CallDialog } from '@/components'
+import ToastHost from '@/components/ui/toast/ToastHost.vue'
 import { useTheme } from '@/hooks/theme'
 useTheme()
 
@@ -50,6 +51,8 @@ watch(() => [alertStore.alerts], debounce(([newAlerts]) => {
   <router-view></router-view>
   <!-- 全局语音通话弹窗（来电/拨打/通话中） -->
   <CallDialog />
+  <!-- 全局轻提示：右上角小窗，3 秒后自动消失 -->
+  <ToastHost />
 </template>
 
 <style scoped></style>

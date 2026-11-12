@@ -37,13 +37,20 @@ export function useTheme() {
     initialized = true
 
     if (typeof window !== 'undefined') {
-      // 1. 读取本地存储
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (isValidTheme(saved)) {
-        theme.value = saved
+      // 1. URL 参数优先（?theme=dark，方便分享/测试指定主题）
+      const urlTheme = new URLSearchParams(window.location.search).get('theme')
+      if (isValidTheme(urlTheme)) {
+        theme.value = urlTheme
+      }
+      // 2. 读取本地存储
+      if (!isValidTheme(urlTheme)) {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (isValidTheme(saved)) {
+          theme.value = saved
+        }
       }
 
-      // 2. 多标签页同步
+      // 3. 多标签页同步
       window.addEventListener('storage', (e) => {
         if (e.key === STORAGE_KEY && isValidTheme(e.newValue)) {
           theme.value = e.newValue

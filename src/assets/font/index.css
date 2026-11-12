@@ -13,7 +13,11 @@
   font-display: swap; 
 }
 
+/* PingFangSC 中文字体整包 5.1MB，首屏要额外拉这么久，直接用系统字体代替。
+   macOS / iOS 本身就装了 PingFang SC，Windows 回落到微软雅黑，视觉几乎一致。
+   如需恢复，取消下面注释即可（记得同时改回 style/index.scss 的 font-family）。
 @font-face {
   font-family: 'PingFangSC-Regular';
   src: url('./PingFangSC-Regular.woff2') format('woff2');
 }
+*/
