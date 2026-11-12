@@ -96,7 +96,65 @@ VITE_APP_WS_BASE_URL=https://discuss-api.<你的子域>.workers.dev
 
 > `workers.dev` 在国内被 DNS 污染，浏览器直连会超时，所以 REST 必须走 `netlify-proxy/` 那一层；
 > 但 WebSocket 过不了 Netlify，只能直连（若网络不通，实时会一直重连、消息发不出）。
-> 彻底解决要给 Worker 绑一个能 NS 委派的自有域名，详见 `netlify-proxy/README.md` 第三节。
+> 彻底解决要给 Worker 绑一个能 NS 委派的自有域名，见下一节。
+
+### 让 WebSocket 在国内可用（给 Worker 绑域名）
+
+现象：`wss://discuss-api.<子域>.workers.dev/api/ws` 一直连不上，控制台里反复重连。
+原因不是代码 —— `workers.dev` 的 DNS 在国内被污染，连 HTTP 都到不了（所以 REST 才要反代）；
+而 Netlify 的反向代理只转发 HTTP，**不支持 WebSocket 升级**，这条通道救不了实时。
+
+| 方案 | 成本 | 国内可用 | 代价 |
+|---|---|---|---|
+| **免费子域 + Worker 自定义域**（推荐） | 0 | ✅ 直连，无中转 | 注册约 5 分钟；域名不在自己名下 |
+| 买个便宜自有域（`.top` 等） | 约 ¥10/年 | ✅ 直连 | 无（最省心） |
+| Deno Deploy 做 WS 反代 | 0（100 万请求/月） | ⚠️ `deno.dev` 时通时不通 | 多一跳、双向流量翻倍、多一个要维护的服务 |
+| HTTP 长轮询，复用 Netlify 反代 | 0 | ✅ | 每个在线用户约 4000+ 请求/天，免费 10 万/天只够 ~20 人，且 DO 无法休眠 |
+
+以 `dpdns.org`（DigitalPlat，注册即时通过、支持自定义 NS）为例：
+
+1. 打开 https://domain.digitalplat.org 用 GitHub 登录，申请 `<name>.dpdns.org`；
+2. Cloudflare → **Add a site** → 填 `<name>.dpdns.org`，选 Free 计划，记下它给的两条 NS；
+3. 回 DigitalPlat 面板，把该子域的 **NS 改成 Cloudflare 那两条**，等 Cloudflare 里 zone 变成
+   **Active**（几分钟到几小时不等，没 Active 之前后面都会失败）；
+4. 打开 `wrangler.toml` 末尾的 `[[routes]]` 注释，`pattern` 改成 `discuss-api.<name>.dpdns.org`，
+   然后 `wrangler deploy` —— 证书和 DNS 记录由 Cloudflare 自动处理，不用手加 CNAME；
+
+   > ⚠️ **加了 `routes` 之后 Wrangler 会默认关闭 `workers.dev`**。而 Netlify 反代正指着
+   > `discuss-api.<子域>.workers.dev`，一旦关闭 REST 全部 404。所以 `wrangler.toml` 里必须同时保留
+   > `workers_dev = true`，让两个入口并存（自定义域给 WS 用，workers.dev 给反代做备用）。
+5. 前端 `.env.prod` 改一行并重新构建：
+
+```env
+VITE_APP_WS_BASE_URL=https://discuss-api.<name>.dpdns.org
+```
+
+6. 建议把 REST 也切过去（少一层反代，延迟更低，两个项目彻底解耦）：
+
+```env
+VITE_APP_BASE_API=https://discuss-api.<name>.dpdns.org/api
+VITE_APP_API_BASE_URL=https://discuss-api.<name>.dpdns.org
+```
+
+切完之后 `netlify-proxy/` 那两条 `/discuss/*` 规则就只是备份，可以留着不管。
+
+**为什么这样就能通**：`workers.dev` 是 Cloudflare 的公共后缀，被按域名污染；换成自己 zone 里的域名后，
+DNS 由你委托的 Cloudflare NS 权威应答，解析结果是 Cloudflare 的 anycast IP（和大量正常站点共用的那批，
+本身没有被封），请求到边缘后 Cloudflare 再看 Host 头把流量交给这个 Worker，证书由 Workers 自定义域自动签发。
+也就是说：没有中转、没有额外一跳，只是把一个「解析不出来的名字」换成「能解析出来的名字」。
+
+**绑定后自检**（会用真实验证码走完 登录 → 鉴权 → WS 握手）：
+
+```bash
+node scripts/check-domain.mjs https://discuss-api.<name>.dpdns.org --register
+```
+
+全绿说明域名、证书、D1、Durable Object 全通；哪一步红了会直接给原因和建议。
+
+> WS 握手只校验 `?token=`，不校验 Origin，所以换域名后前端业务代码、`ALLOW_ORIGIN` 都不用动。
+> 若 Cloudflare 拒绝把该子域加为 zone（提示不是可注册域），换 `qzz.io`、`xx.kg` 等其它免费后缀重试，
+> 或直接买个几块钱的域名 —— 这是这类免费子域最常见的坑。
+
 
 ### 本地开发
 

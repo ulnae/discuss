@@ -7,6 +7,10 @@
 name = "discuss-api"
 main = "src/index.js"
 compatibility_date = "2026-04-01"
+# 绑自定义域名后 Wrangler 会默认关闭 workers.dev；这里显式保留，
+# 以便 Netlify 反代（/discuss/api/* → discuss-api.yyh3531.workers.dev）继续可用，
+# 作为自定义域名出问题时的备用入口。
+workers_dev = true
 
 # 允许跨域的前端来源（逗号分隔；GitHub Pages + 反代域名 + 本地开发）
 [vars]
@@ -43,3 +47,11 @@ new_sqlite_classes = ["DiscussHub"]
 # [[r2_buckets]]
 # binding = "UPLOAD"
 # bucket_name = "discuss-uploads"
+
+# 自定义域名 —— 解决 workers.dev 在国内被 DNS 污染、WebSocket 永远连不上的问题。
+# 前置条件：Cloudflare 里 ulnae.dpdns.org 这个 zone 已 Active（2026-11-12 已确认）。
+# deploy 时 Cloudflare 会自动建 DNS 记录并签发证书，不需要手加 CNAME。
+# 步骤见 README「让 WebSocket 在国内可用」。
+[[routes]]
+pattern = "discuss-api.ulnae.dpdns.org"
+custom_domain = true
