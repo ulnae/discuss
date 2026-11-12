@@ -84,19 +84,19 @@ wrangler deploy
 ```env
 VITE_APP_RUNTIME=worker
 
-# REST：经 Netlify 反代，国内可达（见 ../netlify-proxy/README.md）
-VITE_APP_BASE_API=https://ulnae.localhost.cc/discuss/api
+# REST 与 WS 统一走 Worker 自定义域（前提：已按下一节绑好域名）
+VITE_APP_BASE_API=https://discuss-api.<你的子域>.dpdns.org/api
 # 图片/文件前缀（末尾不要带 /api）
-VITE_APP_API_BASE_URL=https://ulnae.localhost.cc/discuss
-# WebSocket 直连 Worker —— Netlify 不支持转发 WS
-VITE_APP_WS_BASE_URL=https://discuss-api.<你的子域>.workers.dev
+VITE_APP_API_BASE_URL=https://discuss-api.<你的子域>.dpdns.org
+# WebSocket 与 REST 同源
+VITE_APP_WS_BASE_URL=https://discuss-api.<你的子域>.dpdns.org
 ```
 
 并把 `wrangler.toml` 里的 `ALLOW_ORIGIN` 改成实际前端地址（逗号分隔多个）。
 
-> `workers.dev` 在国内被 DNS 污染，浏览器直连会超时，所以 REST 必须走 `netlify-proxy/` 那一层；
-> 但 WebSocket 过不了 Netlify，只能直连（若网络不通，实时会一直重连、消息发不出）。
-> 彻底解决要给 Worker 绑一个能 NS 委派的自有域名，见下一节。
+> `workers.dev` 在国内被 DNS 污染，浏览器直连会超时，所以三个地址都必须用自定义域（或退一步用
+> `netlify-proxy/` 那层反代，但 Netlify 不支持 WS 升级，实时功能会失效）。
+> 自定义域建好之后，REST 与 WebSocket 同源，`netlify-proxy/` 只作为回滚备份。
 
 ### 让 WebSocket 在国内可用（给 Worker 绑域名）
 

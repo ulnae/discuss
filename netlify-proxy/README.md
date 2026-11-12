@@ -1,5 +1,11 @@
 # netlify-proxy/ 目录说明
 
+> **状态（2026-11-12 更新）：已降级为备用入口。**
+> Worker 已绑定自定义域 `discuss-api.ulnae.dpdns.org`，生产构建的 REST 与 WebSocket 都直连该域名，
+> 不再经过这一层。本目录仅用于**回滚**：把 `.env.prod` 的三个地址改回
+> `https://ulnae.localhost.cc/discuss*` 重新构建即可（Worker 侧不用动）。
+> 保留原因：自定义域是国内直连 Cloudflare，线路抖动时需要一个备用的国内可达入口。
+
 Discuss 的 API 入口反代层。因为 `discuss.localhost.cc` 注册不了，所以**与 `tools` 项目共用
 同一个 Netlify 站点**（`ulnae.localhost.cc`），靠路径前缀把两套接口分开：
 

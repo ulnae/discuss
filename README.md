@@ -313,21 +313,33 @@ npm run preview
 
 Worker 的建库、部署、免费额度说明见 [`worker/README.md`](./worker/README.md)。
 
-### API 反代（国内访问必需）
+### API 入口
 
-`workers.dev` 在国内被 DNS 污染（实测 12 秒超时），需要一层 Netlify 反代，配置见
-[`netlify-proxy/README.md`](./netlify-proxy/README.md)。
+生产环境 REST 与 WebSocket **统一走 Worker 的自定义域名**：
 
-`discuss.localhost.cc` 不可注册，因此与 `tools` 项目**共用 `ulnae.localhost.cc` 站点**，靠路径前缀区分，两套 Worker / D1 / DO 彼此独立：
+```env
+VITE_APP_BASE_API=https://discuss-api.ulnae.dpdns.org/api
+VITE_APP_API_BASE_URL=https://discuss-api.ulnae.dpdns.org
+VITE_APP_WS_BASE_URL=https://discuss-api.ulnae.dpdns.org
+```
 
-| 前缀 | 目标 |
-|---|---|
-| `/api/*` | `tools-api`（tools 项目） |
-| `/discuss/api/*` | `discuss-api`（本项目） |
-| `/discuss/public/*` | `discuss-api` 的上传文件 |
+`workers.dev` 在国内被 DNS 污染（实测 12 秒超时），必须先按
+[`worker/README.md`](./worker/README.md#让-websocket-在国内可用给-worker-绑域名) 给 Worker 绑自定义域。
+绑定后 REST 与 WS 同源，**不再依赖 Netlify 反代**，与 `tools` 项目彻底解耦。
 
-⚠️ Netlify **不支持转发 WebSocket**，实时通道 `/api/ws` 由前端通过 `VITE_APP_WS_BASE_URL`
-直连 Worker，不经过反代。
+#### 备用入口（回滚用）
+
+`wrangler.toml` 保留了 `workers_dev = true`，所以下面这条 Netlify 反代链路仍然可用，
+但已不在生产构建里使用：
+
+| 前缀 | 目标 | 状态 |
+|---|---|---|
+| `/discuss/api/*` | `discuss-api`（本项目） | 备用 |
+| `/discuss/public/*` | `discuss-api` 的上传文件 | 备用 |
+| `/api/*` | `tools-api`（tools 项目） | tools 自己使用 |
+
+需要回滚时把 `.env.prod` 上面三行改回 `https://ulnae.localhost.cc/discuss` 前缀并重新构建即可，
+Worker 侧不用动。反代层的细节见 [`netlify-proxy/README.md`](./netlify-proxy/README.md)。
 
 ### 手动部署
 
