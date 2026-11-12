@@ -78,6 +78,8 @@ export const useResizable = (
     el.style.position = 'relative'
 
     handleEl = document.createElement('div')
+    // 类名用于统一视觉（见 assets/style/design.scss 的 .resize-handle）
+    handleEl.className = `resize-handle ${isVertical ? 'is-v' : 'is-h'}`
     const styleParts = ['position:absolute', 'z-index:10', 'user-select:none']
     if (isVertical) {
       styleParts.push('top:-4px', 'left:0', 'right:0', 'height:8px')

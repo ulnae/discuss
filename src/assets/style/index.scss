@@ -1,4 +1,5 @@
 @use '../font/index.css';
+@use './design.scss';
 
 html {
     /* 定义变量 */
@@ -13,7 +14,8 @@ html {
 #app {
     height: 100dvh;
     width: 100dvw;
-    // background-color: var(--bgColor);
+    /* 背景由 body 的 --app-bg 渐变承担（见 design.scss），这里保持透明 */
+    background-color: transparent;
 }
 
 .textarea {
@@ -62,12 +64,13 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--border-strong, rgba(0, 0, 0, 0.2));
     border-radius: 2px;
+    opacity: 0.6;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--text-3, rgba(0, 0, 0, 0.3));
 }
 
 // /* 或者使用属性选择器 */

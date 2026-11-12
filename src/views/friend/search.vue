@@ -1,48 +1,60 @@
-<!--
- * @Author       : Eug yyh3531@163.com
- * @Date         : 2025-11-23 20:37:33
- * @LastEditors  : Eug yyh3531@163.com
- * @LastEditTime : 2025-11-23 22:54:25
- * @FilePath     : \e-talk\src\views\friend\search.vue
- * @Description  : filename
- * 
- * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved. 
--->
-<template >
-    <div>
-        <div class="flex justify-center items-center gap-2 p-2">
-            <input type="text" placeholder="输入用户名" @keyup.enter="handleSearch" v-model.trim="username"
-                class="w-[400px] rounded-md p-2 text-center focus:bg-gray-200 dark:focus:bg-gray-200/50 focus:outline-none" />
-        </div>
+<template>
+    <div class="search-page">
+        <header class="search-head">
+            <h1 class="search-title">添加好友</h1>
+            <p class="search-sub">输入用户名后回车，即可搜索并发送好友申请</p>
 
-        <div class="p-2 flex flex-col items-center gap-2 text-sm">
-            <div v-for="item in result" :key="item.id" class="w-[400px] truncate cursor-pointer p-2 border border-gray-300 dark:border-gray-300/50 rounded-md gap-1 flex flex-col relative">
-                <button v-if="(item.id && !friendStore.getFriendMap[item.id]) && item.id !== userStore.userInfo.id" @click="handleJoin(item.id)" class="absolute bottom-2 right-2 cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                        stroke="currentColor" class="size-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            <div class="ui-field search-field">
+                <span class="ui-field-icon">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.6-3.6" />
                     </svg>
+                </span>
+                <input v-model.trim="username" type="text" placeholder="输入用户名" @keyup.enter="handleSearch" />
+                <button type="button" class="btn btn-primary btn-sm" @click="handleSearch">搜索</button>
+            </div>
+        </header>
+
+        <div class="search-body">
+            <div v-if="result.length === 0" class="empty">
+                <span class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.6-3.6" />
+                    </svg>
+                </span>
+                搜索结果会显示在这里
+            </div>
+
+            <div v-for="item in result" :key="item.id" class="result-card">
+                <span class="avatar avatar-lg">{{ (item.username || '?').charAt(0).toUpperCase() }}</span>
+                <div class="result-main">
+                    <div class="result-name">
+                        {{ item.username }}
+                        <span v-if="item.id === userStore.userInfo.id" class="chip">我</span>
+                    </div>
+                    <div class="result-meta">{{ item.email || '未设置邮箱' }}</div>
+                </div>
+
+                <button v-if="canAdd(item)" type="button" class="btn btn-primary btn-sm" @click="handleJoin(item.id)">
+                    加好友
                 </button>
-                <div class="flex gap-1 items-center" >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                    </svg>
-                    ：{{ item.username }}</div>
-                <div class="flex gap-1 items-center" >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 9v.906a2.25 2.25 0 0 1-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 0 0 1.183 1.981l6.478 3.488m8.839 2.51-4.66-2.51m0 0-1.023-.55a2.25 2.25 0 0 0-2.134 0l-1.022.55m0 0-4.661 2.51m16.5 1.615a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V8.844a2.25 2.25 0 0 1 1.183-1.981l7.5-4.039a2.25 2.25 0 0 1 2.134 0l7.5 4.039a2.25 2.25 0 0 1 1.183 1.98V19.5Z" />
-                    </svg>
-                    ：{{ item.email }}</div>
+                <span v-else-if="item.id !== userStore.userInfo.id" class="chip">已添加</span>
             </div>
         </div>
     </div>
 </template>
+
 <script lang="ts" setup>
 import { ref } from "vue";
 import ServerApi from "@/api";
 import { User } from "@/store/modules/user";
 import { useFriendStore } from "@/store/modules/friend";
 import { useUserStore } from "@/store/modules/user";
+import { toast } from "@/components/ui/toast";
 
 
 const username = ref('')
@@ -51,20 +63,116 @@ const friendStore = useFriendStore()
 const userStore = useUserStore()
 
 const handleSearch = () => {
+    if (!username.value) {
+        toast.warning('请输入要搜索的用户名')
+        return
+    }
     ServerApi.SearchUser(username.value).then((res: any) => {
         if (res.code === 200) {
             result.value = res.data;
+            if (!res.data?.length) toast.info('没有找到匹配的用户')
         }
     });
 };
 
+const canAdd = (item: User) => !!item.id && !friendStore.getFriendMap[item.id] && item.id !== userStore.userInfo.id
+
 const handleJoin = (apply_user_id?: string) => {
     ServerApi.apply({ apply_user_id }).then((res: any) => {
         if (res.code === 200) {
+            toast.success('好友申请已发送')
             username.value = ''
             result.value = []
         }
     })
 };
 </script>
-<style lang="scss"></style>
+
+<style lang="scss" scoped>
+.search-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.search-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 2.2rem 1.25rem 1.5rem;
+}
+
+.search-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text);
+}
+
+.search-sub {
+    font-size: 0.75rem;
+    color: var(--text-2);
+    text-align: center;
+}
+
+.search-field {
+    width: min(440px, 100%);
+    margin-top: 0.9rem;
+    box-shadow: var(--shadow-soft);
+}
+
+.search-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(440px, 100%);
+    margin: 0 auto;
+    padding: 0 1.25rem 2rem;
+}
+
+.result-card {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+
+    &:hover {
+        border-color: var(--border-strong);
+        background: var(--surface-3);
+    }
+}
+
+.result-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+
+.result-name {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.result-meta {
+    font-size: 0.72rem;
+    color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>
