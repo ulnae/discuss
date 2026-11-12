@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Discuss 反代链路自检</title>
+<style>
+    :root {
+        --bg: #0f1115;
+        --card: #171a21;
+        --line: #262b36;
+        --text: #e6e9ef;
+        --muted: #8b93a7;
+        --ok: #3ddc97;
+        --bad: #ff6b6b;
+        --brand: #6c8cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(1200px 600px at 50% -10%, #1b2030, var(--bg));
+        color: var(--text); padding: 24px;
+        font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .card {
+        width: 100%; max-width: 560px; background: var(--card); border: 1px solid var(--line);
+        border-radius: 14px; padding: 26px 26px 20px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+    }
+    h1 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+    .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 20px; }
+    .sub code { color: var(--brand); }
+    button {
+        width: 100%; padding: 11px 14px; border-radius: 9px; border: 1px solid transparent; cursor: pointer;
+        background: linear-gradient(180deg, #6c8cff, #4f6ef0); color: #fff; font-size: 14px; font-weight: 600;
+        border-color: transparent;
+    }
+    button:disabled { opacity: .55; cursor: default; }
+    .rows { margin-top: 18px; border-top: 1px solid var(--line); }
+    .row { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .row span:first-child { color: var(--muted); flex: 0 0 96px; }
+    .row span:last-child { text-align: right; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .note { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .note b { color: #ffcc66; font-weight: 600; }
+    a { color: var(--brand); }
+</style>
+</head>
+<body>
+<div class="card">
+    <h1>Discuss 反代链路自检</h1>
+    <div class="sub">域名 → Netlify → <code>discuss-api</code> Worker → D1</div>
+    <button id="run">测试 /api/health</button>
+    <div class="rows">
+        <div class="row"><span>探测前缀</span><span id="base">-</span></div>
+        <div class="row"><span>结果</span><span id="state">未测试</span></div>
+        <div class="row"><span>耗时</span><span id="cost">-</span></div>
+        <div class="row"><span>出口机房</span><span id="colo">-</span></div>
+    </div>
+    <div class="note">
+        页面跑在反代域名自己的源下，<code>fetch</code> 是同源请求，因此能单独验证这一段，不受 GitHub Pages 那边 CORS 干扰。
+        <br><b>WebSocket 不走这一层</b>：Netlify 不支持转发 WS，实时连接由前端直连 Worker（见 README）。
+        <br>建议在手机 4G（关掉 WiFi）下测，那才是访客的真实网络。
+    </div>
+</div>
+<script>
+    // 前缀模式下是 /discuss/api，独立站点模式下是 /api，自动探测
+    const CANDIDATES = ['/discuss/api', '/api'];
+
+    const $ = (id) => document.getElementById(id);
+
+    async function probe(base) {
+        const started = performance.now();
+        const res = await fetch(base + '/health', { cache: 'no-store' });
+        const cost = Math.round(performance.now() - started);
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json || json.code !== 200 || !json.data || json.data.service !== 'discuss-api') {
+            throw new Error('HTTP ' + res.status);
+        }
+        return { cost, data: json.data };
+    }
+
+    $('run').addEventListener('click', async () => {
+        const btn = $('run');
+        btn.disabled = true;
+        $('state').className = '';
+        $('state').textContent = '测试中…';
+        $('base').textContent = '-';
+        $('cost').textContent = '-';
+        $('colo').textContent = '-';
+
+        let lastError = null;
+        for (const base of CANDIDATES) {
+            try {
+                const { cost, data } = await probe(base);
+                $('base').textContent = base;
+                $('state').className = 'ok';
+                $('state').textContent = '链路通';
+                $('cost').textContent = cost + ' ms';
+                $('colo').textContent = data.colo || '-';
+                btn.disabled = false;
+                return;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        $('base').textContent = CANDIDATES.join(' / ');
+        $('state').className = 'bad';
+        $('state').textContent = '失败：' + (lastError && lastError.message || '未知错误');
+        $('cost').textContent = '-';
+        $('colo').textContent = '-';
+        btn.disabled = false;
+    });
+</script>
+</body>
+</html>

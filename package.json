@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build --mode prod",
+    "build:worker": "vue-tsc --noEmit && vite build --mode prod",
     "build:test": "vue-tsc --noEmit && vite build --mode test",
     "build:stage": "vue-tsc --noEmit && vite build --mode stage",
     "pm2start": "npm run build:test && pm2 serve ./dist 8000 --name discuss",

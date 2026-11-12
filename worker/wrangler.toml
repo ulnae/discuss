@@ -1,0 +1,45 @@
+# Discuss 后台服务（Cloudflare Worker）
+# 部署：
+#   wrangler d1 create discuss-data          → 把输出的 database_id 填到下面
+#   wrangler d1 execute discuss-data --remote --file=./schema.sql
+#   wrangler secret put JWT_SECRET
+#   wrangler deploy
+name = "discuss-api"
+main = "src/index.js"
+compatibility_date = "2026-04-01"
+
+# 允许跨域的前端来源（逗号分隔；GitHub Pages + 反代域名 + 本地开发）
+[vars]
+ALLOW_ORIGIN = "https://ulnae.github.io,https://ulnae.localhost.cc,http://localhost:8000,http://127.0.0.1:8000"
+# JWT 过期时间，与 NestJS 的 JWT_EXPIRES_IN 保持同义（支持 24h / 7d / 3600s / 纯数字秒）
+JWT_EXPIRES_IN = "24h"
+# 是否强制校验图形验证码；调试期可设为 "false"
+REQUIRE_CAPTCHA = "true"
+# PBKDF2 迭代次数。免费版单次请求 CPU 上限 10ms，默认取 10000；
+# 付费版可调到 100000，历史密码不受影响（哈希串里自带迭代次数）
+PBKDF2_ITERATIONS = "10000"
+# 单文件上传上限（字节），默认 25MB（免费版请求体上限 100MB）
+UPLOAD_MAX_BYTES = "26214400"
+
+# D1（SQLite）数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "discuss-data"
+database_id = "d85b8922-9fa9-4c39-9b20-9294046548b9"
+
+# 实时通信：Durable Object（WebSocket Hibernation）
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "DiscussHub"
+
+[[migrations]]
+tag = "v1"
+# 免费版只支持 SQLite 存储后端的 Durable Object
+new_sqlite_classes = ["DiscussHub"]
+
+# 可选：图片/文件上传（R2）。不配置时 /api/user/upload 返回 501，
+# 前端发送图片会失败但不影响其它功能。
+# 启用步骤：wrangler r2 bucket create discuss-uploads 后取消下面注释
+# [[r2_buckets]]
+# binding = "UPLOAD"
+# bucket_name = "discuss-uploads"

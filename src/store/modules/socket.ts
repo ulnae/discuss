@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { io, Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
+import { connectSocket } from '@/plugin/socket'
 import { useUserStore } from './user'
 import { useFriendStore } from './friend'
 import { useRoomStore } from './room'
@@ -25,13 +26,13 @@ export const useSocketStore = defineStore('socket', {
         initSocket() {
             const { userInfo } = useUserStore()
             return new Promise((resolve, reject) => {
-                this.socket = io(import.meta.env.VITE_APP_API_BASE_URL, {
-                    path: '/websocket',
-                    transports: ['websocket'],
-                    auth: {
-                        token: useUserStore().token
-                    },
-                })
+                // 重复初始化时先安静地关掉旧连接，避免同一账号挂多条 socket
+                if (this.socket) {
+                    try { this.socket.disconnect() } catch { /* ignore */ }
+                    this.socket = null
+                }
+                // VITE_APP_RUNTIME 决定用 socket.io（server-nestjs）还是原生 WebSocket（worker）
+                this.socket = connectSocket(useUserStore().token) as Socket
                 // 注册语音通话信令事件
                 useCallStore().register(this.socket as Socket)
                 this.socket.on('connect', () => {

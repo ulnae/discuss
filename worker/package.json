@@ -1,0 +1,17 @@
+{
+  "name": "discuss-worker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Discuss 后台服务 —— Cloudflare Worker + D1 + Durable Object，接口与 server-nestjs 保持一致",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 execute discuss-data --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute discuss-data --remote --file=./schema.sql",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

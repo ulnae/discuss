@@ -46,6 +46,10 @@
 - **Socket.IO Client 4.8.1** - WebSocket 客户端，实现实时双向通信
 - **LocalForage 1.10.0** - 更好的本地存储 API，支持 IndexedDB/WebSQL
 
+### 后端（二选一，靠环境变量切换）
+- **server-nestjs**（`stage`） - NestJS + MySQL + Socket.IO，功能完整
+- **discuss-worker**（`prod`） - Cloudflare Worker + D1 + Durable Object，接口与 NestJS 对齐，跑在免费额度内
+
 ### 工具库
 - **Day.js 1.11.19** - 轻量级日期处理库，API 与 Moment.js 兼容
 - **Lodash-es 4.17.21** - JavaScript 实用工具库，ES Module 版本
@@ -80,6 +84,7 @@ Discuss/
 │   │   └── index.vue         # 主布局
 │   ├── plugin/               # 插件配置
 │   │   ├── axios.ts          # Axios 实例配置
+│   │   ├── socket.ts         # Socket 适配层（Socket.IO / 原生 WebSocket 二选一）
 │   │   └── dayjs.ts          # Dayjs 插件配置
 │   ├── router/               # 路由配置
 │   │   ├── index.ts          # 路由实例
@@ -117,8 +122,13 @@ Discuss/
 │   ├── importRoutercom.ts    # 路由组件导入工具
 │   ├── main.ts               # 应用入口
 │   └── vite-env.d.ts         # Vite 类型声明
+├── worker/                   # Cloudflare Worker 后端（详见 worker/README.md）
+│   ├── src/                  # 路由 + Durable Object
+│   ├── schema.sql            # D1 建表脚本
+│   └── wrangler.toml         # Worker / D1 / DO 配置
 ├── .env                      # 开发环境变量
-├── .env.prod                 # 生产环境变量
+├── .env.prod                 # 生产环境变量（worker 后端）
+├── .env.stage                # 预发环境变量（nestjs 后端）
 ├── .github/
 │   └── workflows/
 │       └── static.yml        # GitHub Pages 部署配置
@@ -155,6 +165,9 @@ npm install
 # 构建信息
 VITE_APP_BUILD_INFO=development
 
+# 后端运行时：nestjs = server-nestjs，worker = Cloudflare Worker
+VITE_APP_RUNTIME=nestjs
+
 # API 基础路径
 VITE_APP_BASE_API=/api
 
@@ -185,10 +198,16 @@ npm run dev
 ### 生产构建
 
 ```bash
-npm run build
+npm run build          # = prod 模式，接口指向 Cloudflare Worker
+npm run build:worker   # 同上，别名，语义更明确
+npm run build:stage    # stage 模式，接口指向 server-nestjs
+npm run build:test     # test 模式
 ```
 
 构建产物输出到 `dist` 目录。
+
+> 环境变量差异只有三处：`VITE_APP_RUNTIME`（socket 用哪种实现）、
+> `VITE_APP_BASE_API`、`VITE_APP_API_BASE_URL`。所以「换后端」= 换一个 `--mode`，不用改代码。
 
 ### 预览构建
 
@@ -198,21 +217,27 @@ npm run preview
 
 ## 🔌 核心功能说明
 
-### WebSocket 实时通信
+### 实时通信（双后端兼容）
 
-项目使用 Socket.IO 实现前后端实时双向通信，支持以下事件：
+`src/plugin/socket.ts` 提供统一适配层：`VITE_APP_RUNTIME=nestjs` 时用 Socket.IO（`/websocket`），
+`VITE_APP_RUNTIME=worker` 时用原生 WebSocket（`/api/ws?token=`，由 Durable Object 承载）。
+业务代码只依赖 `on / emit / disconnect`，事件名两边完全一致：
 
-| 事件 | 说明 |
-|------|------|
-| `connect` | WebSocket 连接建立 |
-| `disconnect` | WebSocket 连接断开 |
-| `exception` | 异常处理（触发登出） |
-| `user` | 接收好友发送的消息 |
-| `sender` | 接收已发送消息的回显 |
-| `room` | 接收房间消息 |
-| `online` | 房间成员在线状态更新 |
-| `status` | 好友状态更新 |
-| `onlineFriends` | 初始化获取所有在线好友列表 |
+| 事件 | 方向 | 说明 |
+|------|------|------|
+| `connect` / `disconnect` | 本地 | 连接建立 / 断开（原生实现内建指数退避重连） |
+| `init` | 发送 | 上线初始化：单端登录踢人、广播在线状态 |
+| `send:user` | 发送 | 私聊消息 `{ sender, content, type?, size?, originalname? }` |
+| `send:room` | 发送 | 房间消息 `{ room, content, type?, size?, originalname? }` |
+| `message:user` | 接收 | 收到好友消息 |
+| `message:sender` | 接收 | 自己发送的回显 |
+| `message:room` | 接收 | 房间群聊消息 |
+| `online:room` | 接收 | 房间在线成员 `{ room, users }` |
+| `online:friends` | 接收 | 登录时下发在线好友 |
+| `status:firend` | 接收 | 好友上下线（拼写沿用历史事件名） |
+| `kicked` | 接收 | 异地登录被踢下线 |
+| `system:alert` | 接收 | 系统广播（`POST /api/alert` 触发） |
+| `call:*` / `webrtc:*` | 双向 | 语音通话信令与 SDP/ICE 转发 |
 
 ### 本地存储策略
 
@@ -264,11 +289,36 @@ npm run preview
 
 ## 📦 部署
 
-### GitHub Pages
+### GitHub Pages（前端）
 
-项目已配置 GitHub Pages 自动部署，推送代码到 `main` 分支后自动触发部署。
+项目已配置 GitHub Pages 自动部署，推送到 **master** 分支即触发 `npm run build`（prod 模式 → Cloudflare Worker 接口）。
 
 部署地址：https://ulnae.github.io/discuss/
+
+### 后端（二选一）
+
+| 环境 | 后端 | 构建命令 |
+|---|---|---|
+| prod / GitHub Pages | `worker/`（Cloudflare Worker + D1 + DO） | `npm run build` |
+| stage | `server-nestjs`（NestJS + MySQL） | `npm run build:stage` |
+
+Worker 的建库、部署、免费额度说明见 [`worker/README.md`](./worker/README.md)。
+
+### API 反代（国内访问必需）
+
+`workers.dev` 在国内被 DNS 污染（实测 12 秒超时），需要一层 Netlify 反代，配置见
+[`netlify-proxy/README.md`](./netlify-proxy/README.md)。
+
+`discuss.localhost.cc` 不可注册，因此与 `tools` 项目**共用 `ulnae.localhost.cc` 站点**，靠路径前缀区分，两套 Worker / D1 / DO 彼此独立：
+
+| 前缀 | 目标 |
+|---|---|
+| `/api/*` | `tools-api`（tools 项目） |
+| `/discuss/api/*` | `discuss-api`（本项目） |
+| `/discuss/public/*` | `discuss-api` 的上传文件 |
+
+⚠️ Netlify **不支持转发 WebSocket**，实时通道 `/api/ws` 由前端通过 `VITE_APP_WS_BASE_URL`
+直连 Worker，不经过反代。
 
 ### 手动部署
 

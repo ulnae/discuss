@@ -34,19 +34,27 @@ const isMock = import.meta.env.VITE_APP_BUILD_MODE === 'true'
 
 const requestServerName = isMock ? 'mock' : 'server'
 
+/**
+ * Worker 后端没有 express-session，验证码答案由服务端落库、用 captchaId 关联。
+ * nestjs 后端仍是 session 方案，captchaId 传过去会被忽略，所以这里统一带上即可。
+ */
+let captchaId = ''
+
+const withCaptcha = (data?: any) => (captchaId ? { ...(data || {}), captchaId } : data)
+
 export default {
     Login(data?:any) {
         return request({
             url: Url[requestServerName].login,
             method: 'post',
-            data
+            data: withCaptcha(data)
         })
     },
     Register(data?:any) {
         return request({
             url: Url[requestServerName].register,
             method: 'post',
-            data
+            data: withCaptcha(data)
         })
     },
     GetUserInfo(id?:string) {
@@ -75,6 +83,14 @@ export default {
         return request({
             url: Url[requestServerName].GetCaptcha,
             method: 'get'
+        }).then((res: any) => {
+            // worker：{ code:200, msg, data:{ id, svg } }
+            if (res && typeof res === 'object' && res.data && typeof res.data === 'object' && res.data.svg) {
+                captchaId = res.data.id
+                return res.data.svg
+            }
+            // nestjs：直接返回裸 SVG 字符串
+            return res
         })
     }
 }
