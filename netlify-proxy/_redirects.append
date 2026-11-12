@@ -1,8 +1,0 @@
-# ── Discuss 项目 ──────────────────────────────────────────────────────────
-# 另一套 Worker（discuss-api），靠 /discuss 前缀与上面的 tools 区分。
-# 追加到 tools/netlify-proxy/_redirects 末尾，再重新拖拽部署即可。
-# 注意：/discuss/api/* 不会匹配 /api/*，两条规则互不干扰；但删改时别把上面
-# 的 tools 规则一起覆盖掉，否则 tools 的接口会 404。
-
-/discuss/api/*      https://discuss-api.yyh3531.workers.dev/api/:splat      200!
-/discuss/public/*   https://discuss-api.yyh3531.workers.dev/public/:splat   200!

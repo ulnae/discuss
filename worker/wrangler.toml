@@ -8,13 +8,12 @@ name = "discuss-api"
 main = "src/index.js"
 compatibility_date = "2026-04-01"
 # 绑自定义域名后 Wrangler 会默认关闭 workers.dev；这里显式保留，
-# 以便 Netlify 反代（/discuss/api/* → discuss-api.yyh3531.workers.dev）继续可用，
-# 作为自定义域名出问题时的备用入口。
+# 仅用于境外/调试直连（国内 DNS 被污染，生产环境不使用该地址）。
 workers_dev = true
 
-# 允许跨域的前端来源（逗号分隔；GitHub Pages + 反代域名 + 本地开发）
+# 允许跨域的前端来源（逗号分隔；GitHub Pages + 本地开发）
 [vars]
-ALLOW_ORIGIN = "https://ulnae.github.io,https://ulnae.localhost.cc,http://localhost:8000,http://127.0.0.1:8000"
+ALLOW_ORIGIN = "https://ulnae.github.io,http://localhost:8000,http://127.0.0.1:8000"
 # JWT 过期时间，与 NestJS 的 JWT_EXPIRES_IN 保持同义（支持 24h / 7d / 3600s / 纯数字秒）
 JWT_EXPIRES_IN = "24h"
 # 是否强制校验图形验证码；调试期可设为 "false"

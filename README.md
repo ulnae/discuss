@@ -325,21 +325,9 @@ VITE_APP_WS_BASE_URL=https://discuss-api.ulnae.dpdns.org
 
 `workers.dev` 在国内被 DNS 污染（实测 12 秒超时），必须先按
 [`worker/README.md`](./worker/README.md#让-websocket-在国内可用给-worker-绑域名) 给 Worker 绑自定义域。
-绑定后 REST 与 WS 同源，**不再依赖 Netlify 反代**，与 `tools` 项目彻底解耦。
+绑定后 REST 与 WS 同源，`tools` 项目的 Netlify 反代与本项目再无关系。
 
-#### 备用入口（回滚用）
-
-`wrangler.toml` 保留了 `workers_dev = true`，所以下面这条 Netlify 反代链路仍然可用，
-但已不在生产构建里使用：
-
-| 前缀 | 目标 | 状态 |
-|---|---|---|
-| `/discuss/api/*` | `discuss-api`（本项目） | 备用 |
-| `/discuss/public/*` | `discuss-api` 的上传文件 | 备用 |
-| `/api/*` | `tools-api`（tools 项目） | tools 自己使用 |
-
-需要回滚时把 `.env.prod` 上面三行改回 `https://ulnae.localhost.cc/discuss` 前缀并重新构建即可，
-Worker 侧不用动。反代层的细节见 [`netlify-proxy/README.md`](./netlify-proxy/README.md)。
+> 换域名 / 回滚：改 `.env.prod` 上面三行 + `worker/wrangler.toml` 的 `[[routes]]`，重新构建并 `wrangler deploy`。
 
 ### 手动部署
 

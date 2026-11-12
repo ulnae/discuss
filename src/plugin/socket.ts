@@ -152,7 +152,7 @@ class NativeSocket implements SocketLike {
 export function connectSocket(token: string): any {
     const runtime = import.meta.env.VITE_APP_RUNTIME
     const apiBase = import.meta.env.VITE_APP_API_BASE_URL as string
-    // Netlify 反代不支持 WebSocket，worker 的实时通道单独走 VITE_APP_WS_BASE_URL（直连 Worker）
+    // 实时通道独立配置（若无独立值则复用 API 域名；生产环境两者同源）
     const wsBase = (import.meta.env.VITE_APP_WS_BASE_URL as string) || apiBase
 
     if (runtime === 'worker') return new NativeSocket(wsBase, token)
