@@ -20,8 +20,8 @@ Discuss 的后台服务，跑在 Cloudflare Workers 上：**Worker（HTTP）+ D1
 | 实时消息 | Socket.IO `/websocket` | ✅ 原生 WebSocket `/api/ws` | 事件名逐个对齐，见下表 |
 | 语音通话信令 | `call:*` / `webrtc:*` | ✅ | 会话状态存 DO storage，休眠不丢 |
 | SSE | `GET /sse` | ❌ | 前端仅在注释里用过；实时需求由 WebSocket 承担，接口返回 501 |
-| 文件 / 图片上传 | multer → `public/` | ⚠️ 可选 | 绑定 R2 后可用 `/public/<userId>/<file>`；未绑定返回 501 |
-| 定时清空 public | `@nestjs/schedule` | ❌ | 由 R2 生命周期规则或 Cron Trigger 替代，本项目未启用 |
+| 文件 / 图片上传 | multer → `public/` | ✅ | 存 Workers KV（免绑卡），`/public/<userId>/<file>` 读回；未绑定返回 501 |
+| 定时清空 public | `@nestjs/schedule` | ✅ | KV `expirationTtl` + Cron Trigger 双层回收 |
 | Swagger | `/docs` | ❌ | 接口以本文档 + 代码注释为准 |
 
 ### WebSocket 事件（与 `socket.gateway.ts` 同名同结构）
@@ -164,15 +164,23 @@ wrangler dev --local --var JWT_SECRET:dev-secret               # 起服务
 
 前端把 `.env` 的 `VITE_APP_RUNTIME` 改 `worker`、`VITE_APP_BASE_API` 指到 `http://127.0.0.1:8787/api` 即可联调。
 
-### 图片 / 文件上传（R2）
+### 图片 / 文件上传（Workers KV）
 
-R2 必须先**在 Cloudflare 控制台手动开通**（Dashboard → R2 → Enable），否则建桶会报
-`Please enable R2 through the Cloudflare Dashboard [code: 10042]`。开通后：
+用 **KV** 而不是 R2：R2 虽然免费额度更大（10 GB），但开通需要**绑定银行卡**；KV 属于 Workers 自带，
+免费版 1 GB 存储、10 万读/天、1000 写/天、单值 25 MiB，**不需要任何支付信息**，对个人聊天室足够。
+
+命名空间已建好，`wrangler.toml` 里已写好：
+
+```toml
+[[kv_namespaces]]
+binding = "UPLOAD"
+id = "9b094aa97a984a8cac3a169c15db81e4"
+```
+
+换账号重建时执行：
 
 ```bash
-wrangler r2 bucket create discuss-uploads
-# 平台级兜底：30 天后自动过期，不依赖 Worker 是否在跑
-wrangler r2 bucket lifecycle add discuss-uploads expire-30d --expire-days 30 -y
+wrangler kv namespace create UPLOAD     # 把输出的 id 填回 wrangler.toml
 wrangler deploy
 ```
 
@@ -184,16 +192,19 @@ wrangler deploy
 | 参数 | 默认值 | 说明 |
 |---|---|---|
 | `UPLOAD_MAX_BYTES` | 2 MB | 图片单文件上限；前端会先压到长边 1920，实际 200–500 KB |
-| `UPLOAD_MAX_DOC_BYTES` | 10 MB | 其它文档/音视频上限 |
-| `QUOTA_USER_BYTES` | 128 MB | 单用户总量，防止一个人吃满全局 |
-| `QUOTA_USER_DAILY_BYTES` / `_COUNT` | 30 MB / 50 次 | 单用户日内配额，防脚本刷 Class A |
-| `QUOTA_GLOBAL_BYTES` | 6 GB | 全局软上限（R2 免费 10 GB，留 40% 余量） |
-| `RETENTION_DAYS` | 30 | 保留天数；消息不落库，超期即回收 |
+| `UPLOAD_MAX_DOC_BYTES` | 5 MB | 其它文档/音视频上限 |
+| `QUOTA_USER_BYTES` | 64 MB | 单用户总量，防止一个人吃满 1 GB |
+| `QUOTA_USER_DAILY_BYTES` / `_COUNT` | 15 MB / 20 次 | 单用户日内配额 |
+| `QUOTA_GLOBAL_DAILY_COUNT` | 800 次 | **全站**每日上传次数上限；KV 免费只有 1000 写/天，留 200 次给回收与重试 |
+| `QUOTA_GLOBAL_BYTES` | 900 MB | 全局软上限（KV 免费 1 GB，留 10% 余量） |
+| `RETENTION_DAYS` | 30 | 保留天数，同时作为 KV 的 `expirationTtl` |
 
 **清理是三层**，从被动兜底到主动回收：
 
-1. **R2 生命周期规则**（平台执行，30 天）——即使 Worker 挂了也会删；
-2. **Cron 每日回收**（`[triggers]`，UTC 19:00 = 北京 03:00）——过期文件 + 超额时按最旧优先删到软上限的 75%；
+1. **KV `expirationTtl`**（平台执行，30 天）——写入时就把过期时间交给 KV，到期自动删除，
+   **不占用每天 1000 次的 delete 额度**，也不依赖 Worker 是否在跑；
+2. **Cron 每日回收**（`[triggers]`，UTC 19:00 = 北京 03:00）——清掉过期的 D1 登记行；
+   总量超过软上限 92% 时按最旧优先删到 75%，这一步要真删 KV，单次最多 300 个以保护 delete 额度；
 3. **统计校准**——每天重算 `upload_stat`，修正累计值漂移。
 
 **水位与降级**（按 `upload_stat.bytes / QUOTA_GLOBAL_BYTES`）：
@@ -207,14 +218,18 @@ wrangler deploy
 
 几点实现上的取舍：
 
-- **登记表放 D1 而不是靠 R2 列举**：R2 没有按用户/按时间的索引查询，`upload` 表是配额判断与回收的依据；
+- **登记表放 D1**：KV 只能按 key 读、不能按用户或时间检索，`upload` 表是配额判断与回收的唯一依据；
   全局用量走 `upload_stat` 单行累计，避免每次上传都 `SUM` 全表（D1 按行计费）。
-- **`/public/*` 走边缘缓存 7 天**：命中缓存不计 R2 Class B，也不重复读对象；不用 1 年是因为过期文件
-  删掉后还能从缓存里读出来。
+- **`/public/*` 走边缘缓存 7 天**：命中缓存不消耗 KV 读额度；不用 1 年是因为过期文件删掉后
+  还能从缓存里读出来。
+- **KV 是最终一致**：写入后本数据中心立即可读，其它地区最多 60 秒才可见。刚上传的图片在发送者
+  所在地立刻能显示，异地用户偶发 404 重试即可，README 不额外做补偿。
 - **拒绝 SVG / HTML**：这两类在同域下会执行脚本，等于给 API 域名开了个 XSS 口子；只放行图片与常见文档，
   并统一加 `X-Content-Type-Options: nosniff`，非图片强制 `Content-Disposition: attachment`。
-- **超了也不贵**：R2 存储 $0.015/GB-month（20 GB ≈ $0.30/月），Class A $4.50/百万次。
-  所以设计目标是「可预测 + 防滥用」，没必要为了省钱把体验压到不能用。
+- **为什么不选 D1 存 BLOB**：D1 免费版单库上限 500 MB，且文件塞进主库会让 Time Travel 备份和查询一起变慢。
+- **规模上限**：1 GB ÷ 500 KB ≈ 2000 张压缩图，配合 30 天过期，日常使用不会触顶；
+  真撞上了会先拒绝上传（507/429）而不是静默失败，文字消息始终可用。
+
 
 ---
 
@@ -250,15 +265,28 @@ wrangler deploy
 
 ## 六、常见问题
 
-**Q：上传图片报「当前 Worker 未绑定 R2 存储桶」？**
-两种原因，按顺序排查：① Cloudflare 账号还没开通 R2（Dashboard → R2 → Enable，未开通时建桶会报 `code: 10042`）；
-② 桶没建或 `wrangler.toml` 里 `[[r2_buckets]]` 没生效。执行：
+**Q：上传图片报「当前 Worker 未绑定 UPLOAD（KV）存储」？**
+`wrangler.toml` 里 `[[kv_namespaces]]` 没生效，或命名空间被删了。执行：
 
 ```bash
-wrangler r2 bucket create discuss-uploads
+wrangler kv namespace list                 # 确认 UPLOAD 还在
+wrangler kv namespace create UPLOAD        # 不在了就重建，把新 id 填回 wrangler.toml
 wrangler deploy
-curl -s https://<你的域名>/api/health   # storage 字段应出现 usedBytes / quotaBytes
+curl -s https://<你的域名>/api/health      # storage 字段应出现 usedBytes / quotaBytes
 ```
+
+注意 KV 的 id 是「账号 + 命名空间」唯一的，换 Cloudflare 账号必须重新创建并替换 id。
+
+**Q：不想用 R2，还有哪些存储方案？**
+按「是否需要绑卡」筛，能用的只有三个：
+
+| 方案 | 免费额度 | 结论 |
+|---|---|---|
+| **Workers KV**（当前） | 1 GB / 10 万读 / 1000 写 / 天 | ✅ 推荐：零绑卡、零新增账号、与 Worker 同源 |
+| D1 BLOB | 单库 500 MB | ❌ 主库会被图片撑满，备份与查询一起变慢 |
+| GitHub 仓库 + jsDelivr | 仓库建议 < 1 GB | ⚠️ 每次上传一个 commit，历史无法真正删除；`raw.githubusercontent.com` 国内不可用，jsDelivr 也不稳定 |
+
+Supabase Storage（1 GB）虽然不绑卡，但免费项目 7 天无活动会被暂停，对低频聊天室是硬伤。
 
 **Q：登录接口 500，报 `Imported HMAC key length (0)...`？**
 `JWT_SECRET` 没配。WebCrypto 用空密钥做 HMAC 就会抛这句，和登录逻辑无关。执行：

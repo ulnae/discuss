@@ -21,17 +21,22 @@ REQUIRE_CAPTCHA = "true"
 # PBKDF2 迭代次数。免费版单次请求 CPU 上限 10ms，默认取 10000；
 # 付费版可调到 100000，历史密码不受影响（哈希串里自带迭代次数）
 PBKDF2_ITERATIONS = "10000"
-# 单文件上限（字节）：图片 2MB、其它文档 10MB
+# 单文件上限（字节）：图片 2MB、其它文档 5MB
 # 前端会先压缩到长边 1920 / quality 0.82，正常落在 200–500KB
+# KV 单值上限 25MiB，2MB/5MB 都远低于该值
 UPLOAD_MAX_BYTES = "2097152"
-UPLOAD_MAX_DOC_BYTES = "10485760"
-# 配额（字节 / 次）：个人总量 128MB、每日 30MB 且不超过 50 次
-QUOTA_USER_BYTES = "134217728"
-QUOTA_USER_DAILY_BYTES = "31457280"
-QUOTA_USER_DAILY_COUNT = "50"
-# 全局软上限 6GB（R2 免费 10GB，留 40% 余量）
-QUOTA_GLOBAL_BYTES = "6442450944"
+UPLOAD_MAX_DOC_BYTES = "5242880"
+# 配额（字节 / 次）：个人总量 64MB、每日 15MB 且不超过 20 次
+QUOTA_USER_BYTES = "67108864"
+QUOTA_USER_DAILY_BYTES = "15728640"
+QUOTA_USER_DAILY_COUNT = "20"
+# 全站每日上传次数硬保护：KV 免费版每天只有 1000 次写，
+# 留 200 次给 cron 回收与重试，超过 800 次当天直接返回 429
+QUOTA_GLOBAL_DAILY_COUNT = "800"
+# 全局软上限 900MB（KV 免费 1GB，留 10% 余量）
+QUOTA_GLOBAL_BYTES = "943718400"
 # 文件保留天数（消息不落库，超期即回收）
+# 同时作为 KV 的 expirationTtl：到期由 KV 自动删除，不占用每日 1000 次 delete 额度
 RETENTION_DAYS = "30"
 
 # D1（SQLite）数据库绑定
@@ -50,12 +55,12 @@ tag = "v1"
 # 免费版只支持 SQLite 存储后端的 Durable Object
 new_sqlite_classes = ["DiscussHub"]
 
-# 图片/文件上传（R2）。免费额度 10GB-month，DeleteObject 不计费。
-# 首次启用需在 Cloudflare 控制台手动开通 R2（Dashboard → R2 → Enable），
-# 然后执行 wrangler r2 bucket create discuss-uploads
-[[r2_buckets]]
+# 图片/文件上传（Workers KV）
+# 免费额度：1GB 存储 / 10 万读/天 / 1000 写/天 / 单值 25MiB，且不需要绑卡。
+# 读取走 Worker 内的 Cache API 边缘缓存，只有缓存未命中才消耗 KV 读额度。
+[[kv_namespaces]]
 binding = "UPLOAD"
-bucket_name = "discuss-uploads"
+id = "9b094aa97a984a8cac3a169c15db81e4"
 
 # 每日存储回收：UTC 19:00 = 北京时间次日 03:00（避开使用高峰）
 [triggers]

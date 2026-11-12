@@ -7,7 +7,7 @@
  * 结构：
  *   REST   → src/routes/*.js
  *   实时   → src/durable/hub.js（Durable Object，WebSocket Hibernation）
- *   静态   → /public/<userId>/<file>（R2 可选）
+ *   静态   → /public/<userId>/<file>（Workers KV，可选）
  *
  * 部署见同目录 README.md。
  */

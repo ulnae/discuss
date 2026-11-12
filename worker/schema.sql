@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS captcha (
 );
 CREATE INDEX IF NOT EXISTS idx_captcha_expire ON captcha(expire);
 
--- 上传文件登记表：R2 里没有可靠的「按用户/按时间」查询能力，
+-- 上传文件登记表：KV 只能按 key 读、不支持按用户/按时间查询，
 -- 所以索引信息落 D1，用于配额判断与过期回收。
 CREATE TABLE IF NOT EXISTS upload (
   id        TEXT PRIMARY KEY,

@@ -2,7 +2,8 @@
  * 存储配额：常量、阈值判断与统计读写
  *
  * 设计依据见 ../README.md「文件上传与免费额度」：
- *   R2 免费 10 GB-month，留 40% 余量 → 全局软上限 6 GB
+ *   Workers KV 免费 1 GB / 1000 写/天 / 10 万读/天 / 单值 25MiB，且不需要绑卡
+ *   全局软上限取 900 MB（留 10% 余量），过期由 KV 的 expirationTtl 自动删除
  *   消息不落库，服务端无法判断图片是否还被引用 → 只能按「时间 + 总量」回收
  */
 
@@ -23,11 +24,12 @@ export const FULL_RATIO = 0.95;     // 拒绝所有上传 + 强制回收
 export function uploadLimits(env = {}) {
     return {
         maxImage: int(env.UPLOAD_MAX_BYTES, 2 * MB),
-        maxDoc: int(env.UPLOAD_MAX_DOC_BYTES, 10 * MB),
-        userTotal: int(env.QUOTA_USER_BYTES, 128 * MB),
-        userDailyBytes: int(env.QUOTA_USER_DAILY_BYTES, 30 * MB),
-        userDailyCount: int(env.QUOTA_USER_DAILY_COUNT, 50),
-        globalSoft: int(env.QUOTA_GLOBAL_BYTES, 6 * GB),
+        maxDoc: int(env.UPLOAD_MAX_DOC_BYTES, 5 * MB),
+        userTotal: int(env.QUOTA_USER_BYTES, 64 * MB),
+        userDailyBytes: int(env.QUOTA_USER_DAILY_BYTES, 15 * MB),
+        userDailyCount: int(env.QUOTA_USER_DAILY_COUNT, 20),
+        globalDailyCount: int(env.QUOTA_GLOBAL_DAILY_COUNT, 800),
+        globalSoft: int(env.QUOTA_GLOBAL_BYTES, 900 * MB),
         retentionDays: int(env.RETENTION_DAYS, 30)
     };
 }

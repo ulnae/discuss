@@ -8,7 +8,7 @@
  *   GET    /api/user/:id        详情（鉴权）
  *   PATCH  /api/user/:id        更新（仅本人）
  *   DELETE /api/user/:id        软删除
- *   POST   /api/user/upload     文件上传（R2 可选，未绑定时 501）
+ *   POST   /api/user/upload     文件上传（Workers KV，未绑定时 501）
  */
 import { ApiError, notImplemented } from '../lib/errors.js';
 import { ok, readJson, pageOf } from '../lib/http.js';
@@ -147,7 +147,7 @@ async function remove(request, env, ctx, id) {
  * 文件上传：形状与 NestJS multer 版一致
  *   { code:200, message, filename, originalname, size, mimetype, path, userId, uploadTime }
  * 前端把 path 拼成 `${VITE_APP_API_BASE_URL}/${path}` 访问，
- * 所以 path 形如 public/<userId>/<file>，由 /public/* 路由从 R2 读回。
+ * 所以 path 形如 public/<userId>/<file>，由 /public/* 路由从 KV 读回。
  */
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif']);
 const DOC_EXT = new Set([
@@ -158,8 +158,8 @@ const DOC_EXT = new Set([
 
 async function upload(request, env, ctx) {
     const me = await currentUser(request, env);
-    if (!env.UPLOAD) {
-        throw notImplemented('当前 Worker 未绑定 R2 存储桶，文件上传功能未启用');
+    if (!env.UPLOAD || typeof env.UPLOAD.put !== 'function') {
+        throw notImplemented('当前 Worker 未绑定 UPLOAD（KV）存储，文件上传功能未启用');
     }
 
     const limits = uploadLimits(env);
@@ -206,6 +206,17 @@ async function upload(request, env, ctx) {
         throw new ApiError(`今日上传流量已达上限（${fmtMB(limits.userDailyBytes)}），请明天再试`, 429);
     }
 
+    /* KV 免费版每天只有 1000 次写。全站次数到顶时继续放行会让 KV 直接报错，
+       所以这里提前拦下，返回可读提示（文字消息不受影响）。 */
+    const globalDaily = await first(
+        env,
+        'SELECT COUNT(*) AS c FROM upload WHERE createdAt >= ?',
+        since
+    );
+    if (Number(globalDaily.c) >= limits.globalDailyCount) {
+        throw new ApiError('今日全站上传次数已达上限，请明天再试，文字消息不受影响', 429);
+    }
+
     const mine = await first(env, 'SELECT COALESCE(SUM(size),0) AS b FROM upload WHERE userId = ?', me.id);
     if (Number(mine.b) + file.size > limits.userTotal) {
         throw new ApiError(`个人存储空间已满（${fmtMB(limits.userTotal)}），旧文件会自动清理`, 507);
@@ -213,13 +224,22 @@ async function upload(request, env, ctx) {
 
     const filename = `${crypto.randomUUID()}${ext}`;
     const key = `${me.id}/${filename}`;
+    const contentType = mime || 'application/octet-stream';
 
-    await env.UPLOAD.put(key, file.stream(), {
-        httpMetadata: {
-            contentType: mime || 'application/octet-stream',
-            contentDisposition: isImage ? 'inline' : 'attachment'
-        }
-    });
+    /* Workers KV 写入：
+       - 值上限 25MiB，这里最大 5MB，直接整块读入内存
+       - metadata 上限 1024 字节，只存响应需要的三个字段
+       - expirationTtl 与 RETENTION_DAYS 一致：到期由 KV 自己删除，
+         不占用每天 1000 次的 delete 额度，cron 只需清 D1 登记表 */
+    try {
+        await env.UPLOAD.put(key, await file.arrayBuffer(), {
+            metadata: { contentType, size: file.size, disposition: isImage ? 'inline' : 'attachment' },
+            expirationTtl: limits.retentionDays * 24 * 60 * 60
+        });
+    } catch (error) {
+        console.error('KV put failed', key, error && error.message);
+        throw new ApiError('存储服务暂时不可用，请稍后重试', 503);
+    }
 
     await run(
         env,
@@ -243,9 +263,11 @@ async function upload(request, env, ctx) {
     }, ctx.cors);
 }
 
-/** /public/<userId>/<filename> → R2（带边缘缓存，避免每次浏览都算一次 R2 读） */
+/** /public/<userId>/<filename> → KV（带边缘缓存，避免每次浏览都消耗 KV 读额度） */
 export async function servePublicFile(request, env, ctx, key) {
-    if (!env.UPLOAD) throw new ApiError('文件不存在', 404);
+    if (!env.UPLOAD || typeof env.UPLOAD.getWithMetadata !== 'function') {
+        throw new ApiError('文件不存在', 404);
+    }
 
     let clean = key;
     try { clean = decodeURIComponent(key); } catch { /* 保持原样 */ }
@@ -260,24 +282,29 @@ export async function servePublicFile(request, env, ctx, key) {
         if (hit) return hit;
     }
 
-    const object = await env.UPLOAD.get(clean);
-    if (!object) throw new ApiError('文件不存在', 404);
+    const stored = await env.UPLOAD.getWithMetadata(clean, { type: 'arrayBuffer' });
+    if (!stored || !stored.value) throw new ApiError('文件不存在', 404);
+
+    const meta = stored.metadata || {};
+    const type = meta.contentType || 'application/octet-stream';
 
     const headers = new Headers();
-    object.writeHttpMetadata(headers);
-    headers.set('etag', object.httpEtag);
-    /* 7 天：兼顾「少打 R2 / 少占 Worker 请求」与「过期回收后尽快 404」。
+    headers.set('content-type', type);
+    headers.set('content-length', String(stored.value.byteLength));
+    headers.set('etag', `"kv-${stored.value.byteLength}-${meta.size || 0}"`);
+    /* 7 天：兼顾「少打 KV / 少占 Worker 请求」与「过期回收后尽快 404」。
        不要用 1 年，否则删除的文件还能从边缘缓存里读出来。 */
     headers.set('Cache-Control', 'public, max-age=604800');
     headers.set('X-Content-Type-Options', 'nosniff');
     headers.set('Access-Control-Allow-Origin', ctx.cors['Access-Control-Allow-Origin'] || '*');
 
-    const type = headers.get('content-type') || '';
     if (!type.startsWith('image/')) {
         headers.set('Content-Disposition', 'attachment');
+    } else {
+        headers.set('Content-Disposition', 'inline');
     }
 
-    const response = new Response(object.body, { headers });
+    const response = new Response(stored.value, { headers });
     if (isGet) await cache.put(cacheKey, response.clone());
     return response;
 }
