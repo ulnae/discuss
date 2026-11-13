@@ -8,6 +8,7 @@ import { useAlertStore } from "./alert";
 import { useApplyStore } from './apply'
 import { useCallStore } from './call'
 import { updateTitle } from '@/utils'
+import { MessageCache } from '@/utils/messageCache'
 import { toast } from '@/components/ui/toast'
 
 const setTitle = updateTitle()
@@ -39,8 +40,24 @@ export const useSocketStore = defineStore('socket', {
         roomMemberOnlineMap: new Map<string, Set<string>>(),
     }),
     actions: {
+        /** 启动时从 IndexedDB 恢复聊天记录（刷新页面不再丢消息） */
+        async hydrateMessages() {
+            const { user, room } = await MessageCache.load()
+            const revive = (list: any[]) => list.map(m =>
+                m && m.status === 'sending' ? { ...m, status: 'failed' } : m
+            )
+            if (!this.userMessageMap.size) {
+                user.forEach(([peerId, list]) => this.userMessageMap.set(peerId, revive(list)))
+            }
+            if (!this.roomMessageMap.size) {
+                room.forEach(([roomId, list]) => this.roomMessageMap.set(roomId, revive(list)))
+            }
+        },
+
         initSocket() {
             const { userInfo } = useUserStore()
+            // 启动即恢复本地消息，不阻塞连接建立
+            this.hydrateMessages()
             return new Promise((resolve, reject) => {
                 // 重复初始化时先安静地关掉旧连接，避免同一账号挂多条 socket
                 if (this.socket) {
@@ -48,12 +65,21 @@ export const useSocketStore = defineStore('socket', {
                     this.socket = null
                 }
                 // VITE_APP_RUNTIME 决定用 socket.io（server-nestjs）还是原生 WebSocket（worker）
-                this.socket = connectSocket(useUserStore().token) as Socket
-                // 注册语音通话信令事件
-                useCallStore().register(this.socket as Socket)
+                connectSocket(useUserStore().token).then((socket: Socket) => {
+                    this.socket = socket
+                    // 注册语音通话信令事件
+                    useCallStore().register(this.socket as Socket)
+                let initTimer: ReturnType<typeof setTimeout> | null = null
+                let firstConnect = true
                 this.socket.on('connect', () => {
                     console.log('connect')
-                    this.socket && this.socket.emit('init')
+                    // 首次连接立刻 init；断线重连防抖 2s，避免网络抖动引发 init/在线名单风暴
+                    if (initTimer) clearTimeout(initTimer)
+                    const delay = firstConnect ? 0 : 2000
+                    firstConnect = false
+                    initTimer = setTimeout(() => {
+                        if (this.socket && this.socket.connected) this.socket.emit('init')
+                    }, delay)
                     resolve(true)
                 })
                 this.socket.on('disconnect', () => {
@@ -69,29 +95,20 @@ export const useSocketStore = defineStore('socket', {
                 })
 
 
-                // 接收用户消息
+                // 接收用户消息（对方发来 / 自己发送的回显，统一在此落库）
                 this.socket.on('message:user', (data) => {
-                    const senderMessages = this.userMessageMap.get(data.sender)
-                    const messages = senderMessages || []
-                    messages.push(data)
-                    if (!senderMessages) this.userMessageMap.set(data.sender, messages)
+                    this.appendUserMessage(data, data.sender)
                     setTitle(`${useFriendStore().getFriendMap[data.sender]?.friend_info?.username}:${data.content}`)
                 })
 
                 // 接收已发送回显信息
                 this.socket.on('message:sender', (data) => {
-                    const receiverMessages = this.userMessageMap.get(data.receiver)
-                    const messages = receiverMessages || []
-                    messages.push(data)
-                    if (!receiverMessages) this.userMessageMap.set(data.receiver, messages)
+                    this.appendUserMessage(data, data.receiver)
                 })
 
                 // 接收房间消息
                 this.socket.on('message:room', (data) => {
-                    const roomMessages = this.roomMessageMap.get(data.room)
-                    const messages = roomMessages || []
-                    messages.push(data)
-                    if (!roomMessages) this.roomMessageMap.set(data.room, messages)
+                    this.appendRoomMessage(data)
                     setTitle(`${useRoomStore().getRoomMap[data.room]?.room_info?.name}:${data.content}`)
                 })
 
@@ -100,11 +117,13 @@ export const useSocketStore = defineStore('socket', {
                     this.roomMemberOnlineMap.set(data.room, new Set(data.users || []))
                 })
 
-                // 接收好友状态更新
-                this.socket.on('status:firend', (data) => {
+                // 接收好友状态更新（status:friend 为规范事件名，status:firend 是历史拼写，两个都听）
+                const onFriendStatus = (data: any) => {
                     useFriendStore().setFriendStatus(data.friend, data.status)
                     setTitle(`[${useFriendStore().getFriendMap[data.friend]?.friend_info?.username}] ${data.status ? '上线' : '离线'}`)
-                })
+                }
+                this.socket.on('status:friend', onFriendStatus)
+                this.socket.on('status:firend', onFriendStatus)
 
                 // 初始化获取所有在线好友
                 this.socket.on('online:friends', (data) => {
@@ -253,12 +272,97 @@ export const useSocketStore = defineStore('socket', {
                     toast.warning(`「${(data && data.roomName) || '房间'}」已被群主解散`)
                     leaveIf(`/room/${roomId}`, '/room/dashboard')
                 })
-            })
+                }).catch(error => {
+                    console.error('socket connect failed', error)
+                    reject(error)
+                })
+        })
 
         },
         disconnect() {
             this.socket?.disconnect()
             this.socket = null
-        }
+        },
+
+        /* ==================== 消息落库与乐观发送 ==================== */
+
+        /** 追加一条私聊消息；带 clientId 的回显会原地替换本地待确认消息 */
+        appendUserMessage(data: any, peerId: string) {
+            if (!data || !peerId) return
+            const list = this.userMessageMap.get(peerId) || []
+            const { status: _drop, ...message } = data
+            message.id = message.id || message.clientId || `${message.sender}-${message.timestamp}`
+            const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
+            if (idx >= 0) list.splice(idx, 1, message)
+            else list.push(message)
+            this.userMessageMap.set(peerId, list)
+            MessageCache.saveUser(peerId, list)
+        },
+
+        /** 追加一条房间消息；自己的消息通过 clientId 与乐观本地消息对账替换，避免重复 */
+        appendRoomMessage(data: any) {
+            if (!data || !data.room) return
+            const list = this.roomMessageMap.get(data.room) || []
+            const { status: _drop, ...message } = data
+            message.id = message.id || message.clientId || `${message.sender}-${message.timestamp}`
+            const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
+            if (idx >= 0) list.splice(idx, 1, message)
+            else list.push(message)
+            this.roomMessageMap.set(data.room, list)
+            MessageCache.saveRoom(data.room, list)
+        },
+
+        /** 乐观发送私聊消息：先上屏，等 message:sender 回执后由 clientId 对账 */
+        sendUser(receiver: string, content: string) {
+            const me = useUserStore().userInfo.id
+            const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+            const connected = !!this.socket?.connected
+            const message = {
+                id: clientId,
+                clientId,
+                sender: me,
+                receiver,
+                content,
+                timestamp: Date.now(),
+                status: connected ? 'sending' : 'failed',
+            }
+            const list = this.userMessageMap.get(receiver) || []
+            list.push(message)
+            this.userMessageMap.set(receiver, list)
+            MessageCache.saveUser(receiver, list)
+            if (connected) this.socket!.emit('send:user', { sender: receiver, content, clientId })
+        },
+
+        /** 乐观发送房间消息 */
+        sendRoom(room: string, content: string) {
+            const me = useUserStore().userInfo.id
+            const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+            const connected = !!this.socket?.connected
+            const message = {
+                id: clientId,
+                clientId,
+                sender: me,
+                room,
+                content,
+                timestamp: Date.now(),
+                status: connected ? 'sending' : 'failed',
+            }
+            const list = this.roomMessageMap.get(room) || []
+            list.push(message)
+            this.roomMessageMap.set(room, list)
+            MessageCache.saveRoom(room, list)
+            if (connected) this.socket!.emit('send:room', { room, content, clientId })
+        },
+
+        /** 重发失败的消息（气泡上点击「发送失败，点击重试」） */
+        resendMessage(message: any) {
+            if (!message || message.status !== 'failed' || !this.socket?.connected) return
+            message.status = 'sending'
+            if (message.room) {
+                this.socket.emit('send:room', { room: message.room, content: message.content, clientId: message.clientId })
+            } else if (message.receiver) {
+                this.socket.emit('send:user', { sender: message.receiver, content: message.content, clientId: message.clientId })
+            }
+        },
     }
 })

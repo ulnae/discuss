@@ -27,6 +27,9 @@
       </header>
 
       <div id="messageContainer" class="chat-body">
+        <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
+          查看更早的消息
+        </button>
         <div v-if="!getHistory.length" class="empty">
           <span class="empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
@@ -38,7 +41,7 @@
           群里还很安静，说点什么吧
         </div>
 
-        <div v-for="message in getHistory" :key="message.id" class="msg"
+        <div v-for="message in visibleMessages" :key="message.id" class="msg"
           :class="{ 'is-me': message.sender === userStore.userInfo.id }">
           <div class="msg-meta">
             <span>{{ message.sender === userStore.userInfo.id ? userStore.userInfo.username : getUserInfo(message.sender) }}</span>
@@ -46,7 +49,7 @@
             <span v-if="message.type">{{ formatFileSize(message.size) }}</span>
           </div>
           <div class="bubble">
-            <Comment :message="message" />
+            <Comment :message="message" @resend="handleResend(message)" />
           </div>
         </div>
       </div>
@@ -99,7 +102,7 @@
             </span>
             <span class="chip chip-warning" v-if="getRoomInfo.creator === member.user_id">群主</span>
             <span class="dot" :class="{ 'dot-online': getMemberOnline.has(member.user_id) }"></span>
-            <button v-if="getRoomInfo.creator !== member.user_id && roomStore.roomsMine.find((item: any) => item.id === route.params.id)"
+            <button v-if="getRoomInfo.creator !== member.user_id && roomStore.isOwnerOf(route.params.id as string)"
               type="button" class="icon-btn kick" title="移出群聊" @click="handleRemoveMember(member.id)">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
                 stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -205,7 +208,7 @@ watchEffect(() => {
 // 入群申请（房主可见）放 store：实时事件 room:apply 也能直接刷新
 const applyList = computed(() => roomStore.applyMap.get(route.params.id as string) || [])
 watch(
-  [() => route.params.id, () => roomStore.roomsMine.length],
+  [() => route.params.id, () => roomStore.rooms.length],
   ([id]) => {
     if (typeof id === 'string' && id) roomStore.getRoomApplies(id)
   },
@@ -226,15 +229,14 @@ function handleHandleApply(apply: any, status: boolean) {
   });
 }
 
-// 发送消息
+// 发送消息（走 store 乐观发送：先上屏，回执后对账）
 const handleSend = () => {
   if (!story.value) return;
-  (socketStore.socket as Socket).emit("send:room", {
-    room: route.params.id,
-    content: story.value,
-  });
+  socketStore.sendRoom(route.params.id as string, story.value);
   story.value = "";
 };
+
+const handleResend = (message: any) => socketStore.resendMessage(message);
 
 const handleSendImage = () => {
   document.getElementById("chooseImage")?.click();
@@ -292,13 +294,17 @@ onMounted(() => {
 // 快捷上传图片及文件
 usePaste(uploadImage, uploadFile)
 
-// 自动滚到最新消息
+// 聊天区只渲染最近 100 条，避免长会话 DOM 堆积；更早的点击按钮分页加载
+const visibleCount = ref(100)
+const visibleMessages = computed(() => getHistory.value.slice(-visibleCount.value))
+const hasEarlierMessages = computed(() => getHistory.value.length > visibleCount.value)
+
+// 新消息到达时自动滚到底部（监听最后一条 id，替代原 deep watch 的全量 diff）
 watch(
-  () => getHistory.value,
+  () => getHistory.value[getHistory.value.length - 1]?.id,
   () => {
     scrollToBottom('messageContainer');
-  },
-  { deep: true }
+  }
 );
 
 const infoVisiable = ref(!isNarrow())
@@ -409,6 +415,25 @@ function handleRemoveMember(id: string) {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+/* 查看更早的消息 */
+.load-earlier {
+    align-self: center;
+    margin: 0.2rem 0;
+    padding: 0.25rem 0.7rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+
+    &:hover {
+        background: var(--surface-3, var(--surface-2));
+        color: var(--text);
+    }
 }
 
 /* 退出 / 解散按钮贴在侧边栏底部，样式同好友资料里的删除好友 */

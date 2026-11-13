@@ -21,6 +21,10 @@
         </a>
     </template>
     <span v-else class="cm-text">{{ message.content }}</span>
+    <span v-if="message.status === 'sending'" class="cm-status">发送中…</span>
+    <span v-else-if="message.status === 'failed'" class="cm-status cm-failed" @click="$emit('resend')">
+        发送失败，点击重试
+    </span>
 </template>
 
 <script setup lang="ts">
@@ -32,6 +36,8 @@ defineProps({
         required: true
     }
 });
+
+defineEmits(['resend']);
 
 const VITE_APP_API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL
 const handlePreviewImage = (url: string) => {
@@ -81,5 +87,21 @@ const handlePreviewImage = (url: string) => {
 
 .cm-text {
     white-space: pre-wrap;
+}
+
+.cm-status {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.65rem;
+    color: var(--text-3);
+}
+
+.cm-failed {
+    color: var(--danger);
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
 }
 </style>

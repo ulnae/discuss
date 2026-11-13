@@ -7,6 +7,7 @@ export async function currentUser(request, env) {
     const token = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
     if (!token) throw new ApiError('未授权，请登录', 401);
     const payload = await verifyToken(token, env.JWT_SECRET);
-    if (!payload || !payload.id) throw new ApiError('登录已过期，请重新登录', 401);
+    /* 短时效的 WS ticket 不能当 REST token 用 */
+    if (!payload || !payload.id || payload.typ === 'ws-ticket') throw new ApiError('登录已过期，请重新登录', 401);
     return { id: payload.id, username: payload.username || '' };
 }

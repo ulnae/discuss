@@ -39,6 +39,13 @@ export default {
             method: 'get',
         })
     },
+    // 登录/重连聚合拉取：我加入的房间 + 每房成员 + 每房在线名单（1 个请求替代 3+N 个）
+    GetRoomOverview() {
+        return request({
+            url: `${Url[requestServerName].room}/overview`,
+            method: 'get',
+        })
+    },
     CreateRoom(data:Room) {
         return request({
             url: Url[requestServerName].room,

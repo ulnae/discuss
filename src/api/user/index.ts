@@ -74,6 +74,8 @@ export default {
             url: Url[requestServerName].userUpload,
             method: 'post',
             data,
+            // 上传比常规接口慢，单独放宽超时
+            timeout: 60 * 1000,
             headers: {
                 'Content-Type': 'multipart/form-data'
             }

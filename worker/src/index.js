@@ -13,7 +13,8 @@
  */
 import { corsFor, fail, ok, preflight } from './lib/http.js';
 import { ApiError } from './lib/errors.js';
-import { verifyToken } from './lib/jwt.js';
+import { verifyToken, signToken } from './lib/jwt.js';
+import { currentUser } from './lib/auth.js';
 import { handleCaptcha } from './routes/captcha.js';
 import { handleUser, servePublicFile } from './routes/user.js';
 import { handleRoom } from './routes/room.js';
@@ -46,13 +47,26 @@ export default {
             if (path === '/' || path === '/api/health') {
                 let storage = null;
                 try {
-                    const usage = await storageUsage(env);
-                    storage = {
-                        usedBytes: usage.bytes,
-                        files: usage.files,
-                        quotaBytes: usage.quota,
-                        percent: Number((usage.ratio * 100).toFixed(1))
-                    };
+                    /* 优先读 cron 每日写入的统计快照（KV 读不计费额度高），
+                       避免探活请求每次都触发 D1 聚合扫描 */
+                    const cached = await env.UPLOAD.get('stats:storage');
+                    if (cached) {
+                        const s = JSON.parse(cached);
+                        storage = {
+                            usedBytes: s.bytes,
+                            files: s.files,
+                            quotaBytes: s.quotaBytes,
+                            percent: s.percent
+                        };
+                    } else {
+                        const usage = await storageUsage(env);
+                        storage = {
+                            usedBytes: usage.bytes,
+                            files: usage.files,
+                            quotaBytes: usage.quota,
+                            percent: Number((usage.ratio * 100).toFixed(1))
+                        };
+                    }
                 } catch {
                     storage = null;   // 表未初始化时不影响存活探测
                 }
@@ -85,7 +99,7 @@ export default {
                 case 'apply': return (await handleApply(request, env, rc, rest)) || fail('not found', 404, cors);
                 case 'friend': return (await handleFriend(request, env, rc, rest)) || fail('not found', 404, cors);
                 case 'alert': return await handleAlert(request, env, rc, rest);
-                case 'ws': return await handleSocket(request, env, rc);
+                case 'ws': return await handleSocket(request, env, rc, rest);
                 case 'sse':
                     return fail('SSE 已由 WebSocket 通道取代，请使用 /api/ws', 501, cors);
                 default: throw notFound();
@@ -101,7 +115,21 @@ export default {
     async scheduled(event, env, ctx) {
         ctx.waitUntil(
             cleanupStorage(env)
-                .then(stats => console.log('storage cleanup', JSON.stringify(stats)))
+                .then(async stats => {
+                    console.log('storage cleanup', JSON.stringify(stats));
+                    /* 把存储统计快照写入 KV，供 /api/health 直接读取（读 KV 便宜，D1 聚合贵） */
+                    try {
+                        await env.UPLOAD.put('stats:storage', JSON.stringify({
+                            bytes: stats.totalBytes || 0,
+                            files: stats.totalFiles || 0,
+                            quotaBytes: Number(env.QUOTA_GLOBAL_BYTES || 0),
+                            percent: stats.ratio != null ? Number((stats.ratio * 100).toFixed(1)) : 0,
+                            updatedAt: Date.now()
+                        }));
+                    } catch (error) {
+                        console.error('stats snapshot failed', error && error.message);
+                    }
+                })
                 .catch(error => console.error('storage cleanup failed', error && error.message))
         );
     }
@@ -137,10 +165,29 @@ async function handleAlert(request, env, rc, rest) {
 }
 
 /**
- * GET /api/ws?token=<jwt> —— 把连接转发给 Durable Object
- * 浏览器 WebSocket 不能自定义请求头，所以 token 走 query（与 NestJS 的 SSE 做法一致）。
+ * GET /api/ws/ticket —— 换取 60 秒一次性 WebSocket 连接凭证。
+ * WS 握手不再携带长期 JWT（token 会进边缘访问日志），改为短时效 ticket。
  */
-async function handleSocket(request, env, rc) {
+async function handleWsTicket(request, env, rc) {
+    if (rc.method !== 'GET') return null;
+    const me = await currentUser(request, env);
+    const ticket = await signToken(
+        { id: me.id, username: me.username, typ: 'ws-ticket' },
+        env.JWT_SECRET,
+        '60s'
+    );
+    return ok({ ticket }, rc.cors);
+}
+
+/**
+ * GET /api/ws?token=<jwt|ticket> —— 把连接转发给 Durable Object。
+ * 浏览器 WebSocket 不能自定义请求头，所以凭证走 query；
+ * 推荐流程：先 GET /api/ws/ticket 拿 60 秒短票，再用短票连接。
+ */
+async function handleSocket(request, env, rc, rest) {
+    /* /api/ws/ticket：签发短时效连接凭证 */
+    if (rest[0] === 'ticket') return await handleWsTicket(request, env, rc);
+
     if (request.headers.get('Upgrade') !== 'websocket') {
         return fail('请使用 WebSocket 连接', 426, rc.cors);
     }

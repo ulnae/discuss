@@ -13,8 +13,7 @@ import { pushToUsers, pushToRoom, pushRoomOnline, syncUserRooms } from '../lib/r
 
 const MEMBER_SELECT = `
     SELECT m.id, m.user_id, m.room_id, m.createdAt,
-           u.id AS u_id, u.username AS u_username, u.email AS u_email,
-           u.createdAt AS u_createdAt, u.updatedAt AS u_updatedAt,
+           u.id AS u_id, u.username AS u_username,
            r.id AS r_id, r.name AS r_name, r.creator AS r_creator,
            r.description AS r_description,
            r.createdAt AS r_createdAt, r.updatedAt AS r_updatedAt
@@ -29,7 +28,7 @@ const memberView = (row) => ({
     room_id: row.room_id,
     createdAt: iso(row.createdAt),
     user_info: row.u_id
-        ? { id: row.u_id, username: row.u_username, email: row.u_email, createdAt: iso(row.u_createdAt), updatedAt: iso(row.u_updatedAt) }
+        ? { id: row.u_id, username: row.u_username }
         : null,
     room_info: row.r_id
         ? { id: row.r_id, name: row.r_name, creator: row.r_creator, description: row.r_description, createdAt: iso(row.r_createdAt), updatedAt: iso(row.r_updatedAt) }

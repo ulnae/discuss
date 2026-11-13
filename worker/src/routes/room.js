@@ -92,6 +92,63 @@ async function search(request, env, ctx) {
     return ok(rows.map(roomView), ctx.cors);
 }
 
+/**
+ * GET /api/room/overview —— 登录 / 重连后的单次聚合拉取。
+ * 一次返回：我加入的房间 + 每个房间的成员 + 每个房间的在线名单。
+ * 替代原来的 /room/mine + /member?user_id + 每房一次 /member?room_id（3+N 个请求 → 1 个）。
+ */
+async function overview(request, env, ctx) {
+    const me = await currentUser(request, env);
+    const rooms = await all(
+        env,
+        `${ROOM_SELECT} WHERE r.isDeleted = 0 AND EXISTS (
+            SELECT 1 FROM member m WHERE m.room_id = r.id AND m.user_id = ? AND m.isDeleted = 0
+        ) ORDER BY r.createdAt ASC`,
+        me.id
+    );
+    const roomIds = rooms.map(row => row.id);
+
+    const members = {};
+    if (roomIds.length) {
+        const placeholders = roomIds.map(() => '?').join(',');
+        const rows = await all(
+            env,
+            `SELECT m.id, m.user_id, m.room_id,
+                    u.id AS u_id, u.username AS u_username
+             FROM member m
+             LEFT JOIN user u ON u.id = m.user_id
+             WHERE m.isDeleted = 0 AND m.room_id IN (${placeholders})`,
+            ...roomIds
+        );
+        for (const row of rows) {
+            (members[row.room_id] = members[row.room_id] || []).push({
+                id: row.id,
+                user_id: row.user_id,
+                user_info: row.u_id ? { id: row.u_id, username: row.u_username } : null
+            });
+        }
+    }
+
+    /* 在线名单在 Durable Object 的连接 attachment 里，向 hub 批量查询 */
+    let online = {};
+    if (roomIds.length) {
+        const stub = env.HUB.get(env.HUB.idFromName('hub'));
+        const result = await stub.fetch('https://hub/rooms-online', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rooms: roomIds })
+        }).catch(() => null);
+        const json = result ? await result.json().catch(() => null) : null;
+        online = (json && json.online) || {};
+    }
+
+    return ok({
+        rooms: rooms.map(roomView),
+        members,
+        online
+    }, ctx.cors);
+}
+
 async function detail(request, env, ctx, id) {
     await currentUser(request, env);
     const row = await first(env, `${ROOM_SELECT} WHERE r.id = ? AND r.isDeleted = 0`, id);
@@ -100,7 +157,7 @@ async function detail(request, env, ctx, id) {
 }
 
 async function update(request, env, ctx, id) {
-    await currentUser(request, env);
+    const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
     const exist = await first(env, 'SELECT id FROM room WHERE id = ? AND isDeleted = 0', id);
     if (!exist) throw new ApiError(`id为${id}的房间不存在`, 401);
@@ -156,6 +213,7 @@ export async function handleRoom(request, env, ctx, rest) {
         return null;
     }
     if (ctx.method === 'GET' && head === 'search') return search(request, env, ctx);
+    if (ctx.method === 'GET' && head === 'overview') return overview(request, env, ctx);
     if (ctx.method === 'GET' && head === 'mine') return mine(request, env, ctx);
 
     const id = decodeURIComponent(head);

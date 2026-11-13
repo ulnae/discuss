@@ -31,11 +31,16 @@ class NativeSocket implements SocketLike {
     private retryTimer: ReturnType<typeof setTimeout> | null = null
     private heartbeatTimer: ReturnType<typeof setInterval> | null = null
     private readonly endpoint: string
+    private readonly apiBase: string
+    private readonly authToken: string
 
     constructor(baseURL: string, token: string) {
         const origin = String(baseURL || '').replace(/\/+$/, '')
         const wsOrigin = origin.replace(/^http/i, 'ws')
-        this.endpoint = `${wsOrigin}/api/ws?token=${encodeURIComponent(token)}`
+        this.endpoint = `${wsOrigin}/api/ws`
+        // ticket 60s 过期，所以每次建立连接前都要重新换取
+        this.apiBase = origin
+        this.authToken = token
         this.open()
     }
 
@@ -77,9 +82,26 @@ class NativeSocket implements SocketLike {
 
     /* -------------------- 内部实现 -------------------- */
 
-    private open() {
+    /** 向 REST 换取 60 秒 WS 连接短票；换取失败时退回直接带 JWT（兼容旧服务端） */
+    private async fetchTicket(): Promise<string> {
         try {
-            this.ws = new WebSocket(this.endpoint)
+            const res = await fetch(`${this.apiBase}/api/ws/ticket`, {
+                headers: { Authorization: `Bearer ${this.authToken}` }
+            })
+            const json: any = await res.json()
+            if (json && json.code === 200 && json.data && json.data.ticket) {
+                return json.data.ticket as string
+            }
+        } catch { /* ignore */ }
+        return this.authToken
+    }
+
+    private async open() {
+        if (this.closed) return
+        const ticket = await this.fetchTicket()
+        if (this.closed) return
+        try {
+            this.ws = new WebSocket(`${this.endpoint}?token=${encodeURIComponent(ticket)}`)
         } catch {
             this.scheduleReconnect()
             return
@@ -149,7 +171,7 @@ class NativeSocket implements SocketLike {
 }
 
 /** 按环境返回对应的 socket 实例（类型放宽，保持与 socket.io-client 的调用兼容） */
-export function connectSocket(token: string): any {
+export async function connectSocket(token: string): Promise<any> {
     const runtime = import.meta.env.VITE_APP_RUNTIME
     const apiBase = import.meta.env.VITE_APP_API_BASE_URL as string
     // 实时通道独立配置（若无独立值则复用 API 域名；生产环境两者同源）

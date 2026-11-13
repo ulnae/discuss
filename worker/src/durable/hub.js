@@ -87,20 +87,25 @@ export class DiscussHub {
                 .all();
             let delivered = 0;
             for (const row of results || []) {
-                delivered += this.sendToUser(row.friend_id, 'status:firend', {
-                    friend: userId,
-                    status: online,
-                    timestamp: now()
-                });
+                const mine = { friend: userId, status: online, timestamp: now() };
+                delivered += this.sendToUser(row.friend_id, 'status:friend', mine);
+                delivered += this.sendToUser(row.friend_id, 'status:firend', mine);
                 if (this.userSockets(row.friend_id).length) {
-                    delivered += this.sendToUser(userId, 'status:firend', {
-                        friend: row.friend_id,
-                        status: true,
-                        timestamp: now()
-                    });
+                    const theirs = { friend: row.friend_id, status: true, timestamp: now() };
+                    delivered += this.sendToUser(userId, 'status:friend', theirs);
+                    delivered += this.sendToUser(userId, 'status:firend', theirs);
                 }
             }
             return Response.json({ ok: true, delivered });
+        }
+
+        /* 批量查询若干房间的在线名单（供 /api/room/overview 聚合接口使用） */
+        if (url.pathname === '/rooms-online') {
+            const body = await request.json().catch(() => null);
+            const rooms = Array.isArray(body && body.rooms) ? body.rooms.map(String) : [];
+            const online = {};
+            for (const room of rooms) online[room] = this.roomUsers(room);
+            return Response.json({ ok: true, online });
         }
 
         /* 房间成员变动后刷新某个用户的房间订阅（否则新加入的房间收不到消息） */
@@ -203,19 +208,21 @@ export class DiscussHub {
         const me = this.attach(ws);
         if (!me.userId) return;
 
-        /* 单端登录：踢掉同一账号的其它连接（对应 NestJS 的 kicked） */
-        for (const other of this.userSockets(me.userId)) {
-            if (other === ws) continue;
-            this.safeSend(other, frame('kicked', { reason: 'Account logged in elsewhere', timestamp: now() }));
-            try { other.close(4001, 'kicked'); } catch { /* ignore */ }
-        }
+        /* 多端 / 多标签页允许并存（hub 本身支持一个用户多条连接），
+           不再做「单端登录互踢」；'kicked' 事件保留给未来的设备管理 */
 
         /* 每次（重）连都重新读一次成员表：重连本身就是「房间订阅自愈」的时机 */
         const rooms = await this.userRooms(me.userId);
         try { ws.serializeAttachment({ ...me, rooms }); } catch { /* ignore */ }
 
         for (const room of rooms) {
-            this.sendToRoom(room, 'online:room', { room, users: this.roomUsers(room), timestamp: now() });
+            const users = this.roomUsers(room);
+            /* 重连风暴防护：在线名单没变化的房间只补发给重连者本人，不惊动全屋 */
+            if (await this.roomOnlineChanged(room, users)) {
+                this.sendToRoom(room, 'online:room', { room, users, timestamp: now() });
+            } else {
+                this.safeSend(ws, frame('online:room', { room, users, timestamp: now() }));
+            }
         }
 
         const friends = await this.friendIds(me.userId);
@@ -225,7 +232,10 @@ export class DiscussHub {
             if (!sockets.length) continue;
             onlineFriends.push(friendId);
             for (const socket of sockets) {
-                this.safeSend(socket, frame('status:firend', { friend: me.userId, status: true, timestamp: now() }));
+                /* status:friend 为规范事件名，status:firend 是历史拼写，过渡期双发 */
+                const payload = { friend: me.userId, status: true, timestamp: now() };
+                this.safeSend(socket, frame('status:friend', payload));
+                this.safeSend(socket, frame('status:firend', payload));
             }
         }
         this.safeSend(ws, frame('online:friends', { users: onlineFriends, timestamp: now() }));
@@ -235,20 +245,38 @@ export class DiscussHub {
         const me = this.attach(ws);
         if (!me.userId) return;
 
-        /* 还有别的连接（多标签页）时不算离线 */
+        /* 还有别的连接（多标签页/多设备）时不算离线 */
         const remaining = this.userSockets(me.userId).filter(socket => socket !== ws);
         if (remaining.length) return;
 
         for (const room of me.rooms || []) {
-            this.sendToRoom(room, 'online:room', { room, users: this.roomUsers(room), timestamp: now() });
+            const users = this.roomUsers(room);
+            if (await this.roomOnlineChanged(room, users)) {
+                this.sendToRoom(room, 'online:room', { room, users, timestamp: now() });
+            }
         }
 
         const friends = await this.friendIds(me.userId);
         for (const friendId of friends) {
             for (const socket of this.userSockets(friendId)) {
-                this.safeSend(socket, frame('status:firend', { friend: me.userId, status: false, timestamp: now() }));
+                const payload = { friend: me.userId, status: false, timestamp: now() };
+                this.safeSend(socket, frame('status:friend', payload));
+                this.safeSend(socket, frame('status:firend', payload));
             }
         }
+    }
+
+    /**
+     * 记录并比对房间在线名单（storage 持久化，休眠不丢）。
+     * 返回 true 表示名单有变化（需要广播），false 表示没变（只补发本人即可）。
+     */
+    async roomOnlineChanged(roomId, users) {
+        const key = `ron:${roomId}`;
+        const sorted = [...users].sort();
+        const prev = await this.state.storage.get(key);
+        if (prev && JSON.stringify(prev) === JSON.stringify(sorted)) return false;
+        await this.state.storage.put(key, sorted);
+        return true;
     }
 
     /* ==================== 消息投递 ==================== */

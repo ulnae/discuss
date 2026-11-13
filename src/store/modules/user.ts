@@ -4,6 +4,7 @@ import { useFriendStore } from './friend'
 import { useDBStore } from './database'
 
 import { useRoomStore } from './room'
+import { MessageCache } from '@/utils/messageCache'
 import router from '@/router'
 import userApi from '@/api/user'
 export interface User {
@@ -46,6 +47,8 @@ export const useUserStore = defineStore('user', {
             localStorage.removeItem('token')
             localStorage.removeItem('userInfo')
             useSocketStore().disconnect()
+            // 登出清空本地消息缓存（新账号登录不应看到上一个账号的记录）
+            MessageCache.clear()
             router.push({
                 name: 'login',
             })

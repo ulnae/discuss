@@ -68,6 +68,19 @@ export async function cleanupStorage(env) {
           低流量期间过期行会一直残留，这里每天兜底清一次（D1 删除不占 KV 额度） */
     await pruneCaptcha(env);
 
+    /* 0.5 软删数据物理清理：90 天以上的 isDeleted 行直接删掉，
+           控制表体积与 D1 行读成本（member/friend 无 updatedAt，按 createdAt 判断） */
+    try {
+        const staleCutoff = now() - 90 * DAY;
+        await env.DB.batch([
+            env.DB.prepare('DELETE FROM member WHERE isDeleted = 1 AND createdAt < ?').bind(staleCutoff),
+            env.DB.prepare('DELETE FROM friend WHERE isDeleted = 1 AND createdAt < ?').bind(staleCutoff),
+            env.DB.prepare('DELETE FROM apply WHERE isDeleted = 1 AND updatedAt < ?').bind(staleCutoff)
+        ]);
+    } catch (error) {
+        console.error('soft-deleted rows cleanup failed', error && error.message);
+    }
+
     if (!env.UPLOAD || typeof env.UPLOAD.delete !== 'function') {
         stats.skipped = true;
         return stats;

@@ -66,7 +66,7 @@ interface RuquestService extends AxiosInstance {
 const service: RuquestService = axios.create({
     withCredentials: true,
     baseURL: import.meta.env.VITE_APP_BASE_API,
-    timeout: 10 * 60 * 1000, // 请求超时时间
+    timeout: 15 * 1000, // 常规接口 15s 足够；上传等慢接口在各自请求里单独放宽
 })
 
 // interface ServiceRequestConfig extends AxiosRequestConfig {
