@@ -91,7 +91,15 @@
     <div v-show="infoVisiable" class="info-mask" @click="infoVisiable = false"></div>
 
     <aside v-show="infoVisiable" class="info">
-      <div class="info-head">好友资料</div>
+      <div class="info-head">
+        <span>好友资料</span>
+        <button type="button" class="icon-btn info-close" title="关闭" @click="infoVisiable = false">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
       <div class="info-card">
         <span class="avatar avatar-xl">{{ initial }}</span>
@@ -296,11 +304,26 @@ const goBack = () => router.push('/friend/dashboard')
 }
 
 .info-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 0.72rem;
     font-weight: 500;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-3);
+}
+
+/* 抽屉关闭按钮：窄屏抽屉形态下必须可见，否则关不掉 */
+.info-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
 }
 
 .info-card {
@@ -378,6 +401,8 @@ const goBack = () => router.push('/friend/dashboard')
     }
 
     .info-mask {
+        /* 基础样式是 display:none，这里必须恢复显示，否则遮罩永远不出现、抽屉关不掉 */
+        display: block;
         position: absolute;
         inset: 0;
         z-index: 25;

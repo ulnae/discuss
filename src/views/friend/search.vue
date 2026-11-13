@@ -1,5 +1,11 @@
 <template>
     <div class="search-page">
+        <button type="button" class="icon-btn back-btn page-back" title="返回好友列表" @click="goBack">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+        </button>
         <header class="search-head">
             <h1 class="search-title">添加好友</h1>
             <p class="search-sub">输入用户名后回车，即可搜索并发送好友申请</p>
@@ -50,11 +56,17 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 import ServerApi from "@/api";
 import { User } from "@/store/modules/user";
 import { useFriendStore } from "@/store/modules/friend";
 import { useUserStore } from "@/store/modules/user";
 import { toast } from "@/components/ui/toast";
+
+const router = useRouter()
+
+/** 移动端搜索页是独立一屏，提供返回列表的入口 */
+const goBack = () => router.push('/friend/dashboard')
 
 
 const username = ref('')
@@ -95,6 +107,12 @@ const handleJoin = (apply_user_id?: string) => {
     width: 100%;
     height: 100%;
     overflow-y: auto;
+}
+
+/* 移动端返回按钮（.back-btn 全局只在窄屏显示） */
+.page-back {
+    align-self: flex-start;
+    margin: 0.55rem 0.75rem 0;
 }
 
 .search-head {

@@ -19,7 +19,7 @@
       </nav>
 
       <div class="rail-foot">
-        <button type="button" class="rail-btn" :title="theme === 'light' ? '切换到深色' : '切换到浅色'" @click="toggleTheme">
+        <button type="button" class="rail-btn rail-btn-theme" :title="theme === 'light' ? '切换到深色' : '切换到浅色'" @click="toggleTheme">
           <span class="rail-icon">
             <svg v-if="theme === 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
               stroke-width="1.5" stroke="currentColor">
@@ -48,7 +48,7 @@
           <span class="rail-text">设置</span>
         </button>
 
-        <button type="button" class="rail-btn rail-btn-quiet" title="退出登录" @click="handleLogout">
+        <button type="button" class="rail-btn rail-btn-quiet rail-btn-logout" title="退出登录" @click="handleLogout">
           <span class="rail-icon">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
               stroke="currentColor">
@@ -254,6 +254,12 @@ html.dark .rail-brand {
         padding-left: 2px;
         border-top: 0;
         border-left: 1px solid var(--border);
+    }
+
+    /* 移动端底部栏放不下主题/退出，收进「设置」页里 */
+    .rail-btn-theme,
+    .rail-btn-logout {
+        display: none;
     }
 
     .rail-btn {

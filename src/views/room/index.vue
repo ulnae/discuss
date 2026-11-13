@@ -89,8 +89,16 @@
     <aside v-show="infoVisiable" class="members">
       <section class="members-block">
         <header class="members-head">
-          群成员
-          <span class="chip">{{ getMember.length }}</span>
+          <span>
+            群成员
+            <span class="chip">{{ getMember.length }}</span>
+          </span>
+          <button type="button" class="icon-btn members-close" title="关闭" @click="infoVisiable = false">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+              stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
         </header>
         <div class="member-list">
           <div v-for="member in getMember" :key="member.user_id" class="member-row"
@@ -390,12 +398,25 @@ function handleRemoveMember(id: string) {
 .members-head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.4rem;
     font-size: 0.72rem;
     font-weight: 500;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-3);
+}
+
+/* 抽屉关闭按钮：窄屏抽屉形态下必须可见，否则关不掉 */
+.members-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
 }
 
 .member-list,
@@ -496,6 +517,8 @@ function handleRemoveMember(id: string) {
     }
 
     .members-mask {
+        /* 基础样式是 display:none，这里必须恢复显示，否则遮罩永远不出现、抽屉关不掉 */
+        display: block;
         position: absolute;
         inset: 0;
         z-index: 25;

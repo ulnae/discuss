@@ -56,6 +56,32 @@
             </div>
         </section>
 
+        <section class="settings-card settings-account">
+            <header class="card-head">外观与账号</header>
+            <div class="card-actions account-actions">
+                <button type="button" class="btn btn-ghost account-btn" @click="toggleTheme">
+                    <svg v-if="theme === 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                    </svg>
+                    {{ theme === 'light' ? '切换到深色' : '切换到浅色' }}
+                </button>
+                <button type="button" class="btn btn-ghost account-btn danger-btn" @click="handleLogout">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                    </svg>
+                    退出登录
+                </button>
+            </div>
+        </section>
+
         <input class="hidden" id="chooseHistoryFile" type="file" accept="*.json">
     </div>
 </template>
@@ -68,8 +94,13 @@ import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
 import { computed, onMounted, reactive } from 'vue'
 import { sortBy, uniqWith, isEqual } from 'lodash-es';
+import { useTheme } from '@/hooks/theme'
 const userStore = useUserStore()
 const socketStore = useSocketStore()
+
+// 移动端底部栏放不下主题/退出，收进设置页
+const { theme, toggleTheme } = useTheme()
+const handleLogout = () => userStore.logout()
 
 const dbStore = useDBStore()
 
@@ -156,10 +187,37 @@ onMounted(() => {
     flex-direction: column;
     gap: 12px;
     width: min(720px, 100%);
+    /* 全局没有 box-sizing:border-box，height:100% + 上下 padding 会撑出
+       父容器（app-main overflow:hidden），内容过高时底部被裁剪且滚不到 */
+    box-sizing: border-box;
     height: 100%;
     margin: 0 auto;
     padding: 1.6rem 1.25rem 2rem;
     overflow-y: auto;
+}
+
+/* 外观与账号卡片：桌面端底部栏已有主题/退出，只在移动端展示 */
+.settings-account {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .settings {
+        padding: 1rem 0.85rem calc(1.2rem + env(safe-area-inset-bottom));
+    }
+
+    .settings-account {
+        display: block;
+    }
+}
+
+.account-actions {
+    display: flex;
+    flex-direction: column;
+}
+
+.account-btn {
+    justify-content: flex-start;
 }
 
 .settings-head {

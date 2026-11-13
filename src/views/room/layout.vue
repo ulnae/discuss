@@ -1,5 +1,5 @@
 <template>
-  <div class="side-shell" :class="{ 'has-detail': !!paramsID }">
+  <div class="side-shell" :class="{ 'has-detail': hasDetail }">
     <aside ref="sidebarRef" class="side">
       <div class="side-head">
         <div class="ui-field ui-field-sm">
@@ -87,6 +87,10 @@ const paramsID = ref<string | undefined>(undefined)
 watchEffect(() => {
   paramsID.value = route.params?.id as string
 })
+
+/** 移动端是否有详情视图：搜索 / 创建房间 / 聊天页都算，只有欢迎页不算
+ *  （原来只看 params.id，导致 /room/search、/room/create 在窄屏下内容区不可见） */
+const hasDetail = computed(() => !!route.name && route.name !== 'room-dashboard')
 
 const handleRoomClick = (room: any) => {
   router.push({

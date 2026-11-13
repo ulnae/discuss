@@ -1,5 +1,11 @@
 <template>
     <div class="create-page">
+        <button type="button" class="icon-btn back-btn page-back" title="返回房间列表" @click="goBack">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+        </button>
         <div class="create-card">
             <header class="create-head">
                 <div class="create-logo" aria-hidden="true">
@@ -46,10 +52,15 @@
 
 <script lang="ts" setup>
 import { reactive } from "vue";
+import { useRouter } from "vue-router";
 import ServerApi from "@/api";
 import { useRoomStore } from "@/store/modules/room";
 import { toast } from "@/components/ui/toast";
+const router = useRouter()
 const roomStore = useRoomStore()
+
+/** 移动端创建页是独立一屏，提供返回列表的入口 */
+const goBack = () => router.push('/room/dashboard')
 const room = reactive({
     name: '',
     description: ''
@@ -75,6 +86,7 @@ const handleCreate = () => {
 
 <style lang="scss" scoped>
 .create-page {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -82,6 +94,13 @@ const handleCreate = () => {
     height: 100%;
     padding: 1.5rem 1.25rem;
     overflow-y: auto;
+}
+
+/* 移动端返回按钮（.back-btn 全局只在窄屏显示） */
+.page-back {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
 }
 
 .create-card {

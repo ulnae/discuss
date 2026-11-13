@@ -1,5 +1,11 @@
 <template>
   <div class="search-page">
+    <button type="button" class="icon-btn back-btn page-back" title="返回房间列表" @click="goBack">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15.75 19.5 8.25 12l7.5-7.5" />
+      </svg>
+    </button>
     <header class="search-head">
       <h1 class="search-title">搜索房间</h1>
       <p class="search-sub">输入房间名后回车，可申请加入感兴趣的聊天室</p>
@@ -51,10 +57,16 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 import { useRoomStore } from "@/store/modules/room";
 import ServerApi from "@/api";
 import { Room } from "@/store/modules/room";
 import { toast } from "@/components/ui/toast";
+
+const router = useRouter()
+
+/** 移动端搜索页是独立一屏，提供返回列表的入口 */
+const goBack = () => router.push('/room/dashboard')
 const roomName = ref("");
 
 const result = ref<Room[]>([]);
@@ -91,6 +103,12 @@ const handleJoin = (room_id: string) => {
   width: 100%;
   height: 100%;
   overflow-y: auto;
+}
+
+/* 移动端返回按钮（.back-btn 全局只在窄屏显示） */
+.page-back {
+  align-self: flex-start;
+  margin: 0.55rem 0.75rem 0;
 }
 
 .search-head {
