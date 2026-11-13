@@ -38,24 +38,6 @@
             </div>
         </section>
 
-        <section class="settings-card">
-            <header class="card-head">关于</header>
-            <div class="kv">
-                <div class="kv-row">
-                    <span class="kv-k">构建时间</span>
-                    <span class="kv-v">{{ __COMMIT_INFO__.time }}</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-k">作者</span>
-                    <span class="kv-v">{{ __COMMIT_INFO__.author }}</span>
-                </div>
-                <div class="kv-row">
-                    <span class="kv-k">提交</span>
-                    <span class="kv-v mono">{{ __COMMIT_INFO__.hash }}</span>
-                </div>
-            </div>
-        </section>
-
         <section class="settings-card settings-account">
             <header class="card-head">外观与账号</header>
             <div class="card-actions account-actions">
@@ -92,7 +74,7 @@ import { useDBStore } from '@/store/modules/database'
 import { useSocketStore } from '@/store/modules/socket'
 import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted } from 'vue'
 import { sortBy, uniqWith, isEqual } from 'lodash-es';
 import { useTheme } from '@/hooks/theme'
 const userStore = useUserStore()
@@ -103,12 +85,6 @@ const { theme, toggleTheme } = useTheme()
 const handleLogout = () => userStore.logout()
 
 const dbStore = useDBStore()
-
-const __COMMIT_INFO__ = reactive({
-    hash: __COMMIT_HASH__,
-    author: __COMMIT_AUTHOR__,
-    time: __COMMIT_TIME__
-})
 
 /** 账号信息展示：隐藏令牌类字段，常见字段换成中文标签 */
 const LABELS: Record<string, string> = {
@@ -298,10 +274,6 @@ onMounted(() => {
     min-width: 0;
     color: var(--text);
     word-break: break-all;
-}
-
-.kv-v.mono {
-    font-variant-numeric: tabular-nums;
 }
 
 .auto-wrap {

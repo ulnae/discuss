@@ -12,8 +12,3 @@ interface Window{
   returnCitySN?:any
   ActiveXObject?: any
 }
-
-// env.d.ts
-declare const __COMMIT_HASH__: string
-declare const __COMMIT_AUTHOR__: string
-declare const __COMMIT_TIME__: string

@@ -3,19 +3,6 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'url'
 import tailwindcss from '@tailwindcss/vite'
 import { createHtmlPlugin } from 'vite-plugin-html'
-import { execSync } from 'child_process'
-// 辅助函数：安全地执行 shell 命令
-const getGitInfo = (command: string) => {
-  try {
-    return execSync(command, { encoding: 'utf-8' }).trim()
-  } catch {
-    return 'unknown'
-  }
-}
-
-const commitHash = getGitInfo('git rev-parse --short HEAD')
-const commitAuthor = getGitInfo('git log -1 --pretty=format:"%an"')
-const commitTime = getGitInfo('git log -1 --pretty=format:"%ci"')
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -46,7 +33,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       host: true,
-      port: 8000,
+      port: 8090,
       open: true,
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -86,11 +73,6 @@ export default defineConfig(({ mode }) => {
           assetFileNames: '[ext]/[name]-[hash].[ext]'
         }
       }
-    },
-    define: {
-      __COMMIT_HASH__: JSON.stringify(commitHash),
-      __COMMIT_AUTHOR__: JSON.stringify(commitAuthor),
-      __COMMIT_TIME__: JSON.stringify(commitTime),
     }
   }
 })
