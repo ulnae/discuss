@@ -52,9 +52,20 @@ export function pushToRoom(env, roomId, event, data, exclude) {
     });
 }
 
+/** 成员关系变化后向房间全员补发当前在线名单（新成员也在列） */
+export function pushRoomOnline(env, roomId) {
+    if (!roomId) return Promise.resolve(0);
+    return post(env, '/push-room-online', { roomId: String(roomId) });
+}
+
+/** 好友关系变化后向双向补发当前在线状态（新好友可能此刻就在线） */
+export function pushUserStatus(env, userId) {
+    if (!userId) return Promise.resolve(0);
+    return post(env, '/push-friend-status', { userId: String(userId) });
+}
+
 /** 成员关系变化后刷新该用户的房间订阅 */
-export async function syncUserRooms(env, userId) {
-    if (!userId || !env.DB) return 0;
+export async function syncUserRooms(env, userId) {    if (!userId || !env.DB) return 0;
     try {
         const { results } = await env.DB
             .prepare('SELECT room_id FROM member WHERE user_id = ? AND isDeleted = 0')

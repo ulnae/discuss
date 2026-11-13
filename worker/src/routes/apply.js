@@ -12,7 +12,7 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
-import { pushToUsers, pushToRoom, syncUserRooms } from '../lib/realtime.js';
+import { pushToUsers, pushToRoom, pushRoomOnline, pushUserStatus, syncUserRooms } from '../lib/realtime.js';
 
 const APPLY_SELECT = `
     SELECT a.id, a.user_id, a.room_id, a.apply_user_id, a.status, a.handle_status,
@@ -143,6 +143,11 @@ async function update(request, env, ctx, id) {
             status: accepted,
             user: { id: me.id, username: me.username }
         });
+        if (accepted) {
+            /* 双向补发在线状态：双方列表刚出现对方（REST 列表不带在线状态），
+               不补发的话对方即使在线也会一直显示离线 */
+            await pushUserStatus(env, apply.user_id);
+        }
     } else if (room) {
         await pushToUsers(env, [apply.user_id], 'room:apply:result', {
             applyId: id,
@@ -157,6 +162,8 @@ async function update(request, env, ctx, id) {
                 userId: apply.user_id,
                 member: apply.user_info
             }, apply.user_id);
+            /* 成员列表刷新后补发一次在线名单：房间所有人（含新成员自己）的在线集合即时更新 */
+            await pushRoomOnline(env, room.id);
         }
     }
 

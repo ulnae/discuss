@@ -9,7 +9,7 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
-import { pushToUsers } from '../lib/realtime.js';
+import { pushToUsers, pushUserStatus } from '../lib/realtime.js';
 
 const FRIEND_SELECT = `
     SELECT f.id, f.creator, f.friend_id, f.createdAt,
@@ -57,6 +57,8 @@ async function create(request, env, ctx) {
     await pushToUsers(env, [friendId], 'friend:added', {
         user: { id: creator, username: row && row.c_username }
     });
+    /* 补发双向在线状态：双方列表刚出现对方，可能此刻就在线 */
+    await pushUserStatus(env, creator);
     return ok(friendView(row), ctx.cors);
 }
 

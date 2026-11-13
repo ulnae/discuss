@@ -9,13 +9,14 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
-import { pushToUsers, pushToRoom, syncUserRooms } from '../lib/realtime.js';
+import { pushToUsers, pushToRoom, pushRoomOnline, syncUserRooms } from '../lib/realtime.js';
 
 const MEMBER_SELECT = `
     SELECT m.id, m.user_id, m.room_id, m.createdAt,
            u.id AS u_id, u.username AS u_username, u.email AS u_email,
            u.createdAt AS u_createdAt, u.updatedAt AS u_updatedAt,
            r.id AS r_id, r.name AS r_name, r.creator AS r_creator,
+           r.description AS r_description,
            r.createdAt AS r_createdAt, r.updatedAt AS r_updatedAt
     FROM member m
     LEFT JOIN user u ON u.id = m.user_id
@@ -31,7 +32,7 @@ const memberView = (row) => ({
         ? { id: row.u_id, username: row.u_username, email: row.u_email, createdAt: iso(row.u_createdAt), updatedAt: iso(row.u_updatedAt) }
         : null,
     room_info: row.r_id
-        ? { id: row.r_id, name: row.r_name, creator: row.r_creator, createdAt: iso(row.r_createdAt), updatedAt: iso(row.r_updatedAt) }
+        ? { id: row.r_id, name: row.r_name, creator: row.r_creator, description: row.r_description, createdAt: iso(row.r_createdAt), updatedAt: iso(row.r_updatedAt) }
         : null
 });
 
@@ -61,6 +62,8 @@ async function create(request, env, ctx) {
     await syncUserRooms(env, userId);
     await pushToUsers(env, [userId], 'room:joined', { room: { id: room.id, name: room.name, creator: room.creator } });
     await pushToRoom(env, roomId, 'member:joined', { roomId, userId, member: memberView(row).user_info }, userId);
+    /* 新成员此刻多半在线，补发一次在线名单，避免所有人列表里他显示离线 */
+    await pushRoomOnline(env, roomId);
 
     return ok(memberView(row), ctx.cors);
 }

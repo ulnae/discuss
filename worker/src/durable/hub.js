@@ -61,6 +61,48 @@ export class DiscussHub {
             return Response.json({ ok: true, delivered });
         }
 
+        /* 成员加入/退出后向房间全员补发当前在线名单（新成员也在列） */
+        if (url.pathname === '/push-room-online') {
+            const body = await request.json().catch(() => null);
+            if (!body || !body.roomId) return new Response('bad request', { status: 400 });
+            const roomId = String(body.roomId);
+            const delivered = this.sendToRoom(roomId, 'online:room', {
+                room: roomId,
+                users: this.roomUsers(roomId),
+                timestamp: now()
+            });
+            return Response.json({ ok: true, delivered });
+        }
+
+        /* 好友关系变化后向双向补发当前在线状态：
+           好友的列表里可能刚出现这个人（REST 列表不带在线状态），靠这里即时校正 */
+        if (url.pathname === '/push-friend-status') {
+            const body = await request.json().catch(() => null);
+            if (!body || !body.userId) return new Response('bad request', { status: 400 });
+            const userId = String(body.userId);
+            const online = this.userSockets(userId).length > 0;
+            const { results } = await this.env.DB
+                .prepare('SELECT friend_id FROM friend WHERE creator = ? AND isDeleted = 0')
+                .bind(userId)
+                .all();
+            let delivered = 0;
+            for (const row of results || []) {
+                delivered += this.sendToUser(row.friend_id, 'status:firend', {
+                    friend: userId,
+                    status: online,
+                    timestamp: now()
+                });
+                if (this.userSockets(row.friend_id).length) {
+                    delivered += this.sendToUser(userId, 'status:firend', {
+                        friend: row.friend_id,
+                        status: true,
+                        timestamp: now()
+                    });
+                }
+            }
+            return Response.json({ ok: true, delivered });
+        }
+
         /* 房间成员变动后刷新某个用户的房间订阅（否则新加入的房间收不到消息） */
         if (url.pathname === '/sync') {
             const body = await request.json().catch(() => null);
