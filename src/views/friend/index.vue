@@ -2,6 +2,12 @@
   <div class="chat-shell">
     <div class="chat-main">
       <header class="chat-head">
+        <button type="button" class="icon-btn back-btn" title="返回好友列表" @click="goBack">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
         <span class="avatar avatar-lg">{{ initial }}</span>
         <div class="chat-head-main">
           <div class="chat-title">{{ getFriendInfo.username }}</div>
@@ -82,6 +88,8 @@
       </div>
     </div>
 
+    <div v-show="infoVisiable" class="info-mask" @click="infoVisiable = false"></div>
+
     <aside v-show="infoVisiable" class="info">
       <div class="info-head">好友资料</div>
 
@@ -112,6 +120,9 @@
       <button type="button" class="btn btn-ghost btn-block btn-sm" @click="handleStartCall" :disabled="!isFriendOnline">
         发起语音通话
       </button>
+      <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleRemoveFriend">
+        删除好友
+      </button>
     </aside>
 
     <input class="hidden" id="chooseImage" type="file" accept="image/*">
@@ -134,6 +145,7 @@ import { compressImage, imageFilename } from "@/utils/image";
 import { usePaste } from "@/hooks/paste";
 import { useResizable } from "@/hooks/resizable";
 import { Comment } from "@/components";
+import { toast } from "@/components/ui/toast";
 
 const socketStore = useSocketStore();
 const friendStore = useFriendStore();
@@ -156,12 +168,27 @@ const getFriendInfo = computed(() => {
 const isFriendOnline = computed(() => {
   return !!friendStore.getFriendMap[route.params.id as string]?.status;
 });
-// 无好友信息时，跳转404
+// 好友列表已加载但找不到这个人（被删除 / 链接失效）时回好友列表
 watchEffect(() => {
-  if (!getFriendInfo.value.id) router.push("404");
+  if (!friendStore.friends.length) return
+  if (!getFriendInfo.value.id) router.replace('/friend/dashboard')
 });
 
 const initial = computed(() => (getFriendInfo.value.username || '?').trim().charAt(0).toUpperCase())
+
+// 删除好友：双向生效，对方会实时收到 friend:removed
+const handleRemoveFriend = async () => {
+  const friendId = route.params.id as string
+  const name = getFriendInfo.value.username || '该好友'
+  if (!window.confirm(`删除后双方好友列表都会消失，确定删除「${name}」吗？`)) return
+
+  const res: any = await serverApi.RemoveFriend(friendId)
+  if (res.code === 200) {
+    friendStore.removeFriend(friendId)
+    toast.success('已删除好友')
+    router.replace('/friend/dashboard')
+  }
+}
 
 // 发起语音通话
 const handleStartCall = () => {
@@ -243,10 +270,17 @@ watch(
   { deep: true }
 );
 
-const infoVisiable = ref(true);
+const infoVisiable = ref(!isNarrow());
 const handleSwitchInfo = () => {
   infoVisiable.value = !infoVisiable.value;
 };
+
+/** 窄屏默认收起资料面板，避免聊天区被挤成一条缝 */
+function isNarrow() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+}
+
+const goBack = () => router.push('/friend/dashboard')
 </script>
 
 <style lang="scss" scoped>
@@ -321,9 +355,38 @@ const handleSwitchInfo = () => {
     min-width: 0;
 }
 
+/* 移动端：资料面板做成右侧抽屉，不再直接隐藏（隐藏后就没法删除好友了） */
+.info-mask {
+    display: none;
+}
+
 @media (max-width: 900px) {
-    .info {
-        display: none;
+    .chat-shell {
+        position: relative;
     }
+
+    .info {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        width: min(86%, 320px);
+        border-left: 1px solid var(--border);
+        background: var(--surface-solid);
+        box-shadow: -24px 0 48px -24px rgba(15, 23, 42, 0.45);
+    }
+
+    .info-mask {
+        position: absolute;
+        inset: 0;
+        z-index: 25;
+        background: rgba(15, 23, 42, 0.28);
+        backdrop-filter: blur(1px);
+    }
+}
+
+html.dark .info {
+    box-shadow: -24px 0 48px -24px rgba(0, 0, 0, 0.75);
 }
 </style>

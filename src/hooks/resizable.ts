@@ -74,6 +74,10 @@ export const useResizable = (
   onMounted(() => {
     const el = targetRef.value
     if (!el) return
+    /* 移动端没有鼠标拖拽这回事：不注入手柄，也不写死固定尺寸，
+       交给 CSS 按屏幕自适应（否则窄屏上 inline px 宽度会把布局撑坏） */
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches) return
+
     el.style[sizeProp] = initialSize + 'px'
     el.style.position = 'relative'
 

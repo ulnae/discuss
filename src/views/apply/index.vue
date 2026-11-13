@@ -191,6 +191,26 @@ applyStore.getApplies()
 @media (max-width: 760px) {
     .apply-page {
         flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+        overflow-y: auto;
+    }
+
+    /* 单列时不再各自内部滚动，整页滚更符合手机习惯 */
+    .apply-col {
+        flex: 0 0 auto;
+    }
+
+    .apply-body {
+        overflow: visible;
+    }
+
+    /* 触摸设备没有 hover，操作按钮常显并放大热区 */
+    .approve,
+    .reject {
+        width: 32px;
+        height: 32px;
+        opacity: 1;
     }
 }
 </style>

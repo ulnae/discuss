@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Discuss">
+  <defs>
+    <linearGradient id="discuss-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#26262b"/>
+      <stop offset="1" stop-color="#0a0a0c"/>
+    </linearGradient>
+    <linearGradient id="discuss-shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角方块底：与站内玻璃卡片的墨黑主色一致 -->
+  <rect width="64" height="64" rx="16" fill="url(#discuss-bg)"/>
+  <rect width="64" height="32" rx="16" fill="url(#discuss-shine)"/>
+
+  <!-- 对话气泡 -->
+  <path d="M32 13.5c-9.6 0-17.4 6.8-17.4 15.2 0 4.8 2.5 9 6.5 11.8l-1.6 7.3 8.4-4.2c1.3.2 2.7.4 4.1.4 9.6 0 17.4-6.8 17.4-15.3S41.6 13.5 32 13.5Z"
+    fill="#ffffff"/>
+
+  <!-- 两行文字线，呼应品牌 logo -->
+  <path d="M23.4 26.6h17.2M23.4 33.4h11" stroke="#0d0d10" stroke-width="3.4" stroke-linecap="round"/>
+</svg>

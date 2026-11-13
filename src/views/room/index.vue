@@ -2,6 +2,12 @@
   <div class="chat-shell">
     <div class="chat-main">
       <header class="chat-head">
+        <button type="button" class="icon-btn back-btn" title="返回房间列表" @click="goBack">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
         <span class="avatar avatar-lg">{{ initial }}</span>
         <div class="chat-head-main">
           <div class="chat-title">{{ getRoomInfo.name }}</div>
@@ -18,6 +24,13 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
               stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+            </svg>
+          </button>
+          <button type="button" class="icon-btn leave-btn" :title="isOwner ? '解散房间' : '退出房间'"
+            @click="handleLeaveRoom">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
+              stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
             </svg>
           </button>
         </div>
@@ -70,6 +83,8 @@
         </div>
       </div>
     </div>
+
+    <div v-show="infoVisiable" class="members-mask" @click="infoVisiable = false"></div>
 
     <aside v-show="infoVisiable" class="members">
       <section class="members-block">
@@ -144,6 +159,7 @@ import { compressImage, imageFilename } from "@/utils/image";
 import { usePaste } from '@/hooks/paste'
 import { useResizable } from '@/hooks/resizable'
 import { Comment } from '@/components'
+import { toast } from '@/components/ui/toast'
 
 const socketStore = useSocketStore();
 const userStore = useUserStore();
@@ -178,38 +194,30 @@ const getRoomInfo = computed(() => {
   return roomStore.getRoomMap[route.params.id as string]?.room_info || {};
 });
 const initial = computed(() => (getRoomInfo.value.name || '?').trim().charAt(0).toUpperCase())
-// 无房间信息时，跳转404
+// 房间列表已加载但找不到该房间（被踢 / 被解散）时回房间列表，而不是甩一个 404
 watchEffect(() => {
-  if (!getRoomInfo.value.id) router.push('404')
+  if (!roomStore.rooms.length) return
+  if (!getRoomInfo.value.id) router.replace('/room/dashboard')
 })
 
-// 监听路由变化
-const applyList = ref<any[]>([]);
+// 入群申请（房主可见）放 store：实时事件 room:apply 也能直接刷新
+const applyList = computed(() => roomStore.applyMap.get(route.params.id as string) || [])
 watch(
-  () => route.params.id,
-  () => {
-    handleApplyRoom();
-  }
-);
+  [() => route.params.id, () => roomStore.roomsMine.length],
+  ([id]) => {
+    if (typeof id === 'string' && id) roomStore.getRoomApplies(id)
+  },
+  { immediate: true }
+)
 
-function handleApplyRoom() {
-  if (!roomStore.roomsMine.find((item: any) => item.id === route.params.id)) {
-    return (applyList.value = []);
-  }
-  ServerApi.getApplyRoom(route.params.id as string).then((res: any) => {
-    applyList.value = res.data || [];
-  });
-}
-handleApplyRoom();
-
-// 处理申请
+// 处理入群申请
 function handleHandleApply(apply: any, status: boolean) {
   ServerApi.handleApply({
     id: apply.id,
     status,
   }).then((res: any) => {
     if (res.code === 200) {
-      handleApplyRoom();
+      roomStore.getRoomApplies(route.params.id as string)
       // 同意申请后，刷新获取房间成员
       status && roomStore.getRoomMember(route.params.id as string);
     }
@@ -291,16 +299,58 @@ watch(
   { deep: true }
 );
 
-const infoVisiable = ref(true)
+const infoVisiable = ref(!isNarrow())
 const handleSwitchInfo = () => {
   infoVisiable.value = !infoVisiable.value
 }
 
+/** 窄屏默认收起群成员面板，点右上角以抽屉形式查看 */
+function isNarrow() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
+}
+
+const goBack = () => router.push('/room/dashboard')
+
+// 群主：可解散房间、移出成员；其他人只能自己退出
+const isOwner = computed(() => !!getRoomInfo.value.creator && getRoomInfo.value.creator === userStore.userInfo.id)
+
+async function handleLeaveRoom() {
+  const roomId = route.params.id as string
+  const name = getRoomInfo.value.name || '房间'
+
+  if (isOwner.value) {
+    if (!window.confirm(`解散后所有成员都会被移出，确定解散「${name}」吗？`)) return
+    const res: any = await ServerApi.DeleteRoom(roomId)
+    if (res.code === 200) {
+      roomStore.removeRoom(roomId)
+      toast.success('房间已解散')
+      router.replace('/room/dashboard')
+    }
+    return
+  }
+
+  const self = getMember.value.find((item: any) => item.user_id === userStore.userInfo.id)
+  if (!self) {
+    toast.warning('你已不在该房间')
+    router.replace('/room/dashboard')
+    return
+  }
+  if (!window.confirm(`确定退出「${name}」吗？`)) return
+
+  const res: any = await ServerApi.RemoveMember(self.id)
+  if (res.code === 200) {
+    roomStore.removeRoom(roomId)
+    toast.info('已退出房间')
+    router.replace('/room/dashboard')
+  }
+}
 
 function handleRemoveMember(id: string) {
+  if (!window.confirm('确定把该成员移出房间吗？对方会立刻收到通知')) return
   ServerApi.RemoveMember(id).then((res: any) => {
     if (res.code === 200) {
       roomStore.getRoomMember(route.params.id as string);
+      toast.success('已移出成员')
     }
   });
 }
@@ -418,9 +468,44 @@ function handleRemoveMember(id: string) {
     }
 }
 
+.leave-btn:hover {
+    color: var(--danger);
+    background: rgba(225, 29, 72, 0.1);
+}
+
+/* 移动端：群成员面板改成右侧抽屉 */
+.members-mask {
+    display: none;
+}
+
 @media (max-width: 900px) {
+    .chat-shell {
+        position: relative;
+    }
+
     .members {
-        display: none;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        width: min(86%, 320px);
+        border-left: 1px solid var(--border);
+        background: var(--surface-solid);
+        box-shadow: -24px 0 48px -24px rgba(15, 23, 42, 0.45);
+    }
+
+    .members-mask {
+        position: absolute;
+        inset: 0;
+        z-index: 25;
+        background: rgba(15, 23, 42, 0.28);
+        backdrop-filter: blur(1px);
+    }
+
+    /* 触摸设备没有 hover，踢人按钮常显 */
+    .kick {
+        opacity: 0.7;
     }
 }
 </style>

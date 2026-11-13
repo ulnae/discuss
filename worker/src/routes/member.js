@@ -9,6 +9,7 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
+import { pushToUsers, pushToRoom, syncUserRooms } from '../lib/realtime.js';
 
 const MEMBER_SELECT = `
     SELECT m.id, m.user_id, m.room_id, m.createdAt,
@@ -35,11 +36,15 @@ const memberView = (row) => ({
 });
 
 async function create(request, env, ctx) {
-    await currentUser(request, env);
+    const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
     const userId = String(body.user_id || '');
     const roomId = String(body.room_id || '');
     if (!userId || !roomId) throw new ApiError('缺少 user_id 或 room_id', 400);
+
+    const room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
+    if (!room) throw new ApiError('房间不存在', 404);
+    if (room.creator !== me.id) throw new ApiError('只有群主可以添加成员', 401);
 
     const existing = await first(env, 'SELECT id FROM member WHERE user_id = ? AND room_id = ? AND isDeleted = 0', userId, roomId);
     if (existing) {
@@ -51,6 +56,12 @@ async function create(request, env, ctx) {
     const timestamp = now();
     await run(env, 'INSERT INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', id, userId, roomId, timestamp);
     const row = await first(env, `${MEMBER_SELECT} WHERE m.id = ?`, id);
+
+    /* 被拉进房间的人需要立刻在列表里看到这个房间，并且能收到房间消息 */
+    await syncUserRooms(env, userId);
+    await pushToUsers(env, [userId], 'room:joined', { room: { id: room.id, name: room.name, creator: room.creator } });
+    await pushToRoom(env, roomId, 'member:joined', { roomId, userId, member: memberView(row).user_info }, userId);
+
     return ok(memberView(row), ctx.cors);
 }
 
@@ -67,12 +78,45 @@ async function list(request, env, ctx) {
 }
 
 async function remove(request, env, ctx, id) {
-    await currentUser(request, env);
-    const row = await first(env, 'SELECT id FROM member WHERE id = ? AND isDeleted = 0', id);
+    const me = await currentUser(request, env);
+    const row = await first(env, `${MEMBER_SELECT} WHERE m.id = ? AND m.isDeleted = 0`, id);
     if (!row) throw new ApiError('该成员不存在', 401);
+
+    /* row 是 JOIN 原始行（r_creator），视图转换后才叫 room_info.creator */
+    const view = memberView(row);
+    const isSelf = row.user_id === me.id;
+    const isOwner = !!(view.room_info && view.room_info.creator === me.id);
+    if (!isSelf && !isOwner) throw new ApiError('只有群主可以移出成员', 401);
+
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE id = ?', id);
-    const updated = await first(env, `${MEMBER_SELECT} WHERE m.id = ?`, id);
-    return ok(memberView(updated), ctx.cors);
+
+    const roomId = row.room_id;
+    const userId = row.user_id;
+    const roomName = view.room_info?.name || '';
+
+    if (isSelf) {
+        /* 主动退出：给自己一个明确的回执，并摘掉房间订阅 */
+        await pushToUsers(env, [userId], 'room:left', { roomId, roomName });
+        await syncUserRooms(env, userId);
+    } else if (userId) {
+        /* 被踢的人：先告诉他原因，再摘掉房间订阅（否则还能继续收房间消息） */
+        await pushToUsers(env, [userId], 'room:kicked', {
+            roomId,
+            roomName,
+            by: { id: me.id, username: me.username }
+        });
+        await syncUserRooms(env, userId);
+    }
+
+    /* 房间里的其他人：成员列表要减一 */
+    await pushToRoom(env, roomId, 'member:removed', {
+        roomId,
+        userId,
+        by: { id: me.id, username: me.username },
+        reason: isSelf ? 'left' : 'kicked'
+    }, userId);
+
+    return ok(view, ctx.cors);
 }
 
 export async function handleMember(request, env, ctx, rest) {

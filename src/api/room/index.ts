@@ -58,4 +58,11 @@ export default {
             method: 'get'
         })
     },
+    // 解散房间（群主）；成员会实时收到 room:deleted
+    DeleteRoom(id: string) {
+        return request({
+            url: `${Url[requestServerName].room}/${id}`,
+            method: 'delete'
+        })
+    },
 }

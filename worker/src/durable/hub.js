@@ -47,6 +47,53 @@ export class DiscussHub {
             return Response.json({ ok: true, delivered });
         }
 
+        /* 定向推送：REST 写操作（加好友/踢人/删房间…）完成后由 Worker 调用 */
+        if (url.pathname === '/notify') {
+            const body = await request.json().catch(() => null);
+            if (!body || !body.event) return new Response('bad request', { status: 400 });
+            let delivered = 0;
+            for (const userId of body.users || []) {
+                delivered += this.sendToUser(userId, body.event, body.data);
+            }
+            for (const roomId of body.rooms || []) {
+                delivered += this.sendToRoom(roomId, body.event, body.data, body.exclude);
+            }
+            return Response.json({ ok: true, delivered });
+        }
+
+        /* 房间成员变动后刷新某个用户的房间订阅（否则新加入的房间收不到消息） */
+        if (url.pathname === '/sync') {
+            const body = await request.json().catch(() => null);
+            if (!body || !body.userId) return new Response('bad request', { status: 400 });
+            const rooms = Array.isArray(body.rooms) ? body.rooms.map(String) : [];
+            let updated = 0;
+            for (const socket of this.userSockets(String(body.userId))) {
+                const info = this.attach(socket) || {};
+                try {
+                    socket.serializeAttachment({ ...info, rooms });
+                    updated++;
+                } catch { /* socket 已关闭 */ }
+            }
+            return Response.json({ ok: true, updated });
+        }
+
+        /* 房间被删除：把该房间从所有连接的订阅里摘掉 */
+        if (url.pathname === '/drop-room') {
+            const body = await request.json().catch(() => null);
+            if (!body || !body.roomId) return new Response('bad request', { status: 400 });
+            const roomId = String(body.roomId);
+            let updated = 0;
+            for (const socket of this.state.getWebSockets()) {
+                const info = this.attach(socket);
+                if (!info || !Array.isArray(info.rooms) || !info.rooms.includes(roomId)) continue;
+                try {
+                    socket.serializeAttachment({ ...info, rooms: info.rooms.filter(id => id !== roomId) });
+                    updated++;
+                } catch { /* ignore */ }
+            }
+            return Response.json({ ok: true, updated });
+        }
+
         if (url.pathname === '/stats') {
             return Response.json({ sockets: this.state.getWebSockets().length });
         }
@@ -121,9 +168,12 @@ export class DiscussHub {
             try { other.close(4001, 'kicked'); } catch { /* ignore */ }
         }
 
-        const rooms = me.rooms && me.rooms.length ? me.rooms : await this.userRooms(me.userId);
+        /* 每次（重）连都重新读一次成员表：重连本身就是「房间订阅自愈」的时机 */
+        const rooms = await this.userRooms(me.userId);
+        try { ws.serializeAttachment({ ...me, rooms }); } catch { /* ignore */ }
+
         for (const room of rooms) {
-            this.sendToTag(`room:${room}`, 'online:room', { room, users: this.roomUsers(room), timestamp: now() });
+            this.sendToRoom(room, 'online:room', { room, users: this.roomUsers(room), timestamp: now() });
         }
 
         const friends = await this.friendIds(me.userId);
@@ -148,7 +198,7 @@ export class DiscussHub {
         if (remaining.length) return;
 
         for (const room of me.rooms || []) {
-            this.sendToTag(`room:${room}`, 'online:room', { room, users: this.roomUsers(room), timestamp: now() });
+            this.sendToRoom(room, 'online:room', { room, users: this.roomUsers(room), timestamp: now() });
         }
 
         const friends = await this.friendIds(me.userId);
@@ -178,8 +228,12 @@ export class DiscussHub {
         const room = String((data && data.room) || '');
         if (!me.userId || !room) return;
 
+        /* 只允许往自己已加入的房间发消息（attachment 在成员变动时由 /sync 刷新；
+           被踢/退出后 rooms 会变成空数组，此时所有房间消息都要拒掉） */
+        if (Array.isArray(me.rooms) && !me.rooms.includes(room)) return;
+
         const payload = { ...data, sender: me.userId, timestamp: now() };
-        this.sendToTag(`room:${room}`, 'message:room', payload);
+        this.sendToRoom(room, 'message:room', payload);
     }
 
     /* ==================== 语音通话信令 ==================== */
@@ -332,6 +386,33 @@ export class DiscussHub {
         return delivered;
     }
 
+    /** 推给某个用户的全部连接（多标签页/多设备） */
+    sendToUser(userId, event, data) {
+        let delivered = 0;
+        for (const socket of this.userSockets(String(userId))) {
+            if (this.safeSend(socket, frame(event, data))) delivered++;
+        }
+        return delivered;
+    }
+
+    /**
+     * 推给某个房间的在线成员。
+     * 用 attachment.rooms 而不是 socket tag 判断：tag 在 accept 后不可修改，
+     * 而成员可能随时被加入/移出房间，attachment 能通过 /sync 实时刷新。
+     */
+    sendToRoom(roomId, event, data, excludeUser) {
+        const room = String(roomId);
+        const exclude = excludeUser ? String(excludeUser) : '';
+        let delivered = 0;
+        for (const socket of this.state.getWebSockets()) {
+            const info = this.attach(socket);
+            if (!info || !Array.isArray(info.rooms) || !info.rooms.includes(room)) continue;
+            if (exclude && info.userId === exclude) continue;
+            if (this.safeSend(socket, frame(event, data))) delivered++;
+        }
+        return delivered;
+    }
+
     broadcastAll(event, data) {
         let delivered = 0;
         for (const socket of this.state.getWebSockets()) {
@@ -345,12 +426,13 @@ export class DiscussHub {
     }
 
     roomUsers(roomId) {
+        const room = String(roomId);
         const users = new Set();
-        let sockets = [];
-        try { sockets = this.state.getWebSockets(`room:${roomId}`); } catch { sockets = []; }
-        for (const socket of sockets) {
+        for (const socket of this.state.getWebSockets()) {
             const info = this.attach(socket);
-            if (info && info.userId) users.add(info.userId);
+            if (!info || !info.userId) continue;
+            if (!Array.isArray(info.rooms) || !info.rooms.includes(room)) continue;
+            users.add(info.userId);
         }
         return Array.from(users);
     }

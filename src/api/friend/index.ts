@@ -37,4 +37,11 @@ export default {
             method: 'get',
         })
     },
+    // 删除好友（后端按双向软删处理，对方列表会同步消失）
+    RemoveFriend(id: string) {
+        return request({
+            url: `${Url[requestServerName].friend}/${id}`,
+            method: 'delete',
+        })
+    },
 }

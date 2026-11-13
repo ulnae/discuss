@@ -9,6 +9,7 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
+import { pushToUsers } from '../lib/realtime.js';
 
 const FRIEND_SELECT = `
     SELECT f.id, f.creator, f.friend_id, f.createdAt,
@@ -52,6 +53,10 @@ async function create(request, env, ctx) {
     const id = uuid();
     await run(env, 'INSERT INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', id, creator, friendId, now());
     const row = await first(env, `${FRIEND_SELECT} WHERE f.id = ?`, id);
+    /* 对方也要立刻看到这条好友关系 */
+    await pushToUsers(env, [friendId], 'friend:added', {
+        user: { id: creator, username: row && row.c_username }
+    });
     return ok(friendView(row), ctx.cors);
 }
 
@@ -64,8 +69,24 @@ async function list(request, env, ctx) {
 async function remove(request, env, ctx, friendId) {
     const me = await currentUser(request, env);
     const row = await first(env, 'SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0', me.id, friendId);
-    if (!row) throw new ApiError('好友关系不存在', 401);
-    await run(env, 'UPDATE friend SET isDeleted = 1 WHERE id = ?', row.id);
+
+    /* 单向记录不存在时也允许清理对方那侧，避免历史数据残留导致「删不掉」 */
+    if (!row) {
+        const reverse = await first(env, 'SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0', friendId, me.id);
+        if (!reverse) throw new ApiError('好友关系不存在', 401);
+    }
+
+    /* 双向软删：好友是双方关系，只删自己那侧会让对方列表里还留着一个「幽灵好友」 */
+    await run(
+        env,
+        'UPDATE friend SET isDeleted = 1 WHERE (creator = ? AND friend_id = ?) OR (creator = ? AND friend_id = ?)',
+        me.id, friendId, friendId, me.id
+    );
+
+    await pushToUsers(env, [friendId], 'friend:removed', {
+        userId: me.id,
+        username: me.username
+    });
     return ok({ affected: 1 }, ctx.cors);
 }
 

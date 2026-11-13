@@ -12,6 +12,7 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
+import { pushToUsers, pushToRoom, syncUserRooms } from '../lib/realtime.js';
 
 const APPLY_SELECT = `
     SELECT a.id, a.user_id, a.room_id, a.apply_user_id, a.status, a.handle_status,
@@ -59,7 +60,21 @@ async function create(request, env, ctx) {
         id, me.id, roomId, applyUserId, timestamp, timestamp
     );
     const row = await first(env, `${APPLY_SELECT} WHERE a.id = ?`, id);
-    return ok(applyView(row), ctx.cors);
+    const view = applyView(row);
+
+    /* 让接收方立刻看到这条申请，不用等下一次刷新 */
+    if (applyUserId) {
+        await pushToUsers(env, [applyUserId], 'friend:request', { apply: view });
+    } else if (roomId) {
+        const room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
+        if (room) {
+            await pushToUsers(env, [room.creator], 'room:apply', {
+                apply: view,
+                room: { id: room.id, name: room.name }
+            });
+        }
+    }
+    return ok(view, ctx.cors);
 }
 
 async function listMine(request, env, ctx) {
@@ -89,6 +104,7 @@ async function listApplyToMe(request, env, ctx) {
 async function update(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
+    const accepted = !!body.status;
 
     const row = await first(env, `${APPLY_SELECT} WHERE a.id = ? AND a.isDeleted = 0`, id);
     if (!row) throw new ApiError('申请不存在', 401);
@@ -96,15 +112,17 @@ async function update(request, env, ctx, id) {
 
     const apply = applyView(row);
     if (apply.apply_user_id && apply.apply_user_id !== me.id) throw new ApiError('不是被申请人，不能操作', 401);
-    if (apply.apply_user_id && body.status) {
+    if (apply.apply_user_id && accepted) {
+        /* 双向好友关系：双方列表都要立刻出现对方 */
         await run(env, 'INSERT INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.apply_user_id, apply.user_id, now());
         await run(env, 'INSERT INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.apply_user_id, now());
     }
 
+    let room = null;
     if (apply.room_id) {
-        const room = await first(env, 'SELECT creator FROM room WHERE id = ?', apply.room_id);
+        room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ?', apply.room_id);
         if (!room || room.creator !== me.id) throw new ApiError('不是房间创建人，不能操作', 401);
-        if (body.status) {
+        if (accepted) {
             const exist = await first(env, 'SELECT id FROM member WHERE user_id = ? AND room_id = ? AND isDeleted = 0', apply.user_id, apply.room_id);
             if (!exist) {
                 await run(env, 'INSERT INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.room_id, now());
@@ -115,17 +133,55 @@ async function update(request, env, ctx, id) {
     await run(
         env,
         'UPDATE apply SET status = ?, handle_status = 1, updatedAt = ? WHERE id = ?',
-        body.status ? 1 : 0, now(), id
+        accepted ? 1 : 0, now(), id
     );
+
+    /* ---------- 实时通知：申请人立刻知道结果 ---------- */
+    if (apply.apply_user_id) {
+        await pushToUsers(env, [apply.user_id], accepted ? 'friend:accepted' : 'friend:rejected', {
+            applyId: id,
+            status: accepted,
+            user: { id: me.id, username: me.username }
+        });
+    } else if (room) {
+        await pushToUsers(env, [apply.user_id], 'room:apply:result', {
+            applyId: id,
+            status: accepted,
+            room: { id: room.id, name: room.name }
+        });
+        if (accepted) {
+            /* 订阅先刷新，再广播成员变化，保证新成员能收到后续房间消息 */
+            await syncUserRooms(env, apply.user_id);
+            await pushToRoom(env, room.id, 'member:joined', {
+                roomId: room.id,
+                userId: apply.user_id,
+                member: apply.user_info
+            }, apply.user_id);
+        }
+    }
+
     return ok({ affected: 1 }, ctx.cors);
 }
 
 async function remove(request, env, ctx, id) {
-    await currentUser(request, env);
-    const row = await first(env, 'SELECT id, handle_status FROM apply WHERE id = ? AND isDeleted = 0', id);
+    const me = await currentUser(request, env);
+    const row = await first(env, `${APPLY_SELECT} WHERE a.id = ? AND a.isDeleted = 0`, id);
     if (!row) throw new ApiError('申请不存在', 401);
     if (row.handle_status) throw new ApiError('已处理，不能再操作', 401);
+    const apply = applyView(row);
+    if (apply.user_id !== me.id) throw new ApiError('只能撤回自己发起的申请', 401);
+
     await run(env, 'UPDATE apply SET isDeleted = 1, updatedAt = ? WHERE id = ?', now(), id);
+
+    /* 撤回后接收方的待办列表要立刻消失 */
+    if (apply.apply_user_id) {
+        await pushToUsers(env, [apply.apply_user_id], 'apply:revoked', { applyId: id, from: apply.user_id });
+    } else if (apply.room_id) {
+        const room = await first(env, 'SELECT creator FROM room WHERE id = ?', apply.room_id);
+        if (room) {
+            await pushToUsers(env, [room.creator], 'apply:revoked', { applyId: id, from: apply.user_id, roomId: apply.room_id });
+        }
+    }
     return ok({ affected: 1 }, ctx.cors);
 }
 

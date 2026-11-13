@@ -200,35 +200,92 @@ html.dark .rail-brand {
     overflow: hidden;
 }
 
-@media (max-width: 560px) {
+/* 移动端：左侧导航改成底部 tab bar，内容区占满剩余高度 */
+@media (max-width: 768px) {
     .app-canvas {
-        gap: 6px;
-        padding: 6px;
-    }
-
-    .rail {
-        width: 58px;
-        padding: 8px 5px;
-        border-radius: 16px;
-    }
-
-    .rail-brand {
-        width: 32px;
-        height: 32px;
-        margin-bottom: 8px;
-        border-radius: 11px;
-    }
-
-    .rail-text {
-        display: none;
-    }
-
-    .rail-btn {
-        padding: 9px 4px;
+        flex-direction: column;
+        gap: 0;
+        padding: 0;
     }
 
     .app-main {
-        border-radius: 16px;
+        order: 1;
+        flex: 1;
+        min-height: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: var(--surface-solid);
+        backdrop-filter: none;
+    }
+
+    .rail {
+        order: 2;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: space-around;
+        width: 100%;
+        padding: 3px 4px calc(3px + env(safe-area-inset-bottom));
+        border: 0;
+        border-top: 1px solid var(--border);
+        border-radius: 0;
+        background: var(--surface-solid);
+        box-shadow: 0 -8px 24px -18px rgba(15, 23, 42, 0.35);
+        backdrop-filter: none;
+    }
+
+    .rail-brand {
+        display: none;
+    }
+
+    .rail-nav {
+        flex-direction: row;
+        flex: 1;
+        gap: 0;
+        justify-content: space-around;
+    }
+
+    .rail-foot {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0;
+        margin-left: 2px;
+        padding-top: 0;
+        padding-left: 2px;
+        border-top: 0;
+        border-left: 1px solid var(--border);
+    }
+
+    .rail-btn {
+        flex: 1;
+        min-width: 54px;
+        gap: 2px;
+        padding: 6px 3px;
+        border-radius: 10px;
+
+        &:active {
+            background: var(--surface-2);
+        }
+    }
+
+    .rail-icon :deep(svg) {
+        width: 21px;
+        height: 21px;
+    }
+
+    .rail-text {
+        display: block;
+        font-size: 0.58rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .rail-btn {
+        min-width: 44px;
+    }
+
+    .rail-text {
+        font-size: 0.52rem;
     }
 }
 </style>

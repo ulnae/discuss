@@ -9,7 +9,7 @@
                 </svg>
             </div>
             <h1 class="welcome-title">欢迎使用 Discuss</h1>
-            <p class="welcome-sub">从左侧选择好友或房间，开始一段对话</p>
+            <p class="welcome-sub">选择好友或房间，开始一段对话</p>
         </header>
 
         <section class="notice">

@@ -1,5 +1,5 @@
 <template>
-  <div class="side-shell">
+  <div class="side-shell" :class="{ 'has-detail': !!paramsID }">
     <aside ref="sidebarRef" class="side">
       <div class="side-head">
         <div class="ui-field ui-field-sm">
@@ -108,5 +108,29 @@ const handleRoomClick = (room: any) => {
 
 .list-row .chip {
     font-variant-numeric: tabular-nums;
+}
+
+/* 移动端：房间列表和聊天分两屏 */
+@media (max-width: 768px) {
+    .side-shell {
+        position: relative;
+    }
+
+    .side {
+        width: 100% !important;
+        border-right: 0;
+    }
+
+    .side-body {
+        display: none;
+    }
+
+    .side-shell.has-detail .side {
+        display: none;
+    }
+
+    .side-shell.has-detail .side-body {
+        display: flex;
+    }
 }
 </style>

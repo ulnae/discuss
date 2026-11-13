@@ -28,14 +28,18 @@ export const useFriendStore = defineStore('friend', {
         getFriends() {
             return new Promise((resolve, reject) => {
                 ServerApi.GetFriends().then((res:any) => {
-                    this.friends = res.data
+                    this.friends = res.data || []
                     resolve(res.data)
-                })
+                }).catch(reject)
             })
         },
         setFriendStatus(id: string, status: boolean) {
             const friend = this.getFriendMap[id]
             if (friend) friend.status = status
+        },
+        /** 对方删除好友 / 自己被删除后，把这条关系从列表里摘掉 */
+        removeFriend(id: string) {
+            this.friends = this.friends.filter(item => item.friend_info.id !== id)
         }
     }
 })

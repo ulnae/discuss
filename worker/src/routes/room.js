@@ -13,6 +13,7 @@ import { ApiError } from '../lib/errors.js';
 import { ok, readJson, pageOf } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso, count } from '../lib/sql.js';
+import { pushToRoom, syncUserRooms, dropRoom } from '../lib/realtime.js';
 
 const ROOM_SELECT = `
     SELECT r.id, r.name, r.description, r.creator, r.createdAt, r.updatedAt,
@@ -55,6 +56,8 @@ async function create(request, env, ctx) {
         'INSERT INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)',
         uuid(), me.id, roomId, timestamp
     );
+    /* 新房间要立刻进自己的房间订阅，否则马上发消息会被房间校验挡下 */
+    await syncUserRooms(env, me.id);
     return ok('创建房间成功', ctx.cors);
 }
 
@@ -115,16 +118,32 @@ async function update(request, env, ctx, id) {
     if (fields.length) {
         fields.push('updatedAt = ?'); args.push(now(), id);
         await run(env, `UPDATE room SET ${fields.join(', ')} WHERE id = ?`, ...args);
+
+        const updated = await first(env, `${ROOM_SELECT} WHERE r.id = ?`, id);
+        if (updated) {
+            await pushToRoom(env, id, 'room:updated', { room: roomView(updated) }, me.id);
+        }
     }
     return ok('更新房间成功', ctx.cors);
 }
 
 async function remove(request, env, ctx, id) {
-    await currentUser(request, env);
-    const exist = await first(env, 'SELECT id FROM room WHERE id = ? AND isDeleted = 0', id);
+    const me = await currentUser(request, env);
+    const exist = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', id);
     if (!exist) throw new ApiError(`id为${id}的房间不存在`, 401);
+    if (exist.creator !== me.id) throw new ApiError('只有群主可以解散房间', 401);
+
     await run(env, 'UPDATE room SET isDeleted = 1, updatedAt = ? WHERE id = ?', now(), id);
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE room_id = ?', id);
+
+    /* 解散房间：所有在线成员立刻收到通知，并把房间从订阅里摘掉 */
+    await pushToRoom(env, id, 'room:deleted', {
+        roomId: id,
+        roomName: exist.name,
+        by: { id: me.id, username: me.username }
+    });
+    await dropRoom(env, id);
+
     return ok('删除房间成功', ctx.cors);
 }
 

@@ -50,8 +50,18 @@ export const useApplyStore = defineStore('apply', {
         },
         getPendingApplies() {
             serverApi.GetApplyMine().then((res: any) => {
-                this.pendingApplies = res.data
+                this.pendingApplies = res.data || []
             })
+        },
+        /** 收到实时好友申请：直接插到待处理列表顶部，不用重新请求 */
+        addPending(apply: any) {
+            if (!apply?.id) return
+            if (this.pendingApplies.some(item => item.id === apply.id)) return
+            this.pendingApplies.unshift(apply)
+        },
+        /** 撤回 / 已处理：把这条从待办里摘掉 */
+        removePending(id: string) {
+            this.pendingApplies = this.pendingApplies.filter(item => item.id !== id)
         },
         // 处理申请
         handleApply(id: string, status: boolean) {

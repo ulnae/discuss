@@ -1,5 +1,5 @@
 <template>
-  <div class="side-shell">
+  <div class="side-shell" :class="{ 'has-detail': !!paramsID }">
     <aside ref="sidebarRef" class="side">
       <div class="side-head">
         <div class="ui-field ui-field-sm">
@@ -94,6 +94,30 @@ const isOnline = (id?: string) => !!id && !!friendStore.getFriendMap[id]?.status
     .ui-field {
         flex: 1;
         min-width: 0;
+    }
+}
+
+/* 移动端：列表和聊天分两屏，避免两栏挤在一起 */
+@media (max-width: 768px) {
+    .side-shell {
+        position: relative;
+    }
+
+    .side {
+        width: 100% !important;
+        border-right: 0;
+    }
+
+    .side-body {
+        display: none;
+    }
+
+    .side-shell.has-detail .side {
+        display: none;
+    }
+
+    .side-shell.has-detail .side-body {
+        display: flex;
     }
 }
 </style>

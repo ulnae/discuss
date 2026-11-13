@@ -28,6 +28,9 @@ export const useRoomStore = defineStore('room', {
 
         // 我创建的房间
         roomsMine: [] as Room[],
+
+        // 房间 id - 待处理的入群申请（供房间页实时刷新）
+        applyMap: new Map<string, any[]>(),
     }),
     getters: {
         getRoomMap: (state) => {
@@ -74,6 +77,36 @@ export const useRoomStore = defineStore('room', {
                     useSocketStore().roomMemberMap.set(room_id, res.data || [])
                 }
             });
+        },
+        // 获取某房间的待处理入群申请（房主才有）
+        getRoomApplies(room_id: string) {
+            if (!this.roomsMine.find(item => item.id === room_id)) {
+                this.applyMap.set(room_id, [])
+                return
+            }
+            ServerApi.getApplyRoom(room_id).then((res: any) => {
+                if (res.code === 200) this.applyMap.set(room_id, res.data || [])
+            })
+        },
+        /** 被踢出 / 房间解散：把房间和它的缓存一起清掉 */
+        removeRoom(room_id: string) {
+            this.rooms = this.rooms.filter(item => item.room_id !== room_id)
+            this.roomsMine = this.roomsMine.filter(item => item.id !== room_id)
+            this.applyMap.delete(room_id)
+
+            const socketStore = useSocketStore()
+            socketStore.roomMemberMap.delete(room_id)
+            socketStore.roomMemberOnlineMap.delete(room_id)
+            socketStore.roomMessageMap.delete(room_id)
+        },
+        /** 房间改名等元信息变化 */
+        updateRoomInfo(room: Room) {
+            this.rooms.forEach(item => {
+                if (item.room_id === room.id) item.room_info = room
+            })
+            this.roomsMine.forEach(item => {
+                if (item.id === room.id) Object.assign(item, room)
+            })
         }
     }
 })
