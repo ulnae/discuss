@@ -13,7 +13,7 @@
  * 说明：为什么不用「KV 自动过期 + 不登记」？因为配额需要知道「当前占用多少」，
  * 只有 D1 里留一份体积记录才能在每次上传前做水位判断。
  */
-import { now, all, first } from './lib/sql.js';
+import { now, all, first, pruneCaptcha } from './lib/sql.js';
 import { uploadLimits, recomputeUsage, DAY } from './lib/quota.js';
 
 const BATCH = 200;
@@ -63,6 +63,11 @@ export async function cleanupStorage(env) {
         quotaFiles: 0, quotaBytes: 0,
         deletes: 0, skipped: false
     };
+
+    /* 0. 验证码过期行兜底清理：生成验证码时是惰性清理（依赖下一次请求触发），
+          低流量期间过期行会一直残留，这里每天兜底清一次（D1 删除不占 KV 额度） */
+    await pruneCaptcha(env);
+
     if (!env.UPLOAD || typeof env.UPLOAD.delete !== 'function') {
         stats.skipped = true;
         return stats;
