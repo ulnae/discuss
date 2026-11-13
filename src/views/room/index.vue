@@ -11,11 +11,8 @@
         <span class="avatar avatar-lg">{{ initial }}</span>
         <div class="chat-head-main">
           <div class="chat-title">{{ getRoomInfo.name }}</div>
-          <div class="chat-sub">
-            共 {{ getMember.length }} 位成员
-            <span class="chat-sub-sep">·</span>
-            <span class="dot dot-online"></span>
-            {{ getMemberOnline.size }} 人在线
+          <div class="chat-sub" :title="getRoomInfo.description">
+            {{ getRoomInfo.description || '这个房间还没有描述' }}
           </div>
         </div>
         <div class="chat-head-actions">
@@ -24,13 +21,6 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
               stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-            </svg>
-          </button>
-          <button type="button" class="icon-btn leave-btn" :title="isOwner ? '解散房间' : '退出房间'"
-            @click="handleLeaveRoom">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
-              stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
             </svg>
           </button>
         </div>
@@ -143,6 +133,10 @@
           </div>
         </div>
       </section>
+
+      <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleLeaveRoom">
+        {{ isOwner ? '解散房间' : '退出房间' }}
+      </button>
     </aside>
 
     <input class="hidden" id="chooseImage" type="file" accept="image/*">
@@ -365,8 +359,30 @@ function handleRemoveMember(id: string) {
 </script>
 
 <style lang="scss" scoped>
-.chat-sub-sep {
-    color: var(--text-3);
+/* 顶部群标题区与左侧搜索区（.side-head）整体同高：
+   padding 节奏一致（0.7rem / 0.6rem），头像压到 34px，标题 + 群描述压进一行内容高度内 */
+.chat-head {
+    padding-top: 0.7rem;
+    padding-bottom: 0.6rem;
+}
+
+.chat-head .avatar-lg {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+}
+
+.chat-title {
+    line-height: 1.15;
+}
+
+/* 群描述作为标题副行，单行展示，超长省略 */
+.chat-sub {
+    display: block;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .composer {
@@ -393,6 +409,11 @@ function handleRemoveMember(id: string) {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+/* 退出 / 解散按钮贴在侧边栏底部，样式同好友资料里的删除好友 */
+.leave-room-btn {
+    margin-top: auto;
 }
 
 .members-head {
@@ -487,11 +508,6 @@ function handleRemoveMember(id: string) {
         padding: 0 0.5rem;
         font-size: 0.7rem;
     }
-}
-
-.leave-btn:hover {
-    color: var(--danger);
-    background: rgba(225, 29, 72, 0.1);
 }
 
 /* 移动端：群成员面板改成右侧抽屉 */

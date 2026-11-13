@@ -11,19 +11,11 @@
         <span class="avatar avatar-lg">{{ initial }}</span>
         <div class="chat-head-main">
           <div class="chat-title">{{ getFriendInfo.username }}</div>
-          <div class="chat-sub">
-            <span class="dot" :class="{ 'dot-online': isFriendOnline }"></span>
-            {{ isFriendOnline ? '在线' : '离线' }}
+          <div class="chat-sub" :title="getFriendInfo.email">
+            {{ getFriendInfo.email || '—' }}
           </div>
         </div>
         <div class="chat-head-actions">
-          <button type="button" class="icon-btn" title="语音通话" :disabled="!isFriendOnline" @click="handleStartCall">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
-              stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path
-                d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-            </svg>
-          </button>
           <button type="button" class="icon-btn" :class="{ 'is-active': infoVisiable }" title="好友资料"
             @click="handleSwitchInfo">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
@@ -125,10 +117,7 @@
         </div>
       </div>
 
-      <button type="button" class="btn btn-ghost btn-block btn-sm" @click="handleStartCall" :disabled="!isFriendOnline">
-        发起语音通话
-      </button>
-      <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleRemoveFriend">
+      <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleRemoveFriend">
         删除好友
       </button>
     </aside>
@@ -292,6 +281,32 @@ const goBack = () => router.push('/friend/dashboard')
 </script>
 
 <style lang="scss" scoped>
+/* 顶部标题区与左侧搜索区（.side-head）整体同高，同群聊天页头部：
+   padding 节奏一致（0.7rem / 0.6rem），头像压到 34px，标题 + 邮箱压进一行内容高度内 */
+.chat-head {
+    padding-top: 0.7rem;
+    padding-bottom: 0.6rem;
+}
+
+.chat-head .avatar-lg {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+}
+
+.chat-title {
+    line-height: 1.15;
+}
+
+/* 邮箱作为标题副行，单行展示，超长省略 */
+.chat-sub {
+    display: block;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .info {
     display: flex;
     flex-direction: column;
@@ -350,6 +365,11 @@ const goBack = () => router.push('/friend/dashboard')
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
+}
+
+/* 删除好友按钮贴在资料面板底部，同群房间页的退出/解散按钮 */
+.leave-room-btn {
+    margin-top: auto;
 }
 
 .info-row {
