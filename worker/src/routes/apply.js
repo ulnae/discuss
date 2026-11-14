@@ -13,6 +13,7 @@ import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
 import { pushToUsers, pushToRoom, pushRoomOnline, pushUserStatus, syncUserRooms } from '../lib/realtime.js';
+import { EVENTS } from '../lib/events.js';
 
 const APPLY_SELECT = `
     SELECT a.id, a.user_id, a.room_id, a.apply_user_id, a.status, a.handle_status,
@@ -64,13 +65,14 @@ async function create(request, env, ctx) {
 
     /* 让接收方立刻看到这条申请，不用等下一次刷新 */
     if (applyUserId) {
-        await pushToUsers(env, [applyUserId], 'friend:request', { apply: view });
+        await pushToUsers(env, [applyUserId], EVENTS.FRIEND_REQUEST, { apply: view });
     } else if (roomId) {
         const room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
         if (room) {
-            await pushToUsers(env, [room.creator], 'room:apply', {
+            await pushToUsers(env, [room.creator], EVENTS.ROOM_APPLY, {
                 apply: view,
-                room: { id: room.id, name: room.name }
+                roomId: room.id,
+                roomName: room.name
             });
         }
     }
@@ -138,10 +140,11 @@ async function update(request, env, ctx, id) {
 
     /* ---------- 实时通知：申请人立刻知道结果 ---------- */
     if (apply.apply_user_id) {
-        await pushToUsers(env, [apply.user_id], accepted ? 'friend:accepted' : 'friend:rejected', {
+        await pushToUsers(env, [apply.user_id], accepted ? EVENTS.FRIEND_ACCEPTED : EVENTS.FRIEND_REJECTED, {
             applyId: id,
             status: accepted,
-            user: { id: me.id, username: me.username }
+            userId: me.id,
+            username: me.username
         });
         if (accepted) {
             /* 双向补发在线状态：双方列表刚出现对方（REST 列表不带在线状态），
@@ -149,18 +152,19 @@ async function update(request, env, ctx, id) {
             await pushUserStatus(env, apply.user_id);
         }
     } else if (room) {
-        await pushToUsers(env, [apply.user_id], 'room:apply:result', {
+        await pushToUsers(env, [apply.user_id], EVENTS.ROOM_APPLY_RESULT, {
             applyId: id,
             status: accepted,
-            room: { id: room.id, name: room.name }
+            roomId: room.id,
+            roomName: room.name
         });
         if (accepted) {
             /* 订阅先刷新，再广播成员变化，保证新成员能收到后续房间消息 */
             await syncUserRooms(env, apply.user_id);
-            await pushToRoom(env, room.id, 'member:joined', {
+            await pushToRoom(env, room.id, EVENTS.MEMBER_JOINED, {
                 roomId: room.id,
                 userId: apply.user_id,
-                member: apply.user_info
+                username: apply.user_info && apply.user_info.username
             }, apply.user_id);
             /* 成员列表刷新后补发一次在线名单：房间所有人（含新成员自己）的在线集合即时更新 */
             await pushRoomOnline(env, room.id);
@@ -182,11 +186,15 @@ async function remove(request, env, ctx, id) {
 
     /* 撤回后接收方的待办列表要立刻消失 */
     if (apply.apply_user_id) {
-        await pushToUsers(env, [apply.apply_user_id], 'apply:revoked', { applyId: id, from: apply.user_id });
+        await pushToUsers(env, [apply.apply_user_id], EVENTS.APPLY_REVOKED, { applyId: id, fromUserId: apply.user_id });
     } else if (apply.room_id) {
         const room = await first(env, 'SELECT creator FROM room WHERE id = ?', apply.room_id);
         if (room) {
-            await pushToUsers(env, [room.creator], 'apply:revoked', { applyId: id, from: apply.user_id, roomId: apply.room_id });
+            await pushToUsers(env, [room.creator], EVENTS.APPLY_REVOKED, {
+                applyId: id,
+                fromUserId: apply.user_id,
+                roomId: apply.room_id
+            });
         }
     }
     return ok({ affected: 1 }, ctx.cors);

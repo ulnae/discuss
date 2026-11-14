@@ -27,6 +27,28 @@ function queueSave(key: string, list: any[]) {
     }, 800))
 }
 
+/** 旧版本消息字段（sender/receiver/room）迁移到新契约的 from/to/roomId */
+function migrate(list: any[]) {
+    return list.map(item => {
+        if (!item || typeof item !== 'object') return item
+        if (item.from === undefined && item.sender !== undefined) {
+            item.from = item.sender
+            delete item.sender
+        }
+        if (item.to === undefined && item.receiver !== undefined) {
+            item.to = item.receiver
+            delete item.receiver
+        }
+        if (item.roomId === undefined && item.room !== undefined) {
+            item.roomId = item.room
+            delete item.room
+        }
+        // 上次退出时还在「发送中」的消息已经没有回执了，标记失败让用户可重发
+        if (item.status === 'sending') item.status = 'failed'
+        return item
+    })
+}
+
 export const MessageCache = {
     /** 启动时恢复全部会话：{ user: [[peerId, messages]], room: [[roomId, messages]] } */
     async load(): Promise<{ user: [string, any[]][]; room: [string, any[]][] }> {
@@ -35,8 +57,8 @@ export const MessageCache = {
         try {
             await store.iterate((value: any, key: string) => {
                 if (!Array.isArray(value)) return
-                if (key.startsWith('u:')) user.push([key.slice(2), value])
-                else if (key.startsWith('r:')) room.push([key.slice(2), value])
+                if (key.startsWith('u:')) user.push([key.slice(2), migrate(value)])
+                else if (key.startsWith('r:')) room.push([key.slice(2), migrate(value)])
             })
         } catch { /* IndexedDB 不可用时静默降级为纯内存 */ }
         return { user, room }

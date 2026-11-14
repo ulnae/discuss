@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 interface Alert {
-    sender: string
+    senderName: string
     message: string
     timestamp: string
 }

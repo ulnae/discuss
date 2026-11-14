@@ -41,7 +41,7 @@
         </div>
 
         <div v-for="message in visibleMessages" :key="message.id" class="msg"
-          :class="{ 'is-me': message.sender !== route.params.id }">
+          :class="{ 'is-me': message.from !== route.params.id }">
           <div class="msg-meta">
             <span>{{ dayjs(message.timestamp).fromNow() }}</span>
             <span v-if="message.type">{{ formatFileSize(message.size) }}</span>
@@ -136,7 +136,7 @@ import { useFriendStore } from "@/store/modules/friend";
 import { useCallStore } from "@/store/modules/call";
 import { computed, onMounted, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Socket } from "socket.io-client";
+
 import dayjs from "@/plugin/dayjs";
 import serverApi from "@/api";
 import { vEnter } from "@/directives/vEnter";
@@ -219,11 +219,9 @@ const uploadImage = async (file: Blob) => {
   formData.append("file", blob, imageFilename(blob));
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
-      (socketStore.socket as Socket).emit("send:user", {
-        size: res.data.size,
-        sender: route.params.id,
-        content: `/${res.data.path}`,
+      socketStore.sendUser(route.params.id as string, `/${res.data.path}`, {
         type: "image",
+        size: res.data.size,
       });
     }
   });
@@ -233,12 +231,10 @@ const uploadFile = (file: Blob) => {
   formData.append("file", file as Blob);
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
-      (socketStore.socket as Socket).emit("send:user", {
-        size: res.data.size,
-        sender: route.params.id,
-        originalname: res.data.originalname,
-        content: `/${res.data.path}`,
+      socketStore.sendUser(route.params.id as string, `/${res.data.path}`, {
         type: "file",
+        size: res.data.size,
+        originalname: res.data.originalname,
       });
     }
   });

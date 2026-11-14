@@ -10,6 +10,7 @@ import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
 import { pushToUsers, pushToRoom, pushRoomOnline, syncUserRooms } from '../lib/realtime.js';
+import { EVENTS } from '../lib/events.js';
 
 const MEMBER_SELECT = `
     SELECT m.id, m.user_id, m.room_id, m.createdAt,
@@ -59,8 +60,12 @@ async function create(request, env, ctx) {
 
     /* 被拉进房间的人需要立刻在列表里看到这个房间，并且能收到房间消息 */
     await syncUserRooms(env, userId);
-    await pushToUsers(env, [userId], 'room:joined', { room: { id: room.id, name: room.name, creator: room.creator } });
-    await pushToRoom(env, roomId, 'member:joined', { roomId, userId, member: memberView(row).user_info }, userId);
+    await pushToUsers(env, [userId], EVENTS.ROOM_JOINED, { roomId: room.id, roomName: room.name });
+    await pushToRoom(env, roomId, EVENTS.MEMBER_JOINED, {
+        roomId,
+        userId,
+        username: memberView(row).user_info && memberView(row).user_info.username
+    }, userId);
     /* 新成员此刻多半在线，补发一次在线名单，避免所有人列表里他显示离线 */
     await pushRoomOnline(env, roomId);
 
@@ -98,23 +103,25 @@ async function remove(request, env, ctx, id) {
 
     if (isSelf) {
         /* 主动退出：给自己一个明确的回执，并摘掉房间订阅 */
-        await pushToUsers(env, [userId], 'room:left', { roomId, roomName });
+        await pushToUsers(env, [userId], EVENTS.ROOM_LEFT, { roomId, roomName });
         await syncUserRooms(env, userId);
     } else if (userId) {
         /* 被踢的人：先告诉他原因，再摘掉房间订阅（否则还能继续收房间消息） */
-        await pushToUsers(env, [userId], 'room:kicked', {
+        await pushToUsers(env, [userId], EVENTS.ROOM_KICKED, {
             roomId,
             roomName,
-            by: { id: me.id, username: me.username }
+            byUserId: me.id,
+            byUsername: me.username
         });
         await syncUserRooms(env, userId);
     }
 
     /* 房间里的其他人：成员列表要减一 */
-    await pushToRoom(env, roomId, 'member:removed', {
+    await pushToRoom(env, roomId, EVENTS.MEMBER_REMOVED, {
         roomId,
         userId,
-        by: { id: me.id, username: me.username },
+        byUserId: me.id,
+        byUsername: me.username,
         reason: isSelf ? 'left' : 'kicked'
     }, userId);
 

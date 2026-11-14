@@ -10,8 +10,12 @@ import { useCallStore } from './call'
 import { updateTitle } from '@/utils'
 import { MessageCache } from '@/utils/messageCache'
 import { toast } from '@/components/ui/toast'
+import { Event } from '@/constants/events'
 
 const setTitle = updateTitle()
+
+/** 图片 / 文件消息的附加字段（与文字消息共用一条发送链路） */
+type MessageMeta = { type?: string; size?: number; originalname?: string }
 
 /** 当前 hash 路径（项目用 hash 路由，避免和 window.location.pathname 混淆） */
 const hashPath = () => (typeof location === 'undefined' ? '' : location.hash.replace(/^#/, ''))
@@ -78,7 +82,7 @@ export const useSocketStore = defineStore('socket', {
                     const delay = firstConnect ? 0 : 2000
                     firstConnect = false
                     initTimer = setTimeout(() => {
-                        if (this.socket && this.socket.connected) this.socket.emit('init')
+                        if (this.socket && this.socket.connected) this.socket.emit(Event.INIT)
                     }, delay)
                     resolve(true)
                 })
@@ -87,59 +91,53 @@ export const useSocketStore = defineStore('socket', {
                     reject(false)
                 })
 
-                // 异常处理
-                this.socket.on('exception', (data) => {
-                    console.log(data)
-                    useUserStore().logout()
-                    reject(false)
+                // 服务端处理某条消息失败时的回执（两个后端都发 exception，不再直接登出）
+                this.socket.on(Event.EXCEPTION, (data) => {
+                    console.warn('socket exception', data)
+                    toast.error((data && data.message) || '操作失败，请稍后重试')
                 })
 
 
                 // 接收用户消息（对方发来 / 自己发送的回显，统一在此落库）
-                this.socket.on('message:user', (data) => {
-                    this.appendUserMessage(data, data.sender)
-                    setTitle(`${useFriendStore().getFriendMap[data.sender]?.friend_info?.username}:${data.content}`)
-                })
-
-                // 接收已发送回显信息
-                this.socket.on('message:sender', (data) => {
-                    this.appendUserMessage(data, data.receiver)
+                this.socket.on(Event.MESSAGE_USER, (data) => {
+                    const me = useUserStore().userInfo.id
+                    const peerId = data.from === me ? data.to : data.from
+                    this.appendUserMessage(data, peerId)
+                    setTitle(`${useFriendStore().getFriendMap[data.from]?.friend_info?.username}:${data.content}`)
                 })
 
                 // 接收房间消息
-                this.socket.on('message:room', (data) => {
+                this.socket.on(Event.MESSAGE_ROOM, (data) => {
                     this.appendRoomMessage(data)
-                    setTitle(`${useRoomStore().getRoomMap[data.room]?.room_info?.name}:${data.content}`)
+                    setTitle(`${useRoomStore().getRoomMap[data.roomId]?.room_info?.name}:${data.content}`)
                 })
 
                 // 接收房间成员在线状态
-                this.socket.on('online:room', (data) => {
-                    this.roomMemberOnlineMap.set(data.room, new Set(data.users || []))
+                this.socket.on(Event.ONLINE_ROOM, (data) => {
+                    this.roomMemberOnlineMap.set(data.roomId, new Set(data.users || []))
                 })
 
-                // 接收好友状态更新（status:friend 为规范事件名，status:firend 是历史拼写，两个都听）
-                const onFriendStatus = (data: any) => {
-                    useFriendStore().setFriendStatus(data.friend, data.status)
-                    setTitle(`[${useFriendStore().getFriendMap[data.friend]?.friend_info?.username}] ${data.status ? '上线' : '离线'}`)
-                }
-                this.socket.on('status:friend', onFriendStatus)
-                this.socket.on('status:firend', onFriendStatus)
+                // 接收好友状态更新（规范事件名 status:friend，历史拼写 status:firend 已移除）
+                this.socket.on(Event.STATUS_FRIEND, (data: any) => {
+                    useFriendStore().setFriendStatus(data.userId, data.status)
+                    setTitle(`[${useFriendStore().getFriendMap[data.userId]?.friend_info?.username}] ${data.status ? '上线' : '离线'}`)
+                })
 
                 // 初始化获取所有在线好友
-                this.socket.on('online:friends', (data) => {
+                this.socket.on(Event.ONLINE_FRIENDS, (data) => {
                     data.users.forEach((id: string) => {
                         useFriendStore().setFriendStatus(id, true)
                     })
                 })
 
-                // 异地登录-被踢下线
-                this.socket.on('kicked', (data) => {
+                // 异地登录-被踢下线（仅 nestjs 单端登录会发；worker 允许多端）
+                this.socket.on(Event.KICKED, () => {
                     useUserStore().logout();
                 })
 
                 // 系统通知
-                this.socket.on('system:alert', (data) => {
-                    setTitle(`[${data.sender}] ${data.message}`)
+                this.socket.on(Event.SYSTEM_ALERT, (data) => {
+                    setTitle(`[${data.senderName}] ${data.message}`)
                     useAlertStore().addAlert(data)
                 })
 
@@ -151,7 +149,7 @@ export const useSocketStore = defineStore('socket', {
                    ================================================================= */
 
                 // 别人申请加我为好友
-                this.socket.on('friend:request', (data) => {
+                this.socket.on(Event.FRIEND_REQUEST, (data) => {
                     const apply = data && data.apply
                     if (!apply) return
                     useApplyStore().addPending(apply)
@@ -161,8 +159,8 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 我发起的申请被同意：双方好友列表都要出现对方
-                this.socket.on('friend:accepted', (data) => {
-                    const name = (data && data.user && data.user.username) || '对方'
+                this.socket.on(Event.FRIEND_ACCEPTED, (data) => {
+                    const name = (data && data.username) || '对方'
                     useFriendStore().getFriends()
                     useApplyStore().getApplies()
                     useApplyStore().removePending(data && data.applyId)
@@ -170,19 +168,19 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 我发起的申请被拒绝
-                this.socket.on('friend:rejected', (data) => {
-                    const name = (data && data.user && data.user.username) || '对方'
+                this.socket.on(Event.FRIEND_REJECTED, (data) => {
+                    const name = (data && data.username) || '对方'
                     useApplyStore().getApplies()
                     toast.warning(`${name} 拒绝了你的好友申请`)
                 })
 
                 // 对方直接把我加为好友（不走申请）
-                this.socket.on('friend:added', () => {
+                this.socket.on(Event.FRIEND_ADDED, () => {
                     useFriendStore().getFriends()
                 })
 
                 // 被对方删除好友
-                this.socket.on('friend:removed', (data) => {
+                this.socket.on(Event.FRIEND_REMOVED, (data) => {
                     const id = data && data.userId
                     if (!id) return
                     useFriendStore().removeFriend(id)
@@ -191,22 +189,22 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 对方撤回了申请
-                this.socket.on('apply:revoked', (data) => {
+                this.socket.on(Event.APPLY_REVOKED, (data) => {
                     useApplyStore().removePending(data && data.applyId)
                     if (data && data.roomId) useRoomStore().getRoomApplies(data.roomId)
                 })
 
                 // 有人申请加入我的房间
-                this.socket.on('room:apply', (data) => {
-                    const roomId = data && data.apply && data.apply.room_id
+                this.socket.on(Event.ROOM_APPLY, (data) => {
+                    const roomId = data && data.roomId
                     if (roomId) useRoomStore().getRoomApplies(roomId)
                     const name = (data && data.apply && data.apply.user_info && data.apply.user_info.username) || '有人'
-                    toast.info(`${name} 申请加入「${(data && data.room && data.room.name) || '房间'}」`)
+                    toast.info(`${name} 申请加入「${(data && data.roomName) || '房间'}」`)
                 })
 
                 // 我的入群申请有结果
-                this.socket.on('room:apply:result', (data) => {
-                    const name = (data && data.room && data.room.name) || '房间'
+                this.socket.on(Event.ROOM_APPLY_RESULT, (data) => {
+                    const name = (data && data.roomName) || '房间'
                     if (data && data.status) {
                         useRoomStore().getRooms()
                         toast.success(`已加入「${name}」`)
@@ -216,38 +214,36 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 被拉进新房间
-                this.socket.on('room:joined', (data) => {
+                this.socket.on(Event.ROOM_JOINED, (data) => {
                     useRoomStore().getRooms()
-                    const name = data && data.room && data.room.name
+                    const name = data && data.roomName
                     if (name) toast.success(`你已加入「${name}」`)
                 })
 
                 // 房间改名等元信息变化
-                this.socket.on('room:updated', (data) => {
+                this.socket.on(Event.ROOM_UPDATED, (data) => {
                     if (data && data.room) useRoomStore().updateRoomInfo(data.room)
                 })
 
                 // 房间成员变化：只刷新当前房间的成员列表
-                this.socket.on('member:joined', (data) => {
+                this.socket.on(Event.MEMBER_JOINED, (data) => {
                     if (!data || !data.roomId) return
                     useRoomStore().getRoomMember(data.roomId)
                     if (hashPath().startsWith(`/room/${data.roomId}`)) {
-                        const name = (data.member && data.member.username) || '新成员'
-                        toast.info(`${name} 加入了房间`)
+                        toast.info(`${data.username || '新成员'} 加入了房间`)
                     }
                 })
 
-                this.socket.on('member:removed', (data) => {
+                this.socket.on(Event.MEMBER_REMOVED, (data) => {
                     if (!data || !data.roomId) return
                     useRoomStore().getRoomMember(data.roomId)
                     if (hashPath().startsWith(`/room/${data.roomId}`)) {
-                        const name = (data.by && data.by.username) || '群主'
-                        toast.info(`${name} 移出了一名成员`)
+                        toast.info(`${data.byUsername || '群主'} 移出了一名成员`)
                     }
                 })
 
                 // 被移出房间
-                this.socket.on('room:kicked', (data) => {
+                this.socket.on(Event.ROOM_KICKED, (data) => {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
@@ -256,7 +252,7 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 自己退出房间
-                this.socket.on('room:left', (data) => {
+                this.socket.on(Event.ROOM_LEFT, (data) => {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
@@ -265,7 +261,7 @@ export const useSocketStore = defineStore('socket', {
                 })
 
                 // 房间被解散
-                this.socket.on('room:deleted', (data) => {
+                this.socket.on(Event.ROOM_DELETED, (data) => {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
@@ -291,7 +287,7 @@ export const useSocketStore = defineStore('socket', {
             if (!data || !peerId) return
             const list = this.userMessageMap.get(peerId) || []
             const { status: _drop, ...message } = data
-            message.id = message.id || message.clientId || `${message.sender}-${message.timestamp}`
+            message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
             const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
             if (idx >= 0) list.splice(idx, 1, message)
             else list.push(message)
@@ -301,67 +297,74 @@ export const useSocketStore = defineStore('socket', {
 
         /** 追加一条房间消息；自己的消息通过 clientId 与乐观本地消息对账替换，避免重复 */
         appendRoomMessage(data: any) {
-            if (!data || !data.room) return
-            const list = this.roomMessageMap.get(data.room) || []
+            if (!data || !data.roomId) return
+            const list = this.roomMessageMap.get(data.roomId) || []
             const { status: _drop, ...message } = data
-            message.id = message.id || message.clientId || `${message.sender}-${message.timestamp}`
+            message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
             const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
             if (idx >= 0) list.splice(idx, 1, message)
             else list.push(message)
-            this.roomMessageMap.set(data.room, list)
-            MessageCache.saveRoom(data.room, list)
+            this.roomMessageMap.set(data.roomId, list)
+            MessageCache.saveRoom(data.roomId, list)
         },
 
-        /** 乐观发送私聊消息：先上屏，等 message:sender 回执后由 clientId 对账 */
-        sendUser(receiver: string, content: string) {
+        /** 乐观发送私聊消息：先上屏，等 message:user 回执后由 clientId 对账 */
+        sendUser(receiver: string, content: string, meta: MessageMeta = {}) {
             const me = useUserStore().userInfo.id
             const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
             const connected = !!this.socket?.connected
             const message = {
                 id: clientId,
                 clientId,
-                sender: me,
-                receiver,
+                from: me,
+                to: receiver,
                 content,
                 timestamp: Date.now(),
+                ...meta,
                 status: connected ? 'sending' : 'failed',
             }
             const list = this.userMessageMap.get(receiver) || []
             list.push(message)
             this.userMessageMap.set(receiver, list)
             MessageCache.saveUser(receiver, list)
-            if (connected) this.socket!.emit('send:user', { sender: receiver, content, clientId })
+            if (connected) this.socket!.emit(Event.SEND_USER, { to: receiver, content, clientId, ...meta })
         },
 
-        /** 乐观发送房间消息 */
-        sendRoom(room: string, content: string) {
+        /** 乐观发送房间消息（文字 / 图片 / 文件共用一条链路） */
+        sendRoom(roomId: string, content: string, meta: MessageMeta = {}) {
             const me = useUserStore().userInfo.id
             const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
             const connected = !!this.socket?.connected
             const message = {
                 id: clientId,
                 clientId,
-                sender: me,
-                room,
+                from: me,
+                roomId,
                 content,
                 timestamp: Date.now(),
+                ...meta,
                 status: connected ? 'sending' : 'failed',
             }
-            const list = this.roomMessageMap.get(room) || []
+            const list = this.roomMessageMap.get(roomId) || []
             list.push(message)
-            this.roomMessageMap.set(room, list)
-            MessageCache.saveRoom(room, list)
-            if (connected) this.socket!.emit('send:room', { room, content, clientId })
+            this.roomMessageMap.set(roomId, list)
+            MessageCache.saveRoom(roomId, list)
+            if (connected) this.socket!.emit(Event.SEND_ROOM, { roomId, content, clientId, ...meta })
         },
 
         /** 重发失败的消息（气泡上点击「发送失败，点击重试」） */
         resendMessage(message: any) {
             if (!message || message.status !== 'failed' || !this.socket?.connected) return
             message.status = 'sending'
-            if (message.room) {
-                this.socket.emit('send:room', { room: message.room, content: message.content, clientId: message.clientId })
-            } else if (message.receiver) {
-                this.socket.emit('send:user', { sender: message.receiver, content: message.content, clientId: message.clientId })
+            const meta = {
+                type: message.type,
+                size: message.size,
+                originalname: message.originalname,
+            }
+            if (message.roomId) {
+                this.socket.emit(Event.SEND_ROOM, { roomId: message.roomId, content: message.content, clientId: message.clientId, ...meta })
+            } else if (message.to) {
+                this.socket.emit(Event.SEND_USER, { to: message.to, content: message.content, clientId: message.clientId, ...meta })
             }
         },
     }

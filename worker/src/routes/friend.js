@@ -10,6 +10,7 @@ import { ok, readJson } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso } from '../lib/sql.js';
 import { pushToUsers, pushUserStatus } from '../lib/realtime.js';
+import { EVENTS } from '../lib/events.js';
 
 const FRIEND_SELECT = `
     SELECT f.id, f.creator, f.friend_id, f.createdAt,
@@ -54,8 +55,9 @@ async function create(request, env, ctx) {
     await run(env, 'INSERT INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', id, creator, friendId, now());
     const row = await first(env, `${FRIEND_SELECT} WHERE f.id = ?`, id);
     /* 对方也要立刻看到这条好友关系 */
-    await pushToUsers(env, [friendId], 'friend:added', {
-        user: { id: creator, username: row && row.c_username }
+    await pushToUsers(env, [friendId], EVENTS.FRIEND_ADDED, {
+        userId: creator,
+        username: row && row.c_username
     });
     /* 补发双向在线状态：双方列表刚出现对方，可能此刻就在线 */
     await pushUserStatus(env, creator);
@@ -85,7 +87,7 @@ async function remove(request, env, ctx, friendId) {
         me.id, friendId, friendId, me.id
     );
 
-    await pushToUsers(env, [friendId], 'friend:removed', {
+    await pushToUsers(env, [friendId], EVENTS.FRIEND_REMOVED, {
         userId: me.id,
         username: me.username
     });

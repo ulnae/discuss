@@ -42,9 +42,9 @@
         </div>
 
         <div v-for="message in visibleMessages" :key="message.id" class="msg"
-          :class="{ 'is-me': message.sender === userStore.userInfo.id }">
+          :class="{ 'is-me': message.from === userStore.userInfo.id }">
           <div class="msg-meta">
-            <span>{{ message.sender === userStore.userInfo.id ? userStore.userInfo.username : getUserInfo(message.sender) }}</span>
+            <span>{{ message.from === userStore.userInfo.id ? userStore.userInfo.username : getUserInfo(message.from) }}</span>
             <span>{{ dayjs(message.timestamp).fromNow() }}</span>
             <span v-if="message.type">{{ formatFileSize(message.size) }}</span>
           </div>
@@ -153,7 +153,7 @@ import { useUserStore } from "@/store/modules/user";
 import { useRoomStore } from "@/store/modules/room";
 import { ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Socket } from "socket.io-client";
+
 import { computed, onMounted } from "vue";
 import ServerApi from "@/api";
 import dayjs from "@/plugin/dayjs";
@@ -251,11 +251,9 @@ const uploadImage = async (file: Blob) => {
   formData.append("file", blob, imageFilename(blob));
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
-      (socketStore.socket as Socket).emit("send:room", {
-        size: res.data.size,
-        room: route.params.id,
-        content: `/${res.data.path}`,
+      socketStore.sendRoom(route.params.id as string, `/${res.data.path}`, {
         type: "image",
+        size: res.data.size,
       });
     }
   });
@@ -266,11 +264,9 @@ const uploadFile = (file: Blob) => {
   formData.append("file", file as Blob);
   serverApi.UploadUser(formData).then((res: any) => {
     if (res.code === 200) {
-      (socketStore.socket as Socket).emit("send:room", {
-        size: res.data.size,
-        room: route.params.id,
-        content: `/${res.data.path}`,
+      socketStore.sendRoom(route.params.id as string, `/${res.data.path}`, {
         type: "file",
+        size: res.data.size,
         originalname: res.data.originalname,
       });
     }

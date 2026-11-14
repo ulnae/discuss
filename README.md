@@ -226,18 +226,21 @@ npm run preview
 | 事件 | 方向 | 说明 |
 |------|------|------|
 | `connect` / `disconnect` | 本地 | 连接建立 / 断开（原生实现内建指数退避重连） |
-| `init` | 发送 | 上线初始化：单端登录踢人、广播在线状态 |
-| `send:user` | 发送 | 私聊消息 `{ sender, content, type?, size?, originalname? }` |
-| `send:room` | 发送 | 房间消息 `{ room, content, type?, size?, originalname? }` |
-| `message:user` | 接收 | 收到好友消息 |
-| `message:sender` | 接收 | 自己发送的回显 |
+| `init` | 发送 | 上线初始化：广播在线状态（worker 允许多端，nestjs 单端踢旧连接） |
+| `send:user` | 发送 | 私聊消息 `{ to, content, clientId?, type?, size?, originalname? }` |
+| `send:room` | 发送 | 房间消息 `{ roomId, content, clientId?, type?, size?, originalname? }` |
+| `message:user` | 接收 | 私聊消息（收发双方同一事件，靠 `from` 区分方向） |
 | `message:room` | 接收 | 房间群聊消息 |
-| `online:room` | 接收 | 房间在线成员 `{ room, users }` |
+| `online:room` | 接收 | 房间在线成员 `{ roomId, users }` |
 | `online:friends` | 接收 | 登录时下发在线好友 |
-| `status:firend` | 接收 | 好友上下线（拼写沿用历史事件名） |
-| `kicked` | 接收 | 异地登录被踢下线 |
-| `system:alert` | 接收 | 系统广播（`POST /api/alert` 触发） |
+| `status:friend` | 接收 | 好友上下线 `{ userId, status }` |
+| `kicked` | 接收 | 异地登录被踢下线（仅 nestjs） |
+| `system:alert` | 接收 | 系统广播 `{ senderName, message }` |
+| `exception` | 接收 | 服务端处理失败提示（不再据此登出） |
 | `call:*` / `webrtc:*` | 双向 | 语音通话信令与 SDP/ICE 转发 |
+
+完整的事件名、payload 与命名约定见 **[docs/realtime-contract.md](docs/realtime-contract.md)**（唯一事实来源）。
+事件名集中定义在 `src/constants/events.ts`，不要再在业务代码里写字符串字面量。
 
 ### 本地存储策略
 

@@ -31,7 +31,7 @@
 
             <div v-else class="notice-list">
                 <div v-for="(item, idx) in alertStore.alerts" :key="idx" class="notice-row">
-                    <span class="notice-sender">{{ item.sender }}</span>
+                    <span class="notice-sender">{{ item.senderName }}</span>
                     <span class="notice-text">{{ item.message }}</span>
                     <span class="notice-time">{{ dayjs(item.timestamp).format('MM/DD HH:mm') }}</span>
                     <button type="button" class="icon-btn notice-del" title="删除这条通知"

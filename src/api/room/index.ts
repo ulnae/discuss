@@ -14,7 +14,6 @@ import { cloneDeep, get } from 'lodash-es'
 
 const Url:any = {
     'server': {
-        'roomMine': '/room/mine',
         'room': '/room',
         'roomSearch': '/room/search',
     }
@@ -33,12 +32,6 @@ const requestServerName = isMock ? 'mock' : 'server'
 
 export default {
 
-    GetRoomMine() {
-        return request({
-            url: Url[requestServerName].roomMine,
-            method: 'get',
-        })
-    },
     // 登录/重连聚合拉取：我加入的房间 + 每房成员 + 每房在线名单（1 个请求替代 3+N 个）
     GetRoomOverview() {
         return request({
@@ -51,12 +44,6 @@ export default {
             url: Url[requestServerName].room,
             method: 'post',
             data
-        })
-    },
-    GetRoomInfo(id?:string) {
-        return request({
-            url: `${Url[requestServerName].room}/${id}`,
-            method: 'get'
         })
     },
     SearchRoom(name?:string) {

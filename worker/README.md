@@ -28,17 +28,21 @@ Discuss 的后台服务，跑在 Cloudflare Workers 上：**Worker（HTTP）+ D1
 
 | 方向 | 事件 | 说明 |
 |---|---|---|
-| C→S | `init` | 上线初始化：踢掉同账号旧连接、广播房间在线、同步好友状态 |
-| C→S | `send:user` | `{ sender: 对方userId, content, type?, size?, originalname? }` |
-| C→S | `send:room` | `{ room, content, type?, size?, originalname? }` |
-| S→C | `message:user` / `message:sender` / `message:room` | 私聊 / 回显 / 群聊 |
-| S→C | `online:room` | 房间在线成员 `{ room, users: [] }` |
+| C→S | `init` | 上线初始化：广播房间在线、同步好友状态（多端并存，不踢旧连接） |
+| C→S | `send:user` | `{ to: 对方userId, content, clientId?, type?, size?, originalname? }` |
+| C→S | `send:room` | `{ roomId, content, clientId?, type?, size?, originalname? }` |
+| S→C | `message:user` / `message:room` | 私聊 / 群聊（收发双方同一事件，靠 `from` 区分方向） |
+| S→C | `online:room` | 房间在线成员 `{ roomId, users: [] }` |
 | S→C | `online:friends` | 登录时一次性下发在线好友 |
-| S→C | `status:firend` | 好友上下线（拼写沿用前端既有事件名，未改） |
-| S→C | `kicked` | 异地登录被踢 |
-| S→C | `system:alert` | 系统广播 |
+| S→C | `status:friend` | 好友上下线 `{ userId, status }` |
+| S→C | `friend:*` / `room:*` / `member:*` / `apply:revoked` | 好友 / 房间 / 成员 / 申请变更通知 |
+| S→C | `system:alert` | 系统广播 `{ senderName, message }` |
+| S→C | `exception` | 入站消息处理失败 |
 | 双向 | `call:invite/accept/reject/cancel/end`、`call:incoming/ringing/accepted/rejected/canceled/timeout/ended/error` | 通话状态机 |
 | 双向 | `webrtc:offer/answer/candidate` | SDP / ICE 转发 |
+
+事件名集中定义在 `src/lib/events.js`，完整的 payload 契约见仓库根目录 **`docs/realtime-contract.md`**。
+注意：`kicked` 只有 nestjs 单端登录会发，worker 允许多标签页。
 
 ---
 

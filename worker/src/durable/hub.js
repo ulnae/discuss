@@ -1,10 +1,14 @@
 /**
  * DiscussHub —— 实时通信 Durable Object
  *
- * 替代 server-nestjs 的 Socket.IO 网关（socket.gateway.ts），事件名保持完全一致：
+ * 替代 server-nestjs 的 Socket.IO 网关（socket.gateway.ts）。
+ * 事件名集中在 src/lib/events.js，契约见 Discuss/docs/realtime-contract.md：
  *   客户端 → 服务端：init / send:user / send:room / call:* / webrtc:*
- *   服务端 → 客户端：connected / message:user / message:sender / message:room /
- *                    online:room / online:friends / status:firend / kicked / system:alert / call:*
+ *   服务端 → 客户端：message:user / message:room / online:room / online:friends /
+ *                    status:friend / friend:* / room:* / member:* / apply:revoked /
+ *                    kicked / system:alert / exception / call:*
+ *
+ * 报文里的标识字段统一为 roomId / userId，消息方向统一为 from / to。
  *
  * 省额度三件事：
  *   1. 用 Hibernation API（state.acceptWebSocket）。空闲连接不会被计费时长，
@@ -16,6 +20,8 @@
  * 单实例（idFromName('hub')）：好友/房间关系本来就在同一个 D1 里，
  * 一个小型聊天室用一个 DO 足够，也避免跨 DO 转发。
  */
+
+import { EVENTS } from '../lib/events.js';
 
 const RING_TIMEOUT = 30_000;
 
@@ -66,8 +72,8 @@ export class DiscussHub {
             const body = await request.json().catch(() => null);
             if (!body || !body.roomId) return new Response('bad request', { status: 400 });
             const roomId = String(body.roomId);
-            const delivered = this.sendToRoom(roomId, 'online:room', {
-                room: roomId,
+            const delivered = this.sendToRoom(roomId, EVENTS.ONLINE_ROOM, {
+                roomId,
                 users: this.roomUsers(roomId),
                 timestamp: now()
             });
@@ -87,13 +93,11 @@ export class DiscussHub {
                 .all();
             let delivered = 0;
             for (const row of results || []) {
-                const mine = { friend: userId, status: online, timestamp: now() };
-                delivered += this.sendToUser(row.friend_id, 'status:friend', mine);
-                delivered += this.sendToUser(row.friend_id, 'status:firend', mine);
+                const mine = { userId, status: online, timestamp: now() };
+                delivered += this.sendToUser(row.friend_id, EVENTS.STATUS_FRIEND, mine);
                 if (this.userSockets(row.friend_id).length) {
-                    const theirs = { friend: row.friend_id, status: true, timestamp: now() };
-                    delivered += this.sendToUser(userId, 'status:friend', theirs);
-                    delivered += this.sendToUser(userId, 'status:firend', theirs);
+                    const theirs = { userId: row.friend_id, status: true, timestamp: now() };
+                    delivered += this.sendToUser(userId, EVENTS.STATUS_FRIEND, theirs);
                 }
             }
             return Response.json({ ok: true, delivered });
@@ -162,7 +166,6 @@ export class DiscussHub {
         /* 第二个参数是 tag：可按用户、按房间批量取连接，休眠后依然有效 */
         this.state.acceptWebSocket(server, [userId, ...rooms.map(id => `room:${id}`)]);
         server.serializeAttachment({ userId, username, rooms });
-        server.send(frame('connected', { userId, username, timestamp: now() }));
 
         return new Response(null, { status: 101, webSocket: client });
     }
@@ -178,19 +181,25 @@ export class DiscussHub {
         const { event, data } = packet || {};
         if (!event) return;
 
-        switch (event) {
-            case 'init': return this.onInit(ws);
-            case 'send:user': return this.onUserMessage(ws, data);
-            case 'send:room': return this.onRoomMessage(ws, data);
-            case 'call:invite': return this.onCallInvite(ws, data);
-            case 'call:accept': return this.onCallAccept(ws, data);
-            case 'call:reject': return this.onCallReject(ws, data);
-            case 'call:cancel': return this.onCallCancel(ws, data);
-            case 'call:end': return this.onCallEnd(ws, data);
-            case 'webrtc:offer':
-            case 'webrtc:answer':
-            case 'webrtc:candidate': return this.onRtcSignal(event, ws, data);
-            default: return;
+        try {
+            switch (event) {
+                case EVENTS.INIT: return await this.onInit(ws);
+                case EVENTS.SEND_USER: return this.onUserMessage(ws, data);
+                case EVENTS.SEND_ROOM: return this.onRoomMessage(ws, data);
+                case EVENTS.CALL_INVITE: return this.onCallInvite(ws, data);
+                case EVENTS.CALL_ACCEPT: return this.onCallAccept(ws, data);
+                case EVENTS.CALL_REJECT: return this.onCallReject(ws, data);
+                case EVENTS.CALL_CANCEL: return this.onCallCancel(ws, data);
+                case EVENTS.CALL_END: return this.onCallEnd(ws, data);
+                case EVENTS.WEBRTC_OFFER:
+                case EVENTS.WEBRTC_ANSWER:
+                case EVENTS.WEBRTC_CANDIDATE: return this.onRtcSignal(event, ws, data);
+                default: return;
+            }
+        } catch (error) {
+            /* 与 NestJS 网关的语义对齐：处理失败时回一条 exception，前端据此提示 */
+            console.error('[hub] handle event failed', event, error && error.message);
+            this.safeSend(ws, frame(EVENTS.EXCEPTION, { event, message: '消息处理失败，请重试', timestamp: now() }));
         }
     }
 
@@ -219,9 +228,9 @@ export class DiscussHub {
             const users = this.roomUsers(room);
             /* 重连风暴防护：在线名单没变化的房间只补发给重连者本人，不惊动全屋 */
             if (await this.roomOnlineChanged(room, users)) {
-                this.sendToRoom(room, 'online:room', { room, users, timestamp: now() });
+                this.sendToRoom(room, EVENTS.ONLINE_ROOM, { roomId: room, users, timestamp: now() });
             } else {
-                this.safeSend(ws, frame('online:room', { room, users, timestamp: now() }));
+                this.safeSend(ws, frame(EVENTS.ONLINE_ROOM, { roomId: room, users, timestamp: now() }));
             }
         }
 
@@ -231,14 +240,12 @@ export class DiscussHub {
             const sockets = this.userSockets(friendId);
             if (!sockets.length) continue;
             onlineFriends.push(friendId);
+            const payload = { userId: me.userId, status: true, timestamp: now() };
             for (const socket of sockets) {
-                /* status:friend 为规范事件名，status:firend 是历史拼写，过渡期双发 */
-                const payload = { friend: me.userId, status: true, timestamp: now() };
-                this.safeSend(socket, frame('status:friend', payload));
-                this.safeSend(socket, frame('status:firend', payload));
+                this.safeSend(socket, frame(EVENTS.STATUS_FRIEND, payload));
             }
         }
-        this.safeSend(ws, frame('online:friends', { users: onlineFriends, timestamp: now() }));
+        this.safeSend(ws, frame(EVENTS.ONLINE_FRIENDS, { users: onlineFriends, timestamp: now() }));
     }
 
     async onOffline(ws) {
@@ -252,16 +259,15 @@ export class DiscussHub {
         for (const room of me.rooms || []) {
             const users = this.roomUsers(room);
             if (await this.roomOnlineChanged(room, users)) {
-                this.sendToRoom(room, 'online:room', { room, users, timestamp: now() });
+                this.sendToRoom(room, EVENTS.ONLINE_ROOM, { roomId: room, users, timestamp: now() });
             }
         }
 
         const friends = await this.friendIds(me.userId);
         for (const friendId of friends) {
+            const payload = { userId: me.userId, status: false, timestamp: now() };
             for (const socket of this.userSockets(friendId)) {
-                const payload = { friend: me.userId, status: false, timestamp: now() };
-                this.safeSend(socket, frame('status:friend', payload));
-                this.safeSend(socket, frame('status:firend', payload));
+                this.safeSend(socket, frame(EVENTS.STATUS_FRIEND, payload));
             }
         }
     }
@@ -283,27 +289,28 @@ export class DiscussHub {
 
     onUserMessage(ws, data) {
         const me = this.attach(ws);
-        const receiver = String((data && data.sender) || '');
-        if (!me.userId || !receiver) return;
+        const to = String((data && data.to) || '');
+        if (!me.userId || !to) return;
 
-        const payload = { ...data, sender: me.userId, receiver, timestamp: now() };
-        for (const socket of this.userSockets(receiver)) {
-            this.safeSend(socket, frame('message:user', payload));
+        const payload = { ...data, from: me.userId, to, timestamp: now() };
+        /* 收发双方使用同一个事件，收信人靠 from 判断发送者（不再有 message:sender 这个反向回显事件） */
+        const targets = new Set([...this.userSockets(to), ...this.userSockets(me.userId)]);
+        for (const socket of targets) {
+            this.safeSend(socket, frame(EVENTS.MESSAGE_USER, payload));
         }
-        this.safeSend(ws, frame('message:sender', payload));
     }
 
     onRoomMessage(ws, data) {
         const me = this.attach(ws);
-        const room = String((data && data.room) || '');
-        if (!me.userId || !room) return;
+        const roomId = String((data && data.roomId) || '');
+        if (!me.userId || !roomId) return;
 
         /* 只允许往自己已加入的房间发消息（attachment 在成员变动时由 /sync 刷新；
            被踢/退出后 rooms 会变成空数组，此时所有房间消息都要拒掉） */
-        if (Array.isArray(me.rooms) && !me.rooms.includes(room)) return;
+        if (Array.isArray(me.rooms) && !me.rooms.includes(roomId)) return;
 
-        const payload = { ...data, sender: me.userId, timestamp: now() };
-        this.sendToRoom(room, 'message:room', payload);
+        const payload = { ...data, roomId, from: me.userId, timestamp: now() };
+        this.sendToRoom(roomId, EVENTS.MESSAGE_ROOM, payload);
     }
 
     /* ==================== 语音通话信令 ==================== */
@@ -313,10 +320,10 @@ export class DiscussHub {
         const calleeId = String((data && data.to) || '');
         const callerId = me.userId;
 
-        if (!calleeId || calleeId === callerId) return this.safeSend(ws, frame('call:error', { to: calleeId, reason: 'invalid', timestamp: now() }));
-        if (!this.userSockets(calleeId).length) return this.safeSend(ws, frame('call:error', { to: calleeId, reason: 'offline', timestamp: now() }));
-        if (await this.state.storage.get(`usercall:${callerId}`)) return this.safeSend(ws, frame('call:error', { to: calleeId, reason: 'busy-self', timestamp: now() }));
-        if (await this.state.storage.get(`usercall:${calleeId}`)) return this.safeSend(ws, frame('call:error', { to: calleeId, reason: 'busy', timestamp: now() }));
+        if (!calleeId || calleeId === callerId) return this.safeSend(ws, frame(EVENTS.CALL_ERROR, { to: calleeId, reason: 'invalid', timestamp: now() }));
+        if (!this.userSockets(calleeId).length) return this.safeSend(ws, frame(EVENTS.CALL_ERROR, { to: calleeId, reason: 'offline', timestamp: now() }));
+        if (await this.state.storage.get(`usercall:${callerId}`)) return this.safeSend(ws, frame(EVENTS.CALL_ERROR, { to: calleeId, reason: 'busy-self', timestamp: now() }));
+        if (await this.state.storage.get(`usercall:${calleeId}`)) return this.safeSend(ws, frame(EVENTS.CALL_ERROR, { to: calleeId, reason: 'busy', timestamp: now() }));
 
         const callId = crypto.randomUUID();
         const session = { id: callId, caller: callerId, callee: calleeId, status: 'ringing', createdAt: now(), ringAt: now() + RING_TIMEOUT };
@@ -326,27 +333,27 @@ export class DiscussHub {
         await this.scheduleAlarm(session.ringAt);
 
         for (const socket of this.userSockets(calleeId)) {
-            this.safeSend(socket, frame('call:incoming', { callId, from: callerId, username: me.username, timestamp: now() }));
+            this.safeSend(socket, frame(EVENTS.CALL_INCOMING, { callId, from: callerId, username: me.username, timestamp: now() }));
         }
-        this.safeSend(ws, frame('call:ringing', { callId, to: calleeId, timestamp: now() }));
+        this.safeSend(ws, frame(EVENTS.CALL_RINGING, { callId, to: calleeId, timestamp: now() }));
     }
 
     async onCallAccept(ws, data) {
         const me = this.attach(ws);
         const session = await this.state.storage.get(`call:${data && data.callId}`);
         if (!session || session.callee !== me.userId || session.status !== 'ringing') {
-            return this.safeSend(ws, frame('call:error', { callId: data && data.callId, reason: 'unavailable', timestamp: now() }));
+            return this.safeSend(ws, frame(EVENTS.CALL_ERROR, { callId: data && data.callId, reason: 'unavailable', timestamp: now() }));
         }
 
         const callerSockets = this.userSockets(session.caller);
         if (!callerSockets.length) {
             await this.releaseCall(session.id);
-            return this.safeSend(ws, frame('call:ended', { callId: session.id, reason: 'offline', timestamp: now() }));
+            return this.safeSend(ws, frame(EVENTS.CALL_ENDED, { callId: session.id, reason: 'offline', timestamp: now() }));
         }
 
         await this.state.storage.put(`call:${session.id}`, { ...session, status: 'active', ringAt: null });
         for (const socket of callerSockets) {
-            this.safeSend(socket, frame('call:accepted', { callId: session.id, from: session.callee, timestamp: now() }));
+            this.safeSend(socket, frame(EVENTS.CALL_ACCEPTED, { callId: session.id, from: session.callee, timestamp: now() }));
         }
     }
 
@@ -355,7 +362,7 @@ export class DiscussHub {
         const session = await this.state.storage.get(`call:${data && data.callId}`);
         if (!session || session.callee !== me.userId) return;
         for (const socket of this.userSockets(session.caller)) {
-            this.safeSend(socket, frame('call:rejected', { callId: session.id, timestamp: now() }));
+            this.safeSend(socket, frame(EVENTS.CALL_REJECTED, { callId: session.id, timestamp: now() }));
         }
         await this.releaseCall(session.id);
     }
@@ -365,7 +372,7 @@ export class DiscussHub {
         const session = await this.state.storage.get(`call:${data && data.callId}`);
         if (!session || session.caller !== me.userId) return;
         for (const socket of this.userSockets(session.callee)) {
-            this.safeSend(socket, frame('call:canceled', { callId: session.id, timestamp: now() }));
+            this.safeSend(socket, frame(EVENTS.CALL_CANCELED, { callId: session.id, timestamp: now() }));
         }
         await this.releaseCall(session.id);
     }
@@ -378,7 +385,7 @@ export class DiscussHub {
 
         const peerId = session.caller === me.userId ? session.callee : session.caller;
         for (const socket of this.userSockets(peerId)) {
-            this.safeSend(socket, frame('call:ended', { callId: session.id, reason: 'hangup', timestamp: now() }));
+            this.safeSend(socket, frame(EVENTS.CALL_ENDED, { callId: session.id, reason: 'hangup', timestamp: now() }));
         }
         await this.releaseCall(session.id);
     }
@@ -422,10 +429,10 @@ export class DiscussHub {
             if (session.status !== 'ringing') continue;
             if (session.ringAt && session.ringAt <= timestamp) {
                 for (const socket of this.userSockets(session.caller)) {
-                    this.safeSend(socket, frame('call:timeout', { callId: session.id, timestamp }));
+                    this.safeSend(socket, frame(EVENTS.CALL_TIMEOUT, { callId: session.id, timestamp }));
                 }
                 for (const socket of this.userSockets(session.callee)) {
-                    this.safeSend(socket, frame('call:canceled', { callId: session.id, reason: 'timeout', timestamp }));
+                    this.safeSend(socket, frame(EVENTS.CALL_CANCELED, { callId: session.id, reason: 'timeout', timestamp }));
                 }
                 await this.releaseCall(session.id);
             } else if (session.ringAt && (next === null || session.ringAt < next)) {

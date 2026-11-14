@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Socket } from 'socket.io-client'
 import { useSocketStore } from './socket'
+import { Event } from '@/constants/events'
 
 // 通话状态：idle-空闲 calling-主叫振铃中 incoming-被叫来电中 active-通话中 failed-通话失败提示
 export type CallStatus = 'idle' | 'calling' | 'incoming' | 'active' | 'failed'
@@ -68,19 +69,19 @@ export const useCallStore = defineStore('call', {
       boundSocket = socket
 
       // ---- 通话状态信令 ----
-      socket.on('call:incoming', this.handleIncoming.bind(this))
-      socket.on('call:ringing', this.handleRinging.bind(this))
-      socket.on('call:accepted', this.handleAccepted.bind(this))
-      socket.on('call:rejected', this.handleRejected.bind(this))
-      socket.on('call:canceled', this.handleCanceled.bind(this))
-      socket.on('call:timeout', this.handleTimeout.bind(this))
-      socket.on('call:ended', this.handleEnded.bind(this))
-      socket.on('call:error', this.handleCallError.bind(this))
+      socket.on(Event.CALL_INCOMING, this.handleIncoming.bind(this))
+      socket.on(Event.CALL_RINGING, this.handleRinging.bind(this))
+      socket.on(Event.CALL_ACCEPTED, this.handleAccepted.bind(this))
+      socket.on(Event.CALL_REJECTED, this.handleRejected.bind(this))
+      socket.on(Event.CALL_CANCELED, this.handleCanceled.bind(this))
+      socket.on(Event.CALL_TIMEOUT, this.handleTimeout.bind(this))
+      socket.on(Event.CALL_ENDED, this.handleEnded.bind(this))
+      socket.on(Event.CALL_ERROR, this.handleCallError.bind(this))
 
       // ---- WebRTC 协商信令 ----
-      socket.on('webrtc:offer', this.handleOffer.bind(this))
-      socket.on('webrtc:answer', this.handleAnswer.bind(this))
-      socket.on('webrtc:candidate', this.handleCandidate.bind(this))
+      socket.on(Event.WEBRTC_OFFER, this.handleOffer.bind(this))
+      socket.on(Event.WEBRTC_ANSWER, this.handleAnswer.bind(this))
+      socket.on(Event.WEBRTC_CANDIDATE, this.handleCandidate.bind(this))
 
       // 自身连接断开时静默复位
       socket.on('disconnect', () => {
@@ -121,7 +122,7 @@ export const useCallStore = defineStore('call', {
         return
       }
 
-      this.emit('call:invite', { to: peer.id })
+      this.emit(Event.CALL_INVITE, { to: peer.id })
       playRing('ringback')
     },
 
@@ -136,14 +137,14 @@ export const useCallStore = defineStore('call', {
         localStream = await this.getUserAudio()
       } catch (err) {
         console.error('getUserMedia failed:', err)
-        this.emit('call:reject', { callId: this.callId })
+        this.emit(Event.CALL_REJECT, { callId: this.callId })
         this.fail('无法访问麦克风，已拒绝通话')
         return
       }
 
       // 先创建 PeerConnection 等待 Offer（Offer 到达时复用，不重复创建）
       this.createPeerConnection()
-      this.emit('call:accept', { callId: this.callId })
+      this.emit(Event.CALL_ACCEPT, { callId: this.callId })
       this.status = 'active'
       this.startDuration()
     },
@@ -153,7 +154,7 @@ export const useCallStore = defineStore('call', {
      */
     rejectCall() {
       if (this.status !== 'incoming') return
-      this.emit('call:reject', { callId: this.callId })
+      this.emit(Event.CALL_REJECT, { callId: this.callId })
       this.resetAll()
     },
 
@@ -162,9 +163,9 @@ export const useCallStore = defineStore('call', {
      */
     hangup() {
       if (this.status === 'calling') {
-        this.emit('call:cancel', { callId: this.callId })
+        this.emit(Event.CALL_CANCEL, { callId: this.callId })
       } else if (this.status === 'active') {
-        this.emit('call:end', { callId: this.callId })
+        this.emit(Event.CALL_END, { callId: this.callId })
       }
       this.resetAll()
     },
@@ -190,7 +191,7 @@ export const useCallStore = defineStore('call', {
     handleIncoming(data: CallSignalPayload) {
       // 忙线时自动拒绝（服务端已有忙线校验，此处兜底）
       if (this.isBusy) {
-        this.emit('call:reject', { callId: data.callId })
+        this.emit(Event.CALL_REJECT, { callId: data.callId })
         return
       }
       this.direction = 'callee'
@@ -216,10 +217,10 @@ export const useCallStore = defineStore('call', {
       try {
         const offer = await pc!.createOffer({ offerToReceiveAudio: true })
         await pc!.setLocalDescription(offer)
-        this.emit('webrtc:offer', { callId: this.callId, sdp: offer })
+        this.emit(Event.WEBRTC_OFFER, { callId: this.callId, sdp: offer })
       } catch (err) {
         console.error('createOffer failed:', err)
-        this.emit('call:end', { callId: this.callId })
+        this.emit(Event.CALL_END, { callId: this.callId })
         this.fail('建立通话连接失败')
       }
     },
@@ -235,10 +236,10 @@ export const useCallStore = defineStore('call', {
         await this.flushPendingCandidates()
         const answer = await pc.createAnswer({ offerToReceiveAudio: true })
         await pc.setLocalDescription(answer)
-        this.emit('webrtc:answer', { callId: this.callId, sdp: answer })
+        this.emit(Event.WEBRTC_ANSWER, { callId: this.callId, sdp: answer })
       } catch (err) {
         console.error('handleOffer failed:', err)
-        this.emit('call:end', { callId: this.callId })
+        this.emit(Event.CALL_END, { callId: this.callId })
         this.fail('建立通话连接失败')
       }
     },
@@ -325,7 +326,7 @@ export const useCallStore = defineStore('call', {
       // 上报本地 ICE candidate
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          this.emit('webrtc:candidate', { callId: this.callId, candidate: event.candidate })
+          this.emit(Event.WEBRTC_CANDIDATE, { callId: this.callId, candidate: event.candidate })
         }
       }
 
@@ -340,7 +341,7 @@ export const useCallStore = defineStore('call', {
       pc.onconnectionstatechange = () => {
         const state = pc?.connectionState
         if (state === 'failed') {
-          this.emit('call:end', { callId: this.callId })
+          this.emit(Event.CALL_END, { callId: this.callId })
           this.fail('网络连接失败，通话已结束')
         }
       }

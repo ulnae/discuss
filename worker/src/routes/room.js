@@ -14,6 +14,7 @@ import { ok, readJson, pageOf } from '../lib/http.js';
 import { currentUser } from '../lib/auth.js';
 import { all, first, run, now, uuid, iso, count } from '../lib/sql.js';
 import { pushToRoom, syncUserRooms, dropRoom } from '../lib/realtime.js';
+import { EVENTS } from '../lib/events.js';
 
 const ROOM_SELECT = `
     SELECT r.id, r.name, r.description, r.creator, r.createdAt, r.updatedAt,
@@ -66,18 +67,6 @@ async function list(request, env, ctx) {
     const { pageSize, offset } = pageOf(ctx.url.searchParams);
     const rows = await all(env, `${ROOM_SELECT} WHERE r.isDeleted = 0 ORDER BY r.createdAt ASC LIMIT ? OFFSET ?`, pageSize, offset);
     const total = await count(env, 'SELECT COUNT(*) AS total FROM room WHERE isDeleted = 0');
-    return ok({ rows: rows.map(roomView), total }, ctx.cors);
-}
-
-async function mine(request, env, ctx) {
-    const me = await currentUser(request, env);
-    const { pageSize, offset } = pageOf(ctx.url.searchParams);
-    const rows = await all(
-        env,
-        `${ROOM_SELECT} WHERE r.isDeleted = 0 AND r.creator = ? ORDER BY r.createdAt ASC LIMIT ? OFFSET ?`,
-        me.id, pageSize, offset
-    );
-    const total = await count(env, 'SELECT COUNT(*) AS total FROM room WHERE isDeleted = 0 AND creator = ?', me.id);
     return ok({ rows: rows.map(roomView), total }, ctx.cors);
 }
 
@@ -178,7 +167,7 @@ async function update(request, env, ctx, id) {
 
         const updated = await first(env, `${ROOM_SELECT} WHERE r.id = ?`, id);
         if (updated) {
-            await pushToRoom(env, id, 'room:updated', { room: roomView(updated) }, me.id);
+            await pushToRoom(env, id, EVENTS.ROOM_UPDATED, { room: roomView(updated) });
         }
     }
     return ok('更新房间成功', ctx.cors);
@@ -194,10 +183,11 @@ async function remove(request, env, ctx, id) {
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE room_id = ?', id);
 
     /* 解散房间：所有在线成员立刻收到通知，并把房间从订阅里摘掉 */
-    await pushToRoom(env, id, 'room:deleted', {
+    await pushToRoom(env, id, EVENTS.ROOM_DELETED, {
         roomId: id,
         roomName: exist.name,
-        by: { id: me.id, username: me.username }
+        byUserId: me.id,
+        byUsername: me.username
     });
     await dropRoom(env, id);
 
@@ -214,7 +204,6 @@ export async function handleRoom(request, env, ctx, rest) {
     }
     if (ctx.method === 'GET' && head === 'search') return search(request, env, ctx);
     if (ctx.method === 'GET' && head === 'overview') return overview(request, env, ctx);
-    if (ctx.method === 'GET' && head === 'mine') return mine(request, env, ctx);
 
     const id = decodeURIComponent(head);
     if (ctx.method === 'GET') return detail(request, env, ctx, id);

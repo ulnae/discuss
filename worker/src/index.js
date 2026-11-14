@@ -15,6 +15,7 @@ import { corsFor, fail, ok, preflight } from './lib/http.js';
 import { ApiError } from './lib/errors.js';
 import { verifyToken, signToken } from './lib/jwt.js';
 import { currentUser } from './lib/auth.js';
+import { EVENTS } from './lib/events.js';
 import { handleCaptcha } from './routes/captcha.js';
 import { handleUser, servePublicFile } from './routes/user.js';
 import { handleRoom } from './routes/room.js';
@@ -100,8 +101,6 @@ export default {
                 case 'friend': return (await handleFriend(request, env, rc, rest)) || fail('not found', 404, cors);
                 case 'alert': return await handleAlert(request, env, rc, rest);
                 case 'ws': return await handleSocket(request, env, rc, rest);
-                case 'sse':
-                    return fail('SSE 已由 WebSocket 通道取代，请使用 /api/ws', 501, cors);
                 default: throw notFound();
             }
         } catch (error) {
@@ -156,8 +155,8 @@ async function handleAlert(request, env, rc, rest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            event: 'system:alert',
-            data: { sender: sender || '系统通知', message, timestamp: Date.now() }
+            event: EVENTS.SYSTEM_ALERT,
+            data: { senderName: sender || '系统通知', message, timestamp: Date.now() }
         })
     });
     const stats = await result.json().catch(() => ({ delivered: 0 }));
