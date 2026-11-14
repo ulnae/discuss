@@ -13,13 +13,13 @@ Discuss 的后台服务，跑在 Cloudflare Workers 上：**Worker（HTTP）+ D1
 | 注册 / 登录 | `POST /api/user`、`/api/user/login` | ✅ | 密码 pbkdf2 替代 bcrypt（Worker 跑不了原生模块） |
 | 图形验证码 | `/api/captcha`（express-session） | ✅ | 答案落 D1，前端带 `captchaId` 回传 |
 | 用户 CRUD | `/api/user*` | ✅ | 响应字段、错误文案一致 |
-| 房间 / 成员 | `/api/room*`、`/api/member*` | ✅ | 含分页、搜索、我的房间 |
+| 房间 / 成员 | `/api/room*`、`/api/member*` | ✅ | 含分页、搜索、登录聚合 `/room/overview` |
 | 申请（好友 / 房间） | `/api/apply*` | ✅ | 同意时自动建立好友 / 成员关系 |
 | 好友 | `/api/friend*` | ✅ | `DELETE /friend/:id` 语义与 NestJS 相同（id 是对方 userId） |
-| 系统通知 | `POST /api/alert` | ✅ | 广播到所有在线连接 |
-| 实时消息 | Socket.IO `/websocket` | ✅ 原生 WebSocket `/api/ws` | 事件名逐个对齐，见下表 |
+| 系统通知 | `POST /api/alert` | ✅ | 广播到所有在线连接；需要 `x-alert-secret`，未配置则关闭 |
+| 实时消息 | Socket.IO `/websocket` | ✅ 原生 WebSocket `/api/ws` | 事件名逐个对齐；连接票据 `GET /api/ws/ticket`（60s 短票） |
 | 语音通话信令 | `call:*` / `webrtc:*` | ✅ | 会话状态存 DO storage，休眠不丢 |
-| SSE | `GET /sse` | ❌ | 前端仅在注释里用过；实时需求由 WebSocket 承担，接口返回 501 |
+| SSE | `GET /sse` | ❌ | 已删除（两端都没有该路由，请求返回 404）；实时统一走 WebSocket |
 | 文件 / 图片上传 | multer → `public/` | ✅ | 存 Workers KV（免绑卡），`/public/<userId>/<file>` 读回；未绑定返回 501 |
 | 定时清空 public | `@nestjs/schedule` | ✅ | KV `expirationTtl` + Cron Trigger 双层回收 |
 | Swagger | `/docs` | ❌ | 接口以本文档 + 代码注释为准 |
@@ -78,6 +78,9 @@ wrangler d1 execute discuss-data --remote --file=./schema.sql
 # 3. JWT 密钥（必填！不配的话登录接口会 500）
 #    生成 32 字节随机串直接灌进去，值不会回显
 openssl rand -hex 32 | wrangler secret put JWT_SECRET
+
+# 3.5 系统广播密钥（可选）：不配的话 POST /api/alert 直接返回 403
+openssl rand -hex 32 | wrangler secret put ALERT_SECRET
 
 # 4. 部署
 wrangler deploy
@@ -244,6 +247,7 @@ wrangler deploy
 | **WebSocket Hibernation**（`state.acceptWebSocket`） | 空闲连接不产生 Duration 计费，Durable Object 直接休眠；有消息才唤醒 |
 | **自动 ping/pong**（`setWebSocketAutoResponse`） | 心跳在边缘应答，不唤醒 DO，也不占一次请求 |
 | 客户端 25s 心跳 | 断线能及时发现并指数退避重连，避免无意义重连风暴 |
+| **roomIndex 内存索引** | 群消息只遍历该房间的连接，不再对全站每条连接做一次 `deserializeAttachment` |
 | 单 DO 实例（`idFromName('hub')`） | 好友/房间关系都在同一个 D1，避免跨 DO 转发带来的额外请求 |
 | 验证码 / 会话不落 KV | D1 免费额度是 500 万读/天、10 万写/天，比 KV 的 1000 写/天宽松得多 |
 | `PBKDF2_ITERATIONS=10000` | 免费版单次请求 CPU 上限 10ms；迭代次数写在哈希串里，付费后可调高而不影响老密码 |
@@ -261,8 +265,10 @@ wrangler deploy
    两套用户表不能直接互换；要迁移历史账号，只能在首次登录时做「bcrypt 校验 → 重新用 pbkdf2 存储」的兼容逻辑（本项目未实现，D1 从空库开始）。
 2. **验证码存 D1**：没有 session，答案随 `captchaId` 走；有效期内可重复使用（与 NestJS 的 session 一致）。
 3. **JWT 可互通**：两边都是 HS256 + `{ id, username }`，只要 `JWT_SECRET` 相同，token 互相认。
-4. **SSE 下线**：`GET /api/sse` 返回 501，前端实时统一走 WebSocket。
-5. **新加入的房间要重连才进 tag**：连接建立时按当时的成员关系打 tag；运行期新加入的房间，刷新页面（重连）后才会收到该房间的群消息。
+4. **SSE 下线**：两端都没有 `GET /api/sse` 这个路由了（请求返回 404），实时统一走 WebSocket。
+5. **运行期加入房间无需重连**：成员关系变化后 Worker 会调用 DO 的 `/sync` 刷新连接上的
+   `rooms` 订阅，新加入的房间立刻能收发消息；被踢/退出的房间同时被摘掉。
+   （tag 只在 accept 时写入，所以房间判定用的是 attachment 里的 `rooms`，不是 tag。）
 6. **时间格式**：库里存毫秒整数，接口返回 ISO 字符串，与 TypeORM 的序列化结果一致。
 
 ---

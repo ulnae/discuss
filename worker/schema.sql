@@ -42,6 +42,14 @@ CREATE TABLE IF NOT EXISTS member (
 CREATE INDEX IF NOT EXISTS idx_member_user ON member(user_id);
 CREATE INDEX IF NOT EXISTS idx_member_room ON member(room_id);
 
+-- 同一用户在同一房间只允许一条「未删除」记录。
+-- 用部分索引（WHERE isDeleted = 0）：退群后软删的行不占用唯一性，重新入群仍可插入。
+-- 建索引前先清掉历史并发产生的重复行，否则脚本在旧库上会失败。
+DELETE FROM member
+ WHERE isDeleted = 0
+   AND rowid NOT IN (SELECT MIN(rowid) FROM member WHERE isDeleted = 0 GROUP BY user_id, room_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_member_active ON member(user_id, room_id) WHERE isDeleted = 0;
+
 CREATE TABLE IF NOT EXISTS apply (
   id             TEXT PRIMARY KEY,
   user_id        TEXT NOT NULL DEFAULT '',
@@ -66,6 +74,12 @@ CREATE TABLE IF NOT EXISTS friend (
 );
 CREATE INDEX IF NOT EXISTS idx_friend_creator ON friend(creator);
 CREATE INDEX IF NOT EXISTS idx_friend_target ON friend(friend_id);
+
+-- 同上：好友关系以「未删除」为唯一，删好友后可以重新添加
+DELETE FROM friend
+ WHERE isDeleted = 0
+   AND rowid NOT IN (SELECT MIN(rowid) FROM friend WHERE isDeleted = 0 GROUP BY creator, friend_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_friend_active ON friend(creator, friend_id) WHERE isDeleted = 0;
 
 -- 图形验证码：Worker 没有 express-session，用短命行替代
 CREATE TABLE IF NOT EXISTS captcha (

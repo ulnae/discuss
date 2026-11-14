@@ -14,6 +14,16 @@ import { Event } from '@/constants/events'
 
 const setTitle = updateTitle()
 
+/** 单个会话在内存里最多保留的消息条数（IndexedDB 只留 200，内存留多一点供上翻） */
+const MAX_IN_MEMORY = 500
+
+/** 追加并裁剪，避免长会话把内存撑爆 */
+function pushCapped(list: any[], message: any) {
+    list.push(message)
+    if (list.length > MAX_IN_MEMORY) list.splice(0, list.length - MAX_IN_MEMORY)
+    return list
+}
+
 /** 图片 / 文件消息的附加字段（与文字消息共用一条发送链路） */
 type MessageMeta = { type?: string; size?: number; originalname?: string }
 
@@ -290,7 +300,7 @@ export const useSocketStore = defineStore('socket', {
             message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
             const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
             if (idx >= 0) list.splice(idx, 1, message)
-            else list.push(message)
+            else pushCapped(list, message)
             this.userMessageMap.set(peerId, list)
             MessageCache.saveUser(peerId, list)
         },
@@ -303,7 +313,7 @@ export const useSocketStore = defineStore('socket', {
             message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
             const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
             if (idx >= 0) list.splice(idx, 1, message)
-            else list.push(message)
+            else pushCapped(list, message)
             this.roomMessageMap.set(data.roomId, list)
             MessageCache.saveRoom(data.roomId, list)
         },
@@ -323,8 +333,7 @@ export const useSocketStore = defineStore('socket', {
                 ...meta,
                 status: connected ? 'sending' : 'failed',
             }
-            const list = this.userMessageMap.get(receiver) || []
-            list.push(message)
+            const list = pushCapped(this.userMessageMap.get(receiver) || [], message)
             this.userMessageMap.set(receiver, list)
             MessageCache.saveUser(receiver, list)
             if (connected) this.socket!.emit(Event.SEND_USER, { to: receiver, content, clientId, ...meta })
@@ -345,8 +354,7 @@ export const useSocketStore = defineStore('socket', {
                 ...meta,
                 status: connected ? 'sending' : 'failed',
             }
-            const list = this.roomMessageMap.get(roomId) || []
-            list.push(message)
+            const list = pushCapped(this.roomMessageMap.get(roomId) || [], message)
             this.roomMessageMap.set(roomId, list)
             MessageCache.saveRoom(roomId, list)
             if (connected) this.socket!.emit(Event.SEND_ROOM, { roomId, content, clientId, ...meta })

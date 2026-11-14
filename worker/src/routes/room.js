@@ -42,16 +42,26 @@ async function create(request, env, ctx) {
     const name = String(body.name || '').trim();
     if (!name) throw new ApiError('房间名称不能为空', 400);
 
-    const duplicated = await first(env, 'SELECT id FROM room WHERE name = ? AND isDeleted = 0', name);
-    if (duplicated) throw new ApiError('房间名称已存在', 400);
+    /* 表上 name 是 UNIQUE（含已软删的行），所以这里也要算上已解散的房间，
+       否则只查 isDeleted = 0 会在 INSERT 时撞 UNIQUE 约束，抛出一个看不懂的 500 */
+    const duplicated = await first(env, 'SELECT id, isDeleted FROM room WHERE name = ?', name);
+    if (duplicated) throw new ApiError('房间名称已被使用（含已解散的房间），换一个名字吧', 400);
 
     const timestamp = now();
     const roomId = uuid();
-    await run(
-        env,
-        'INSERT INTO room (id, name, description, creator, createdAt, updatedAt, isDeleted) VALUES (?,?,?,?,?,?,0)',
-        roomId, name, String(body.description || ''), me.id, timestamp, timestamp
-    );
+    try {
+        await run(
+            env,
+            'INSERT INTO room (id, name, description, creator, createdAt, updatedAt, isDeleted) VALUES (?,?,?,?,?,?,0)',
+            roomId, name, String(body.description || ''), me.id, timestamp, timestamp
+        );
+    } catch (error) {
+        /* 并发创建同名房间时仍可能撞唯一索引，转成可读提示而不是 500 */
+        if (String(error && error.message || '').includes('UNIQUE')) {
+            throw new ApiError('房间名称已被使用，换一个名字吧', 400);
+        }
+        throw error;
+    }
     await run(
         env,
         'INSERT INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)',
@@ -139,26 +149,41 @@ async function overview(request, env, ctx) {
 }
 
 async function detail(request, env, ctx, id) {
-    await currentUser(request, env);
+    const me = await currentUser(request, env);
     const row = await first(env, `${ROOM_SELECT} WHERE r.id = ? AND r.isDeleted = 0`, id);
-    if (!row) throw new ApiError(`id为${id}的房间不存在`, 401);
+    if (!row) throw new ApiError(`id为${id}的房间不存在`, 404);
+
+    /* 群资料只对成员开放：否则任何登录用户都能按 id 枚举出全部群名与群主邮箱 */
+    const member = await first(
+        env,
+        'SELECT id FROM member WHERE room_id = ? AND user_id = ? AND isDeleted = 0',
+        id, me.id
+    );
+    if (!member) throw new ApiError('你不是该房间成员', 403);
     return ok(roomView(row), ctx.cors);
 }
 
 async function update(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
-    const exist = await first(env, 'SELECT id FROM room WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 401);
+    const exist = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', id);
+    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 404);
+    /* 契约里写的是「群主」——没有这行判断，任何登录用户都能改别人群的名称与公告 */
+    if (exist.creator !== me.id) throw new ApiError('只有群主可以修改房间信息', 403);
 
     const fields = [];
     const args = [];
-    if (body.name) {
-        const duplicated = await first(env, 'SELECT id FROM room WHERE name = ? AND id <> ? AND isDeleted = 0', String(body.name), id);
-        if (duplicated) throw new ApiError('房间名称已存在', 400);
-        fields.push('name = ?'); args.push(String(body.name).trim());
+    /* 用 !== undefined 而不是真值判断：否则把群公告清空（传空串）会被静默忽略 */
+    if (body.name !== undefined) {
+        const name = String(body.name).trim();
+        if (!name) throw new ApiError('房间名称不能为空', 400);
+        if (name !== exist.name) {
+            const duplicated = await first(env, 'SELECT id FROM room WHERE name = ? AND id <> ?', name, id);
+            if (duplicated) throw new ApiError('房间名称已被使用，换一个名字吧', 400);
+            fields.push('name = ?'); args.push(name);
+        }
     }
-    if (body.description) {
+    if (body.description !== undefined) {
         fields.push('description = ?'); args.push(String(body.description));
     }
     if (fields.length) {
@@ -176,10 +201,16 @@ async function update(request, env, ctx, id) {
 async function remove(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const exist = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 401);
-    if (exist.creator !== me.id) throw new ApiError('只有群主可以解散房间', 401);
+    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 404);
+    if (exist.creator !== me.id) throw new ApiError('只有群主可以解散房间', 403);
 
-    await run(env, 'UPDATE room SET isDeleted = 1, updatedAt = ? WHERE id = ?', now(), id);
+    /* name 上有 UNIQUE 约束，软删后如果不释放名字，同名房间永远建不回来。
+       改名成带后缀的形式（列表只查 isDeleted = 0，用户看不到这个后缀） */
+    await run(
+        env,
+        'UPDATE room SET isDeleted = 1, updatedAt = ?, name = ? WHERE id = ?',
+        now(), `${exist.name} #deleted:${id}`, id
+    );
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE room_id = ?', id);
 
     /* 解散房间：所有在线成员立刻收到通知，并把房间从订阅里摘掉 */

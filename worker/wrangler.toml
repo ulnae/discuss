@@ -14,6 +14,9 @@ workers_dev = true
 # 允许跨域的前端来源（逗号分隔；GitHub Pages + 本地开发）
 [vars]
 ALLOW_ORIGIN = "https://ulnae.github.io,http://localhost:8000,http://127.0.0.1:8000"
+# 系统广播 POST /api/alert 的共享密钥。不要写在这里（配置文件会进仓库），
+# 用 `wrangler secret put ALERT_SECRET` 配；不配则该接口直接返回 403（默认关闭）。
+#
 # JWT 过期时间，与 NestJS 的 JWT_EXPIRES_IN 保持同义（支持 24h / 7d / 3600s / 纯数字秒）
 JWT_EXPIRES_IN = "24h"
 # 是否强制校验图形验证码；调试期可设为 "false"

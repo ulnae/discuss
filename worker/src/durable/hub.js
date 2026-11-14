@@ -24,6 +24,9 @@
 import { EVENTS } from '../lib/events.js';
 
 const RING_TIMEOUT = 30_000;
+/** 消息频率限制：5 秒内最多 20 条，超出回一条 exception（不封禁，只挡刷屏） */
+const RATE_WINDOW = 5_000;
+const RATE_LIMIT = 20;
 
 const frame = (event, data) => JSON.stringify({ event, data });
 const now = () => Date.now();
@@ -32,6 +35,12 @@ export class DiscussHub {
     constructor(state, env) {
         this.state = state;
         this.env = env;
+        /* roomId → Set<WebSocket> 内存索引。
+           不建索引的话，每条群消息都要遍历全部连接并逐个 deserializeAttachment，
+           复杂度是 O(全站在线连接数)；建索引后一次群消息只碰该房间的连接。
+           索引在成员关系变化时置空，下次用到时从 attachment 重建（休眠唤醒后同样适用）。 */
+        this.roomIndex = null;
+        this.hits = null;
         try {
             this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
         } catch {
@@ -125,6 +134,7 @@ export class DiscussHub {
                     updated++;
                 } catch { /* socket 已关闭 */ }
             }
+            this.invalidateRoomIndex();
             return Response.json({ ok: true, updated });
         }
 
@@ -142,6 +152,7 @@ export class DiscussHub {
                     updated++;
                 } catch { /* ignore */ }
             }
+            this.invalidateRoomIndex();
             return Response.json({ ok: true, updated });
         }
 
@@ -163,9 +174,10 @@ export class DiscussHub {
         const pair = new WebSocketPair();
         const [client, server] = Object.values(pair);
 
-        /* 第二个参数是 tag：可按用户、按房间批量取连接，休眠后依然有效 */
+        /* 第二个参数是 tag：可按用户批量取连接，休眠后依然有效 */
         this.state.acceptWebSocket(server, [userId, ...rooms.map(id => `room:${id}`)]);
         server.serializeAttachment({ userId, username, rooms });
+        this.invalidateRoomIndex();
 
         return new Response(null, { status: 101, webSocket: client });
     }
@@ -180,6 +192,12 @@ export class DiscussHub {
         try { packet = JSON.parse(message); } catch { return; }
         const { event, data } = packet || {};
         if (!event) return;
+
+        /* 只对发消息做限流：通话信令与 init 本来就低频，不能因为限流丢掉状态机 */
+        if ((event === EVENTS.SEND_USER || event === EVENTS.SEND_ROOM) && this.overRate(ws)) {
+            this.safeSend(ws, frame(EVENTS.EXCEPTION, { event, message: '发送太快了，请稍后再试', timestamp: now() }));
+            return;
+        }
 
         try {
             switch (event) {
@@ -204,11 +222,19 @@ export class DiscussHub {
     }
 
     async webSocketClose(ws) {
+        this.forget(ws);
         await this.onOffline(ws);
     }
 
     async webSocketError(ws) {
+        this.forget(ws);
         await this.onOffline(ws);
+    }
+
+    /** 连接结束时清掉索引与限流状态 */
+    forget(ws) {
+        this.invalidateRoomIndex();
+        if (this.hits) this.hits.delete(ws);
     }
 
     /* ==================== 上线 / 下线 ==================== */
@@ -223,6 +249,7 @@ export class DiscussHub {
         /* 每次（重）连都重新读一次成员表：重连本身就是「房间订阅自愈」的时机 */
         const rooms = await this.userRooms(me.userId);
         try { ws.serializeAttachment({ ...me, rooms }); } catch { /* ignore */ }
+        this.invalidateRoomIndex();
 
         for (const room of rooms) {
             const users = this.roomUsers(room);
@@ -453,6 +480,33 @@ export class DiscussHub {
         try { return this.state.getWebSockets(String(userId)); } catch { return []; }
     }
 
+    /** 成员关系变化后置空索引，下次用到时从 attachment 重建 */
+    invalidateRoomIndex() {
+        this.roomIndex = null;
+    }
+
+    buildRoomIndex() {
+        const index = new Map();
+        for (const socket of this.state.getWebSockets()) {
+            const info = this.attach(socket);
+            if (!info || !info.userId || !Array.isArray(info.rooms)) continue;
+            for (const room of info.rooms) {
+                let set = index.get(room);
+                if (!set) { set = new Set(); index.set(room, set); }
+                set.add(socket);
+            }
+        }
+        this.roomIndex = index;
+        return index;
+    }
+
+    /** 某房间当前的所有连接（O(1)，首次调用会重建一次索引） */
+    roomSockets(roomId) {
+        const index = this.roomIndex || this.buildRoomIndex();
+        const set = index.get(String(roomId));
+        return set ? Array.from(set) : [];
+    }
+
     sendToTag(tag, event, data) {
         let delivered = 0;
         let sockets = [];
@@ -474,17 +528,14 @@ export class DiscussHub {
 
     /**
      * 推给某个房间的在线成员。
-     * 用 attachment.rooms 而不是 socket tag 判断：tag 在 accept 后不可修改，
-     * 而成员可能随时被加入/移出房间，attachment 能通过 /sync 实时刷新。
+     * 用 roomIndex（来源是 attachment.rooms）而不是 socket tag 判断：
+     * tag 在 accept 后不可修改，而成员可能随时被加入/移出房间，attachment 能通过 /sync 实时刷新。
      */
     sendToRoom(roomId, event, data, excludeUser) {
-        const room = String(roomId);
         const exclude = excludeUser ? String(excludeUser) : '';
         let delivered = 0;
-        for (const socket of this.state.getWebSockets()) {
-            const info = this.attach(socket);
-            if (!info || !Array.isArray(info.rooms) || !info.rooms.includes(room)) continue;
-            if (exclude && info.userId === exclude) continue;
+        for (const socket of this.roomSockets(roomId)) {
+            if (exclude && this.attach(socket).userId === exclude) continue;
             if (this.safeSend(socket, frame(event, data))) delivered++;
         }
         return delivered;
@@ -502,14 +553,29 @@ export class DiscussHub {
         try { ws.send(payload); return true; } catch { return false; }
     }
 
+    /**
+     * 单连接发送频率限制（滑动窗口，内存态）。
+     * 只拦 send:user / send:room：刷屏会同时消耗 DO 请求与接收方的渲染资源。
+     * 不持久化：DO 休眠或重连后窗口重置，够用且零成本。
+     */
+    overRate(ws) {
+        if (!this.hits) this.hits = new Map();
+        const timestamp = now();
+        const list = (this.hits.get(ws) || []).filter(at => timestamp - at < RATE_WINDOW);
+        if (list.length >= RATE_LIMIT) {
+            this.hits.set(ws, list);
+            return true;
+        }
+        list.push(timestamp);
+        this.hits.set(ws, list);
+        return false;
+    }
+
     roomUsers(roomId) {
-        const room = String(roomId);
         const users = new Set();
-        for (const socket of this.state.getWebSockets()) {
+        for (const socket of this.roomSockets(roomId)) {
             const info = this.attach(socket);
-            if (!info || !info.userId) continue;
-            if (!Array.isArray(info.rooms) || !info.rooms.includes(room)) continue;
-            users.add(info.userId);
+            if (info && info.userId) users.add(info.userId);
         }
         return Array.from(users);
     }

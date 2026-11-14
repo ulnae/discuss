@@ -256,7 +256,7 @@ const uploadImage = async (file: Blob) => {
         size: res.data.size,
       });
     }
-  });
+  }).catch(() => { /* 失败提示由 axios 拦截器统一弹出 */ });
 }
 
 const uploadFile = (file: Blob) => {
@@ -270,18 +270,21 @@ const uploadFile = (file: Blob) => {
         originalname: res.data.originalname,
       });
     }
-  });
+  }).catch(() => { /* 失败提示由 axios 拦截器统一弹出 */ });
 }
 onMounted(() => {
   document.getElementById("chooseImage")?.addEventListener("change", (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
     uploadImage(file)
+    // 清空 value：否则连续选择同一个文件不会触发 change
+    ;(e.target as HTMLInputElement).value = ''
   });
   document.getElementById("chooseFile")?.addEventListener("change", (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
     uploadFile(file)
+    ;(e.target as HTMLInputElement).value = ''
   });
 
   scrollToBottom('messageContainer');
@@ -294,6 +297,12 @@ usePaste(uploadImage, uploadFile)
 const visibleCount = ref(100)
 const visibleMessages = computed(() => getHistory.value.slice(-visibleCount.value))
 const hasEarlierMessages = computed(() => getHistory.value.length > visibleCount.value)
+
+// 换房间时把「已展开的条数」收回去，否则上个房间翻到的几百条会带过来
+watch(
+  () => route.params.id,
+  () => { visibleCount.value = 100 }
+)
 
 // 新消息到达时自动滚到底部（监听最后一条 id，替代原 deep watch 的全量 diff）
 watch(

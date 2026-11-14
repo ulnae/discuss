@@ -70,7 +70,6 @@ Discuss/
 │   │   ├── friend/           # 好友相关接口
 │   │   ├── member/           # 成员相关接口
 │   │   ├── room/             # 房间相关接口
-│   │   ├── sse/              # SSE 相关接口
 │   │   └── user/             # 用户相关接口
 │   ├── assets/               # 资源文件
 │   │   └── style/            # 全局样式
@@ -283,7 +282,6 @@ npm run preview
 - **api/member** - 成员管理
 - **api/room** - 房间创建、搜索、加入
 - **api/apply** - 申请处理（好友/房间）
-- **api/sse** - SSE 事件推送
 
 ### 状态管理
 

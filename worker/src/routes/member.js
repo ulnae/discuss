@@ -45,7 +45,7 @@ async function create(request, env, ctx) {
 
     const room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
     if (!room) throw new ApiError('房间不存在', 404);
-    if (room.creator !== me.id) throw new ApiError('只有群主可以添加成员', 401);
+    if (room.creator !== me.id) throw new ApiError('只有群主可以添加成员', 403);
 
     const existing = await first(env, 'SELECT id FROM member WHERE user_id = ? AND room_id = ? AND isDeleted = 0', userId, roomId);
     if (existing) {
@@ -55,7 +55,7 @@ async function create(request, env, ctx) {
 
     const id = uuid();
     const timestamp = now();
-    await run(env, 'INSERT INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', id, userId, roomId, timestamp);
+    await run(env, 'INSERT OR IGNORE INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', id, userId, roomId, timestamp);
     const row = await first(env, `${MEMBER_SELECT} WHERE m.id = ?`, id);
 
     /* 被拉进房间的人需要立刻在列表里看到这个房间，并且能收到房间消息 */
@@ -73,11 +73,25 @@ async function create(request, env, ctx) {
 }
 
 async function list(request, env, ctx) {
-    await currentUser(request, env);
+    const me = await currentUser(request, env);
+    const roomId = ctx.url.searchParams.get('room_id') || '';
+    const userId = ctx.url.searchParams.get('user_id') || '';
+    if (!roomId && !userId) throw new ApiError('缺少 room_id 或 user_id', 400);
+
+    /* 群成员名单只对群成员开放：否则任何登录用户都能按 id 批量拉取别人的成员表 */
+    if (roomId) {
+        const mine = await first(
+            env,
+            'SELECT id FROM member WHERE room_id = ? AND user_id = ? AND isDeleted = 0',
+            roomId, me.id
+        );
+        if (!mine) throw new ApiError('你不是该房间成员', 403);
+    }
+    if (!roomId && userId !== me.id) throw new ApiError('只能查询自己的成员关系', 403);
+
     const conditions = ['m.isDeleted = 0'];
     const args = [];
-    for (const key of ['user_id', 'room_id']) {
-        const value = ctx.url.searchParams.get(key);
+    for (const [key, value] of [['user_id', userId], ['room_id', roomId]]) {
         if (value) { conditions.push(`m.${key} = ?`); args.push(value); }
     }
     const rows = await all(env, `${MEMBER_SELECT} WHERE ${conditions.join(' AND ')} ORDER BY m.createdAt DESC`, ...args);
@@ -87,13 +101,13 @@ async function list(request, env, ctx) {
 async function remove(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const row = await first(env, `${MEMBER_SELECT} WHERE m.id = ? AND m.isDeleted = 0`, id);
-    if (!row) throw new ApiError('该成员不存在', 401);
+    if (!row) throw new ApiError('该成员不存在', 404);
 
     /* row 是 JOIN 原始行（r_creator），视图转换后才叫 room_info.creator */
     const view = memberView(row);
     const isSelf = row.user_id === me.id;
     const isOwner = !!(view.room_info && view.room_info.creator === me.id);
-    if (!isSelf && !isOwner) throw new ApiError('只有群主可以移出成员', 401);
+    if (!isSelf && !isOwner) throw new ApiError('只有群主可以移出成员', 403);
 
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE id = ?', id);
 

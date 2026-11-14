@@ -33,7 +33,7 @@ export const userView = (row) => ({
 async function ensureUnique(env, column, value, message) {
     if (!value) return;
     const row = await first(env, `SELECT id FROM user WHERE ${column} = ?`, value);
-    if (row) throw new ApiError(message, 401);
+    if (row) throw new ApiError(message, 409);
 }
 
 async function register(request, env, ctx) {
@@ -104,7 +104,7 @@ async function search(request, env, ctx) {
 async function detail(request, env, ctx, id) {
     await currentUser(request, env);
     const row = await first(env, 'SELECT id, username, email, createdAt, updatedAt FROM user WHERE id = ? AND isDeleted = 0', id);
-    if (!row) throw new ApiError('该用户不存在', 401);
+    if (!row) throw new ApiError('该用户不存在', 404);
     return ok(userView(row), ctx.cors);
 }
 
@@ -112,8 +112,8 @@ async function update(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
     const exist = await first(env, 'SELECT * FROM user WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 401);
-    if (me.id !== id) throw new ApiError('您没有权限更新该用户', 401);
+    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404);
+    if (me.id !== id) throw new ApiError('您没有权限更新该用户', 403);
 
     const fields = [];
     const args = [];
@@ -136,9 +136,11 @@ async function update(request, env, ctx, id) {
 }
 
 async function remove(request, env, ctx, id) {
-    await currentUser(request, env);
+    const me = await currentUser(request, env);
     const exist = await first(env, 'SELECT id FROM user WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 401);
+    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404);
+    /* 只能注销自己：否则任何登录用户都能把别人的账号软删掉 */
+    if (me.id !== id) throw new ApiError('您没有权限删除该用户', 403);
     await run(env, 'UPDATE user SET isDeleted = 1, updatedAt = ? WHERE id = ?', now(), id);
     return ok('删除用户成功', ctx.cors);
 }

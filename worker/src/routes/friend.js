@@ -43,13 +43,17 @@ const friendView = (row) => ({
 async function create(request, env, ctx) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
-    const creator = String(body.creator || me.id);
+    /* creator 只能是当前登录用户：以前取自 body，等于允许任何人伪造「别人加了你」 */
+    const creator = me.id;
     const friendId = String(body.friend_id || '');
     if (!friendId) throw new ApiError('缺少 friend_id', 400);
     if (friendId === creator) throw new ApiError('不能添加自己为好友', 400);
 
+    const target = await first(env, 'SELECT id FROM user WHERE id = ? AND isDeleted = 0', friendId);
+    if (!target) throw new ApiError('该用户不存在', 404);
+
     const exist = await first(env, 'SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0', creator, friendId);
-    if (exist) throw new ApiError('好友关系已存在', 401);
+    if (exist) throw new ApiError('好友关系已存在', 409);
 
     const id = uuid();
     await run(env, 'INSERT INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', id, creator, friendId, now());
@@ -77,7 +81,7 @@ async function remove(request, env, ctx, friendId) {
     /* 单向记录不存在时也允许清理对方那侧，避免历史数据残留导致「删不掉」 */
     if (!row) {
         const reverse = await first(env, 'SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0', friendId, me.id);
-        if (!reverse) throw new ApiError('好友关系不存在', 401);
+        if (!reverse) throw new ApiError('好友关系不存在', 404);
     }
 
     /* 双向软删：好友是双方关系，只删自己那侧会让对方列表里还留着一个「幽灵好友」 */

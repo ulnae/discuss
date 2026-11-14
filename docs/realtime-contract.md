@@ -80,8 +80,8 @@
 
 | 事件 | payload | 说明 |
 |---|---|---|
-| `system:alert` | `{ senderName, message, timestamp }` | 系统广播（`POST /api/alert` 或 cron 触发） |
-| `exception` | `{ event, message, timestamp }` | 服务端处理某条入站消息失败。前端提示用户，**不得据此登出** |
+| `system:alert` | `{ senderName, message, timestamp }` | 系统广播（`POST /api/alert`，需 `x-alert-secret` 头或已登录管理员调用） |
+| `exception` | `{ event, message, timestamp }` | 服务端处理某条入站消息失败（两个后端形状一致，nest 由 `WsExceptionFilter` 发出）。前端提示用户，**不得据此登出** |
 | `call:incoming` | `{ callId, from, username, timestamp }` | 来电 |
 | `call:ringing` | `{ callId, to, timestamp }` | 主叫振铃中 |
 | `call:accepted` / `call:rejected` | `{ callId, from?, timestamp }` | 被叫应答 / 拒绝 |
@@ -101,7 +101,7 @@
 | GET | `/api/room/:id` | 房间详情 |
 | PATCH | `/api/room/:id` | 更新房间（群主） |
 | DELETE | `/api/room/:id` | 解散房间（群主） |
-| GET | `/api/member?user_id=&room_id=` | 成员查询 |
+| GET | `/api/member?room_id=` | 成员查询（必须是该房间成员；`user_id` 只允许查自己） |
 | POST | `/api/member` | 添加成员 |
 | DELETE | `/api/member/:id` | 移出成员 / 退出房间 |
 | POST | `/api/apply` | 发起申请（好友 / 入群） |
@@ -110,7 +110,16 @@
 | GET | `/api/apply/room?id=` | 某房间的待处理申请 |
 | PATCH | `/api/apply/:id` | 处理申请 |
 | DELETE | `/api/apply/:id` | 撤回申请 |
-| GET/POST/DELETE | `/api/friend` | 好友列表 / 添加 / 删除 |
+| GET/POST/DELETE | `/api/friend` | 好友列表 / 添加 / 删除（`creator` 取 token，不接受 body 传值） |
+| POST | `/api/alert` | 全站广播，需 `x-alert-secret` 头；未配置 `ALERT_SECRET` 时返回 403 |
+
+### 权限与状态码
+
+- **写操作一律校验归属**：改房间/解散房间只允许群主，注销账号只允许本人，移出成员只允许群主或本人，
+  发群消息必须是该房间成员（两个后端都在服务端校验，不依赖客户端自觉）。
+- **401 只用于「未登录 / 登录失效」**：前端 axios 拦截器遇 401 会直接登出，所以
+  「无权限」「不存在」「已存在」分别用 403 / 404 / 409，绝不能用 401 表达业务失败。
+- **JWT 每次请求都校验账号仍然存在且未软删**，注销后旧 token 立刻失效。
 
 **已移除**（不要再加回来）：
 

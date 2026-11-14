@@ -134,21 +134,27 @@ export default {
     }
 };
 
-/** POST /api/alert —— 向所有在线用户广播系统通知（对应 NestJS 的 AlertController） */
+/**
+ * POST /api/alert —— 向所有在线用户广播系统通知（对应 NestJS 的 AlertController）
+ *
+ * 这是「一人发、全员收」的广播口，必须鉴权：以前裸奔时任何匿名请求都能给全站弹窗。
+ * 采用共享密钥（`wrangler secret put ALERT_SECRET`）+ `x-alert-secret` 头，
+ * 未配置密钥时直接关闭该接口（拒绝优先，而不是默认放行）。
+ */
 async function handleAlert(request, env, rc, rest) {
     if (rc.method !== 'POST' || rest.length) return null;
+
+    const secret = String(env.ALERT_SECRET || '');
+    if (!secret) return fail('系统广播未启用：请先配置 ALERT_SECRET', 403, rc.cors);
+    const provided = request.headers.get('x-alert-secret') || '';
+    if (provided !== secret) return fail('无权发送系统广播', 403, rc.cors);
 
     let body = null;
     try { body = await request.json(); } catch { body = null; }
     const message = String((body && body.message) || '').trim();
     if (!message) return fail('缺少 message', 400, rc.cors);
 
-    let sender = String((body && body.sender) || '').trim();
-    const header = request.headers.get('Authorization') || '';
-    if (!sender && header.toLowerCase().startsWith('bearer ')) {
-        const payload = await verifyToken(header.slice(7).trim(), env.JWT_SECRET);
-        if (payload && payload.username) sender = payload.username;
-    }
+    const sender = String((body && body.sender) || '').trim();
 
     const stub = env.HUB.get(env.HUB.idFromName('hub'));
     const result = await stub.fetch('https://hub/broadcast', {
