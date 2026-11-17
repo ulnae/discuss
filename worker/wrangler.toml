@@ -21,7 +21,10 @@ ALLOW_ORIGIN = "https://ulnae.github.io,http://localhost:8000,http://127.0.0.1:8
 # Dashboard → Calls → Create TURN key 后：
 #   wrangler secret put TURN_KEY_ID
 #   wrangler secret put TURN_KEY_API_TOKEN
-# 都不配时 /api/rtc/ice 降级返回 Cloudflare 免费 STUN（跨网络通话将连不上）。
+# 不配时降级：Metered Open Relay（免费注册，无需绑卡，20GB/月）：
+#   wrangler secret put METERED_APP_NAME   ← metered.ca 的 app-name
+#   wrangler secret put METERED_API_KEY    ← metered.ca 的 apiKey
+# 都不配则只用 Cloudflare 免费 STUN（跨网络通话将连不上）。
 #
 # JWT 过期时间，与 NestJS 的 JWT_EXPIRES_IN 保持同义（支持 24h / 7d / 3600s / 纯数字秒）
 JWT_EXPIRES_IN = "24h"

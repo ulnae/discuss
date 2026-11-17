@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { useSocketStore } from './socket'
 import { Event } from '@/constants/events'
@@ -351,7 +352,9 @@ export const useCallStore = defineStore('call', {
       // 接收远端音频流
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
-          this.remoteStream = event.streams[0]
+          // markRaw 避免被 Pinia 响应式代理：Proxy 包装的 MediaStream
+          // 赋给 audio.srcObject 在部分浏览器会静音/无法播放
+          this.remoteStream = markRaw(event.streams[0])
         }
       }
 
