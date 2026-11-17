@@ -17,6 +17,12 @@ ALLOW_ORIGIN = "https://ulnae.github.io,http://localhost:8000,http://127.0.0.1:8
 # 系统广播 POST /api/alert 的共享密钥。不要写在这里（配置文件会进仓库），
 # 用 `wrangler secret put ALERT_SECRET` 配；不配则该接口直接返回 403（默认关闭）。
 #
+# Cloudflare Realtime TURN（GET /api/rtc/ice 下发短期凭证给前端通话用）。
+# Dashboard → Calls → Create TURN key 后：
+#   wrangler secret put TURN_KEY_ID
+#   wrangler secret put TURN_KEY_API_TOKEN
+# 都不配时 /api/rtc/ice 降级返回 Cloudflare 免费 STUN（跨网络通话将连不上）。
+#
 # JWT 过期时间，与 NestJS 的 JWT_EXPIRES_IN 保持同义（支持 24h / 7d / 3600s / 纯数字秒）
 JWT_EXPIRES_IN = "24h"
 # 是否强制校验图形验证码；调试期可设为 "false"

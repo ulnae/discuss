@@ -2,16 +2,32 @@ import { defineStore } from 'pinia'
 import type { Socket } from 'socket.io-client'
 import { useSocketStore } from './socket'
 import { Event } from '@/constants/events'
+import ServerApi from '@/api'
 
 // 通话状态：idle-空闲 calling-主叫振铃中 incoming-被叫来电中 active-通话中 failed-通话失败提示
 export type CallStatus = 'idle' | 'calling' | 'incoming' | 'active' | 'failed'
 type CallDirection = 'caller' | 'callee'
 
-// STUN 服务器配置（局域网/本机可通过 host candidate 直连；跨公网通话需额外部署 TURN）
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-]
+// 默认 ICE 配置：Cloudflare 免费 STUN（国内可达，替代连不通的 Google STUN）。
+// 跨公网通话需要 TURN 中继，凭证由后端 /api/rtc/ice 下发后覆盖这里。
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.cloudflare.com:3478' }]
+// 本次通话实际使用的 ICE 配置（含 TURN 短期凭证）
+let iceServers: RTCIceServer[] = DEFAULT_ICE_SERVERS
+
+/**
+ * 通话建立前拉一次 ICE 配置（后端用 TURN Key 换短期凭证）。
+ * 失败只降级为 STUN，不阻断通话——局域网内仍可直连。
+ */
+async function loadIceServers() {
+  try {
+    const res: any = await ServerApi.GetIceServers()
+    const servers = res?.data?.iceServers
+    if (Array.isArray(servers) && servers.length) iceServers = servers
+  } catch (error) {
+    console.warn('load ice servers failed, fallback to STUN only', error)
+    iceServers = DEFAULT_ICE_SERVERS
+  }
+}
 
 // WebRTC 资源放在模块级，避免被 Pinia 状态代理
 let pc: RTCPeerConnection | null = null
@@ -113,9 +129,10 @@ export const useCallStore = defineStore('call', {
       this.remoteStream = null
       this.status = 'calling'
 
-      // 提前获取麦克风，接听后可立即建立媒体
+      // 提前获取麦克风与 ICE 配置（含 TURN 凭证），接听后可立即建立媒体
       try {
-        localStream = await this.getUserAudio()
+        const [stream] = await Promise.all([this.getUserAudio(), loadIceServers()])
+        localStream = stream
       } catch (err) {
         console.error('getUserMedia failed:', err)
         this.fail('无法访问麦克风，请检查浏览器麦克风权限')
@@ -134,7 +151,8 @@ export const useCallStore = defineStore('call', {
       stopRing()
 
       try {
-        localStream = await this.getUserAudio()
+        const [stream] = await Promise.all([this.getUserAudio(), loadIceServers()])
+        localStream = stream
       } catch (err) {
         console.error('getUserMedia failed:', err)
         this.emit(Event.CALL_REJECT, { callId: this.callId })
@@ -315,7 +333,7 @@ export const useCallStore = defineStore('call', {
     },
 
     createPeerConnection() {
-      pc = new RTCPeerConnection({ iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle' })
+      pc = new RTCPeerConnection({ iceServers, bundlePolicy: 'max-bundle' })
       pendingCandidates = []
 
       // 本地媒体轨道加入协商

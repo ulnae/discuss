@@ -22,6 +22,7 @@ import { handleRoom } from './routes/room.js';
 import { handleMember } from './routes/member.js';
 import { handleApply } from './routes/apply.js';
 import { handleFriend } from './routes/friend.js';
+import { handleRtc } from './routes/rtc.js';
 import { storageUsage } from './lib/quota.js';
 import { cleanupStorage } from './cron.js';
 
@@ -99,6 +100,7 @@ export default {
                 case 'member': return (await handleMember(request, env, rc, rest)) || fail('not found', 404, cors);
                 case 'apply': return (await handleApply(request, env, rc, rest)) || fail('not found', 404, cors);
                 case 'friend': return (await handleFriend(request, env, rc, rest)) || fail('not found', 404, cors);
+                case 'rtc': return (await handleRtc(request, env, rc, rest)) || fail('not found', 404, cors);
                 case 'alert': return await handleAlert(request, env, rc, rest);
                 case 'ws': return await handleSocket(request, env, rc, rest);
                 default: throw notFound();
