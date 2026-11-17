@@ -39,7 +39,8 @@ const CACHE_TTL = 5 * 60 * 1000;
 let cache = { at: 0, iceServers: null };
 
 export async function handleRtc(request, env, ctx, rest) {
-    if (rest.length || ctx.method !== 'GET') return null;
+    /* 路由 /api/rtc/ice：rest = ['ice'] */
+    if (ctx.method !== 'GET' || rest[0] !== 'ice' || rest.length !== 1) return null;
     /* 必须登录：凭证虽然是短期的，也不该给匿名请求刷 */
     await currentUser(request, env);
 
