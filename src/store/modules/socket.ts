@@ -113,13 +113,19 @@ export const useSocketStore = defineStore('socket', {
                     const me = useUserStore().userInfo.id
                     const peerId = data.from === me ? data.to : data.from
                     this.appendUserMessage(data, peerId)
-                    setTitle(`${useFriendStore().getFriendMap[data.from]?.friend_info?.username}:${data.content}`)
+                    // 自己发送的消息只做落库回执，不改浏览器标题
+                    if (data.from !== me) {
+                        setTitle(`${useFriendStore().getFriendMap[data.from]?.friend_info?.username}:${data.content}`)
+                    }
                 })
 
                 // 接收房间消息
                 this.socket.on(Event.MESSAGE_ROOM, (data) => {
                     this.appendRoomMessage(data)
-                    setTitle(`${useRoomStore().getRoomMap[data.roomId]?.room_info?.name}:${data.content}`)
+                    // 自己发送的消息不改浏览器标题
+                    if (data.from !== useUserStore().userInfo.id) {
+                        setTitle(`${useRoomStore().getRoomMap[data.roomId]?.room_info?.name}:${data.content}`)
+                    }
                 })
 
                 // 接收房间成员在线状态
