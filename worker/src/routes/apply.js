@@ -101,9 +101,13 @@ async function listMine(request, env, ctx) {
 }
 
 async function listRoom(request, env, ctx) {
-    await currentUser(request, env);
+    const me = await currentUser(request, env);
     const roomId = ctx.url.searchParams.get('id') || '';
     if (!roomId) throw new ApiError('缺少房间 id', 400);
+    /* 申请列表里带着申请人的邮箱：只允许群主查看，否则任何登录用户都能按 room_id 拉全表 */
+    const room = await first(env, 'SELECT id, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
+    if (!room) throw new ApiError('房间不存在', 404);
+    if (room.creator !== me.id) throw new ApiError('只有群主可以查看入群申请', 403);
     const rows = await all(
         env,
         `${APPLY_SELECT} WHERE a.room_id = ? AND a.isDeleted = 0 AND a.handle_status = 0 ORDER BY a.createdAt DESC`,
