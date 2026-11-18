@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { useSocketStore } from './socket'
 import { useFriendStore } from './friend'
-import { useDBStore } from './database'
 
 import { useRoomStore } from './room'
 import { MessageCache } from '@/utils/messageCache'
@@ -46,9 +45,10 @@ export const useUserStore = defineStore('user', {
             this.userInfo = {}
             localStorage.removeItem('token')
             localStorage.removeItem('userInfo')
+            // 只断开连接并清空内存运行时；本地聊天记录按账号隔离保留，
+            // 这样换账号看不到他人数据，登回老账号数据仍在。
             useSocketStore().disconnect()
-            // 登出清空本地消息缓存（新账号登录不应看到上一个账号的记录）
-            MessageCache.clear()
+            useSocketStore().resetRuntime()
             router.push({
                 name: 'login',
             })
@@ -61,10 +61,14 @@ export const useUserStore = defineStore('user', {
         },
 
         async getInfo() {
+            const uid = this.userInfo.id as string
+            // 先清空内存运行时，防止上一个账号的消息残留到新账号
+            useSocketStore().resetRuntime()
+            // 把旧 database store 的存量聊天记录一次性搬到 MessageCache（不覆盖新数据）
+            await MessageCache.migrateLegacy(uid)
             useSocketStore().initSocket()
             useFriendStore().getFriends()
             useRoomStore().getRooms()
-            useDBStore().initDB(this.userInfo.id as string)
         }
 
     }

@@ -60,10 +60,11 @@
 
 ```
 Discuss/
-├── public/                    # 静态资源
-│   ├── _headers              # Cloudflare Headers 配置
-│   ├── _redirects            # Cloudflare 重定向规则
-│   └── siam.svg              # SVG 图标
+├── public/                    # 静态资源（原样拷入 dist）
+│   ├── favicon.svg           # 站点图标（现代浏览器优先）
+│   ├── favicon.ico           # 站点图标兜底（16/32/48）
+│   ├── apple-touch-icon.png  # iOS 主屏图标
+│   └── 404.html              # GitHub Pages 兜底页：旧 history 深链转 hash
 ├── src/
 │   ├── api/                  # API 接口模块
 │   │   ├── apply/            # 申请相关接口
@@ -93,13 +94,15 @@ Discuss/
 │   ├── store/                # 状态管理
 │   │   ├── index.ts          # Pinia 实例
 │   │   └── modules/          # Pinia 模块
+│   │       ├── alert.ts      # 系统广播
 │   │       ├── apply.ts      # 申请状态
-│   │       ├── database.ts   # 数据库状态
 │   │       ├── friend.ts     # 好友状态
 │   │       ├── menu.ts       # 菜单状态
 │   │       ├── room.ts       # 房间状态
 │   │       ├── socket.ts     # Socket 状态
 │   │       └── user.ts       # 用户状态
+│   ├── utils/                # 工具函数
+│   │   └── messageCache.ts   # 聊天记录本地存储（唯一入口，按账号隔离）
 │   ├── utils/                # 工具函数
 │   │   └── index.ts          # 通用工具
 │   ├── views/                # 页面视图
@@ -243,12 +246,45 @@ npm run preview
 
 ### 本地存储策略
 
-使用 **LocalForage** 和 **Pinia** 实现消息历史记录的本地持久化：
+聊天记录只存在浏览器本地（**LocalForage / IndexedDB**），后端不落库。唯一入口是
+`src/utils/messageCache.ts`（`MessageCache`），Pinia 里的 Map 只作为运行时内存态。
 
-- **User_Message** - 用户消息历史存储
-- **Room_Message** - 房间消息历史存储
-- 采用防抖机制（1秒延迟）避免频繁写入
-- 支持 IndexedDB/WebSQL，存储容量更大
+**按账号隔离**：每条记录的 key 都带 userId 前缀，不同账号数据互不干扰：
+
+```
+u:<userId>:<peerId>      私聊会话
+r:<userId>:<roomId>      群聊会话
+sys:<userId>:alerts      系统广播
+```
+
+由此保证三种账号切换场景都正确：
+
+| 场景 | 行为 |
+|------|------|
+| 账号 A → 登出 → 登录账号 B | B 只加载自己前缀的数据，**看不到 A 的记录** |
+| 账号 B → 登出 → 登回账号 A | 登出只清内存、不清本地数据，A 的记录**仍在** |
+| 刷新页面 | 从本地恢复当前账号记录；异步读取期间若账号已切换则丢弃结果，防止串号 |
+
+- 写盘采用 800ms 防抖（同一会话多次追加合并为一次写），每会话最多保留最近 200 条。
+- 旧版 `store/modules/database.ts` 已删除；其存量数据在登录后由 `migrateLegacy()` 一次性搬迁到当前账号分区，不覆盖新数据。
+
+**导入 / 导出**：设置页导出为自描述的 v2 备份文件，结构如下：
+
+```json
+{
+  "format": "discuss-chat-backup",
+  "version": 2,
+  "exportedAt": "2026-11-18T06:00:00.000Z",
+  "owner": { "id": "<userId>", "username": "<用户名>" },
+  "data": {
+    "users": [{ "peerId": "...", "messages": [] }],
+    "rooms": [{ "roomId": "...", "messages": [] }],
+    "alerts": []
+  }
+}
+```
+
+导入时会校验 `format` / `version` / `owner.id`，**账号不匹配的备份会被拒绝**，防止把他人记录导入当前账号；校验通过后写入当前账号分区并按 timestamp 去重合并。
 
 ### 路由结构
 
@@ -290,8 +326,8 @@ npm run preview
 - **user** - 用户信息、Token、登录状态
 - **friend** - 好友列表、好友状态
 - **room** - 房间列表、房间信息
-- **socket** - WebSocket 连接、消息存储
-- **database** - LocalForage 数据库实例
+- **socket** - WebSocket 连接、消息的内存态（本地持久化见 `utils/messageCache.ts`）
+- **alert** - 系统广播列表
 - **apply** - 申请列表
 - **menu** - 菜单状态
 

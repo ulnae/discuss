@@ -101,7 +101,7 @@ export const useRoomStore = defineStore('room', {
             socketStore.roomMemberMap.delete(room_id)
             socketStore.roomMemberOnlineMap.delete(room_id)
             socketStore.roomMessageMap.delete(room_id)
-            MessageCache.removeRoom(room_id)
+            MessageCache.removeRoom(useUserStore().userInfo.id as string, room_id)
         },
         /** 房间改名等元信息变化 */
         updateRoomInfo(room: Room) {

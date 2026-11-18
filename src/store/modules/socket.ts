@@ -14,6 +14,9 @@ import { Event } from '@/constants/events'
 
 const setTitle = updateTitle()
 
+/** 当前登录账号 id：所有聊天缓存写入都带上它，实现按账号隔离 */
+const currentUid = () => (useUserStore().userInfo.id as string) || ''
+
 /** 单个会话在内存里最多保留的消息条数（IndexedDB 只留 200，内存留多一点供上翻） */
 const MAX_IN_MEMORY = 500
 
@@ -54,9 +57,25 @@ export const useSocketStore = defineStore('socket', {
         roomMemberOnlineMap: new Map<string, Set<string>>(),
     }),
     actions: {
-        /** 启动时从 IndexedDB 恢复聊天记录（刷新页面不再丢消息） */
+        /** 清空内存中的运行时状态（切账号 / 登出时用），不碰本地持久化数据 */
+        resetRuntime() {
+            this.userMessageMap.clear()
+            this.roomMessageMap.clear()
+            this.roomMemberMap.clear()
+            this.roomMemberOnlineMap.clear()
+            useAlertStore().alerts = []
+        },
+
+        /**
+         * 启动时从 IndexedDB 恢复「当前账号」的聊天记录（刷新页面不再丢消息）。
+         * 异步读取期间若账号已切换（uid 变化）则丢弃结果，避免把上一个账号的数据
+         * 写进新账号的内存 Map（竞态防护）。
+         */
         async hydrateMessages() {
-            const { user, room } = await MessageCache.load()
+            const uid = currentUid()
+            if (!uid) return
+            const { user, room, alerts } = await MessageCache.load(uid)
+            if (currentUid() !== uid) return
             const revive = (list: any[]) => list.map(m =>
                 m && m.status === 'sending' ? { ...m, status: 'failed' } : m
             )
@@ -65,6 +84,9 @@ export const useSocketStore = defineStore('socket', {
             }
             if (!this.roomMessageMap.size) {
                 room.forEach(([roomId, list]) => this.roomMessageMap.set(roomId, revive(list)))
+            }
+            if (!useAlertStore().alerts.length && alerts.length) {
+                useAlertStore().alerts = alerts
             }
         },
 
@@ -154,7 +176,9 @@ export const useSocketStore = defineStore('socket', {
                 // 系统通知
                 this.socket.on(Event.SYSTEM_ALERT, (data) => {
                     setTitle(`[${data.senderName}] ${data.message}`)
-                    useAlertStore().addAlert(data)
+                    const alertStore = useAlertStore()
+                    alertStore.addAlert(data)
+                    MessageCache.saveAlerts(currentUid(), alertStore.alerts)
                 })
 
                 /* ==================== 好友 / 房间 / 申请的实时同步 ====================
@@ -308,7 +332,7 @@ export const useSocketStore = defineStore('socket', {
             if (idx >= 0) list.splice(idx, 1, message)
             else pushCapped(list, message)
             this.userMessageMap.set(peerId, list)
-            MessageCache.saveUser(peerId, list)
+            MessageCache.saveUser(currentUid(), peerId, list)
         },
 
         /** 追加一条房间消息；自己的消息通过 clientId 与乐观本地消息对账替换，避免重复 */
@@ -321,7 +345,7 @@ export const useSocketStore = defineStore('socket', {
             if (idx >= 0) list.splice(idx, 1, message)
             else pushCapped(list, message)
             this.roomMessageMap.set(data.roomId, list)
-            MessageCache.saveRoom(data.roomId, list)
+            MessageCache.saveRoom(currentUid(), data.roomId, list)
         },
 
         /** 乐观发送私聊消息：先上屏，等 message:user 回执后由 clientId 对账 */
@@ -341,7 +365,7 @@ export const useSocketStore = defineStore('socket', {
             }
             const list = pushCapped(this.userMessageMap.get(receiver) || [], message)
             this.userMessageMap.set(receiver, list)
-            MessageCache.saveUser(receiver, list)
+            MessageCache.saveUser(currentUid(), receiver, list)
             if (connected) this.socket!.emit(Event.SEND_USER, { to: receiver, content, clientId, ...meta })
         },
 
@@ -362,7 +386,7 @@ export const useSocketStore = defineStore('socket', {
             }
             const list = pushCapped(this.roomMessageMap.get(roomId) || [], message)
             this.roomMessageMap.set(roomId, list)
-            MessageCache.saveRoom(roomId, list)
+            MessageCache.saveRoom(currentUid(), roomId, list)
             if (connected) this.socket!.emit(Event.SEND_ROOM, { roomId, content, clientId, ...meta })
         },
 

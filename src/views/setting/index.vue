@@ -70,8 +70,9 @@
 
 <script lang="ts" setup>
 import { useUserStore } from '@/store/modules/user'
-import { useDBStore } from '@/store/modules/database'
 import { useSocketStore } from '@/store/modules/socket'
+import { useAlertStore } from '@/store/modules/alert'
+import { MessageCache } from '@/utils/messageCache'
 import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
 import { computed, onMounted } from 'vue'
@@ -83,8 +84,6 @@ const socketStore = useSocketStore()
 // 移动端底部栏放不下主题/退出，收进设置页
 const { theme, toggleTheme } = useTheme()
 const handleLogout = () => userStore.logout()
-
-const dbStore = useDBStore()
 
 /** 账号信息展示：隐藏令牌类字段，常见字段换成中文标签 */
 const LABELS: Record<string, string> = {
@@ -101,20 +100,19 @@ const accountRows = computed(() =>
         .map(([k, v]) => ({ k: LABELS[k] || k, v: String(v) }))
 )
 
-const handleExport = () => {
-    console.log('export', dbStore)
-    let _obj: any = {}
-    dbStore.database?.iterate(function (value, key, iterationNumber) {
-        // 此回调函数将对所有 key/value 键值对运行
-        _obj[key] = Object.fromEntries(value as any)
-    }).then(function () {
-        console.log('Iteration has completed');
-        downloadJSON(_obj, `${userStore.userInfo.id}.json`)
+const currentUid = () => userStore.userInfo.id as string
+
+const handleExport = async () => {
+    try {
+        // 导出当前账号的备份：v2 自描述结构，带版本与账号归属
+        const backup = await MessageCache.exportBackup(currentUid(), userStore.userInfo.username)
+        const date = new Date().toISOString().slice(0, 10)
+        downloadJSON(backup, `discuss-chat-${currentUid()}-${date}.json`)
         toast.success('聊天记录已导出')
-    }).catch(function (err) {
-        // 当出错时，此处代码运行
-        console.log(err);
-    });
+    } catch (error) {
+        console.error('导出失败:', error)
+        toast.error('聊天记录导出失败')
+    }
 }
 
 const handleImport = () => {
@@ -124,32 +122,36 @@ const handleImport = () => {
 
 onMounted(() => {
     document.getElementById('chooseHistoryFile')?.addEventListener('change', async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (!file) return;
-        if (!file.name.startsWith(userStore.userInfo.id as string)) {
-            toast.warning('请导入您自己的聊天记录')
-            return
-        }
+        const input = e.target as HTMLInputElement
+        const file = input.files?.[0]
+        if (!file) return
 
         try {
-            const text = await file.text(); // 读取文件内容为文本
-            const { Room_Message, User_Message } = JSON.parse(text);   // 解析 JSON
-            // 解析合并群聊天记录
-            Object.entries(Room_Message).forEach(([key, value]: any) => {
-                let roomMessage = socketStore.roomMessageMap.get(key)
-                const unique = uniqWith([...(roomMessage as []), ...value], isEqual)
-                socketStore.roomMessageMap.set(key, sortBy(unique, 'timestamp'))
-            });
-            // 解析合并好友聊天记录
-            Object.entries(User_Message).forEach(([key, value]: any) => {
-                let userMessage = socketStore.userMessageMap.get(key)
-                const unique = uniqWith([...(userMessage as []), ...value], isEqual)
-                socketStore.userMessageMap.set(key, sortBy(unique, 'timestamp'))
-            });
+            const text = await file.text()
+            // 解析 + 校验格式 / 版本 / 账号归属（他人备份会被拒绝），并落盘到当前账号
+            const { user, room, alerts } = await MessageCache.importBackup(currentUid(), text)
+
+            // 群聊记录：去重合并进内存 Map（落盘已由 importBackup 完成）
+            room.forEach(([key, value]) => {
+                const roomMessage = socketStore.roomMessageMap.get(key) || []
+                socketStore.roomMessageMap.set(key, sortBy(uniqWith([...roomMessage, ...value], isEqual), 'timestamp'))
+            })
+            // 私聊记录
+            user.forEach(([key, value]) => {
+                const userMessage = socketStore.userMessageMap.get(key) || []
+                socketStore.userMessageMap.set(key, sortBy(uniqWith([...userMessage, ...value], isEqual), 'timestamp'))
+            })
+            // 系统广播
+            if (alerts.length) {
+                const alertStore = useAlertStore()
+                alertStore.alerts = sortBy(uniqWith([...alertStore.alerts, ...alerts], isEqual), 'timestamp')
+            }
             toast.success('聊天记录导入成功')
-        } catch (error) {
-            console.error('解析失败:', error);
-            toast.error('文件内容不是有效的 JSON 格式');
+        } catch (error: any) {
+            console.error('解析失败:', error)
+            toast.error(error?.message || '导入失败')
+        } finally {
+            input.value = ''  // 允许重复选择同一文件
         }
     })
 
