@@ -63,7 +63,12 @@ const handlePreviewImage = (url: string) => {
 }
 
 .cm-audio {
-    width: min(280px, 100%);
+    /* 不能用 width: min(280px, 100%)：.bubble 是 flex 列布局下 shrink-to-fit 的子项，
+       宽度由内容决定，百分比宽度相对它解析会形成循环依赖而塌陷为 0（媒体控件不可见）。
+       改用固定像素宽度撑开容器，再用 max-width: 100% 在窄屏下限制溢出。 */
+    display: block;
+    width: 280px;
+    max-width: 100%;
 }
 
 .cm-file {
