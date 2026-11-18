@@ -11,12 +11,11 @@
                 <span class="toast-icon" v-html="ICONS[item.type]"></span>
                 <span class="toast-text">{{ item.message }}</span>
                 <button type="button" class="toast-close" aria-label="关闭提示" @click="dismissToast(item.id)">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                        stroke-width="2.2" stroke-linecap="round">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                        stroke-width="2.4" stroke-linecap="round">
                         <path d="M18 6 6 18M6 6l12 12" />
                     </svg>
                 </button>
-                <span class="toast-progress" :style="{ animationDuration: `${item.duration}ms` }"></span>
             </div>
         </TransitionGroup>
     </Teleport>
@@ -26,151 +25,110 @@
 import { toastState, dismissToast, type ToastType } from './index'
 
 const ICONS: Record<ToastType, string> = {
-    success: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></svg>`,
-    error: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M12 8v4.5M12 16h.01"/></svg>`,
-    warning: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" opacity=".25"/><path d="M12 9.5v4M12 17h.01"/></svg>`,
-    info: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M12 11v5M12 8h.01"/></svg>`
+    success: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.3 4.3L19 7.2"/></svg>`,
+    error: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>`,
+    warning: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5 2.9 20h18.2L12 4.5Z"/><path d="M12 10v4M12 17h.01"/></svg>`,
+    info: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v5M12 7.8h.01"/></svg>`
 }
 </script>
 
 <style scoped>
 .toast-layer {
     position: fixed;
-    top: 1rem;
-    right: 1rem;
+    top: 1.1rem;
+    right: 1.1rem;
     z-index: 9999;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
-    width: min(360px, calc(100vw - 2rem));
+    width: min(350px, calc(100vw - 2rem));
     pointer-events: none;
 }
 
+/* 玻璃拟态卡片：颜色/圆角/阴影全部走主题变量，明暗模式自动适配 */
 .toast-item {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.55rem;
-    padding: 0.7rem 0.75rem 0.7rem 0.9rem;
-    border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.97);
-    border: 1px solid rgba(0, 0, 0, 0.07);
-    box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.05);
-    backdrop-filter: blur(12px);
-    overflow: hidden;
-    pointer-events: auto;
-    font-size: 0.8125rem;
-    line-height: 1.55;
-    color: #1f2937;
-}
-
-/* 左侧状态色条 */
-.toast-item::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--toast-accent);
-}
-
-.toast-icon {
-    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin-top: 1px;
+    gap: 0.7rem;
+    min-height: 3.1rem;
+    padding: 0.7rem 0.7rem 0.7rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    color: var(--text);
+    pointer-events: auto;
+}
+
+/* 状态徽章：柔和底色 + 状态色图标，取代原来的左侧色条 */
+.toast-icon {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     color: var(--toast-accent);
+    background: var(--toast-accent-soft);
 }
 
 .toast-text {
     flex: 1;
     min-width: 0;
+    font-size: 0.84rem;
+    font-weight: 500;
+    line-height: 1.5;
     word-break: break-word;
 }
 
 .toast-close {
     flex-shrink: 0;
-    margin-top: 1px;
-    padding: 2px;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
     border: 0;
-    border-radius: 0.3rem;
+    border-radius: 50%;
+    color: var(--text-3);
     background: transparent;
-    color: currentColor;
-    opacity: 0.35;
     cursor: pointer;
-    transition: opacity 0.18s ease, background-color 0.18s ease;
+    transition: color 0.18s ease, background-color 0.18s ease;
 }
 
 .toast-close:hover {
-    opacity: 0.8;
-    background: rgba(0, 0, 0, 0.06);
+    color: var(--text);
+    background: var(--surface-3);
 }
 
-.toast-progress {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    height: 2px;
-    width: 100%;
-    background: var(--toast-accent);
-    opacity: 0.4;
-    transform-origin: left center;
-    animation-name: toast-progress;
-    animation-timing-function: linear;
-    animation-fill-mode: forwards;
-}
-
-@keyframes toast-progress {
-    from { transform: scaleX(1); }
-    to { transform: scaleX(0); }
-}
-
-.toast-success { --toast-accent: #10b981; }
-.toast-error { --toast-accent: #f43f5e; }
-.toast-warning { --toast-accent: #f59e0b; }
-.toast-info { --toast-accent: #0ea5e9; }
+.toast-success { --toast-accent: #10b981; --toast-accent-soft: rgba(16, 185, 129, 0.14); }
+.toast-error   { --toast-accent: #f43f5e; --toast-accent-soft: rgba(244, 63, 94, 0.13); }
+.toast-warning { --toast-accent: #f59e0b; --toast-accent-soft: rgba(245, 158, 11, 0.16); }
+.toast-info    { --toast-accent: #0ea5e9; --toast-accent-soft: rgba(14, 165, 233, 0.13); }
 
 /* 进出场动效 */
 .toast-enter-from,
 .toast-leave-to {
     opacity: 0;
-    transform: translateX(18px) scale(0.97);
+    transform: translateX(20px) scale(0.96);
 }
 
 .toast-enter-active,
 .toast-leave-active {
-    transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 0.3s ease, transform 0.32s var(--ease);
 }
 
 .toast-move {
-    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.32s var(--ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .toast-enter-from,
     .toast-leave-to {
         transform: none;
     }
-    .toast-progress {
-        display: none;
-    }
-}
-</style>
-
-<style lang="scss">
-/* 深色模式单独放非 scoped 块：当前构建（rolldown-vite）对 scoped 样式里的
-   `:global(.dark) .xxx` 编译会把后代选择器丢掉，深色规则会整段失效。
-   toast- 前缀类名全局唯一，非 scoped 不会误伤其他组件。 */
-.dark .toast-item {
-    background: rgba(24, 24, 27, 0.96);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e5e7eb;
-    box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-.dark .toast-close:hover {
-    background: rgba(255, 255, 255, 0.1);
 }
 </style>
