@@ -7,8 +7,8 @@
  *   sys:<userId>:alerts      系统广播
  * 因此：换账号看不到别人的记录；登出只清内存、不清本地数据，登回老账号记录仍在。
  *
- * 防抖写入：收到消息时 800ms 内的多次追加合并成一次写盘；每会话最多保留 MAX 条。
- * 旧的 store/modules/database.ts 已废弃，其存量数据由 migrateLegacy() 一次性搬迁。
+ * 即时写入：消息一上屏就落盘（按会话串行），避免「发完立刻刷新」时防抖定时器未触发而丢消息；
+ * 每会话最多保留 MAX 条。
  */
 import localforage from 'localforage'
 
@@ -18,48 +18,81 @@ const store = localforage.createInstance({
 })
 
 /** 每个会话本地最多保留的消息条数 */
-export const MESSAGE_CACHE_MAX = 200
-
-/** 写节流：同一 key 800ms 内的多次追加合并成一次写盘 */
-const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const MESSAGE_CACHE_MAX = 200
 
 const keyUser = (uid: string, peerId: string) => `u:${uid}:${peerId}`
 const keyRoom = (uid: string, roomId: string) => `r:${uid}:${roomId}`
 const keyAlerts = (uid: string) => `sys:${uid}:alerts`
 
-function queueSave(key: string, list: any[]) {
-    const trimmed = list.slice(-MESSAGE_CACHE_MAX)
-    const timer = saveTimers.get(key)
-    if (timer) clearTimeout(timer)
-    saveTimers.set(key, setTimeout(() => {
-        saveTimers.delete(key)
-        store.setItem(key, trimmed).catch(() => { /* 存储失败不影响聊天 */ })
-    }, 800))
+/**
+ * 每个 key 的串行写链。
+ *
+ * 【为什么不用防抖】原来用 800ms 防抖合并写入，但用户「发完消息立刻刷新/关闭页面」时，
+ * 定时器还没触发页面就销毁了，消息从未落盘 —— 表现为刷新后消息凭空消失。
+ * 改为消息一上屏就立即发起写盘，把「发消息」到「落盘」的延迟从 800ms 降到接近 0。
+ *
+ * 【为什么要串行】localforage.setItem 是异步的；同一会话快速连发多条时，
+ * 若并发写入可能「后发先至」导致旧快照覆盖新数据。用 per-key promise 链保证按调用顺序落盘。
+ */
+const writeChains = new Map<string, Promise<void>>()
+
+/**
+ * 落盘规范化（一次性完成两件事）：
+ *  1)【去 Proxy】Pinia 的 Map/数组是深层响应式的，从里面读出的每条消息都是 Vue reactive Proxy；
+ *     IndexedDB 用结构化克隆，无法克隆 Proxy（会抛 DataCloneError）。若只展开 sending 消息、
+ *     其余历史消息原样写入，则第一条（唯一 sending）能存，之后每批都因混入历史 Proxy 而
+ *     整批写入失败 —— 表现为「只存第一条」。JSON round-trip 可彻底去 Proxy（聊天消息均为
+ *     可 JSON 序列化的 socket 数据）。
+ *  2)【剥离瞬时状态】发送中的消息在 emit 时已离开客户端，刷新丢回执不代表失败，故不把
+ *     sending 写进 IndexedDB（否则刷新后误判为失败）。内存仍保留 sending 供「发送中…」显示。
+ */
+function toPlainForStore(list: any[]): any[] {
+    try {
+        return JSON.parse(JSON.stringify(list, (k, v) =>
+            k === 'status' && v === 'sending' ? undefined : v))
+    } catch {
+        // 极端情况（循环引用等）降级：至少保证顶层去 Proxy
+        return list.map(m => {
+            if (m && m.status === 'sending') {
+                const { status: _drop, ...rest } = m
+                return rest
+            }
+            return m
+        })
+    }
 }
 
-function cancelTimer(key: string) {
-    const timer = saveTimers.get(key)
-    if (timer) { clearTimeout(timer); saveTimers.delete(key) }
+/** 立即写入（按 key 串行），返回本次写入的 promise */
+function writeNow(key: string, list: any[]): Promise<void> {
+    // slice 取最近 N 条，再转成无 Proxy 的普通对象数组后落盘
+    const trimmed = toPlainForStore(list.slice(-MESSAGE_CACHE_MAX))
+    const prev = writeChains.get(key) || Promise.resolve()
+    const next = prev
+        .then(() => store.setItem(key, trimmed))
+        .then(() => undefined, () => undefined) // 吞掉存储错误，不影响聊天
+    writeChains.set(key, next)
+    void next.then(() => {
+        if (writeChains.get(key) === next) writeChains.delete(key)
+    })
+    return next
 }
 
-/** 旧版本消息字段（sender/receiver/room）迁移到新契约的 from/to/roomId */
-function migrate(list: any[]) {
+/** 等待某个 key 上尚未完成的写入，避免 remove/clear 与进行中的写竞态 */
+async function flushKey(key: string) {
+    const pending = writeChains.get(key)
+    if (pending) await pending
+}
+
+/**
+ * 读取/导入时剥离「发送中」状态：
+ * 消息在 emit 那一刻就已发给服务端；刷新/退出会让回执丢失，但后端不重发回执，
+ * 若标记 failed 会误报（消息其实已送达）并诱导用户重复发送。因此残留的 sending
+ * 一律视为已发送成功（去掉状态）。真正的失败以 status='failed' 落盘，原样保留。
+ */
+function stripSending(list: any[]) {
     return list.map(item => {
         if (!item || typeof item !== 'object') return item
-        if (item.from === undefined && item.sender !== undefined) {
-            item.from = item.sender
-            delete item.sender
-        }
-        if (item.to === undefined && item.receiver !== undefined) {
-            item.to = item.receiver
-            delete item.receiver
-        }
-        if (item.roomId === undefined && item.room !== undefined) {
-            item.roomId = item.room
-            delete item.room
-        }
-        // 上次退出时还在「发送中」的消息已经没有回执了，标记失败让用户可重发
-        if (item.status === 'sending') item.status = 'failed'
+        if (item.status === 'sending') delete item.status
         return item
     })
 }
@@ -82,8 +115,8 @@ async function readAccount(userId: string): Promise<{
                 return
             }
             if (!Array.isArray(value)) return
-            if (key.startsWith(up)) user.push([key.slice(up.length), migrate(value)])
-            else if (key.startsWith(rp)) room.push([key.slice(rp.length), migrate(value)])
+            if (key.startsWith(up)) user.push([key.slice(up.length), stripSending(value)])
+            else if (key.startsWith(rp)) room.push([key.slice(rp.length), stripSending(value)])
         })
     } catch { /* IndexedDB 不可用时静默降级为纯内存 */ }
     return { user, room, alerts }
@@ -109,95 +142,21 @@ export const MessageCache = {
     },
 
     saveUser(userId: string, peerId: string, list: any[]) {
-        if (userId) queueSave(keyUser(userId, peerId), list)
+        if (userId) writeNow(keyUser(userId, peerId), list)
     },
 
     saveRoom(userId: string, roomId: string, list: any[]) {
-        if (userId) queueSave(keyRoom(userId, roomId), list)
+        if (userId) writeNow(keyRoom(userId, roomId), list)
     },
 
     saveAlerts(userId: string, list: any[]) {
-        if (userId) queueSave(keyAlerts(userId), list)
+        if (userId) writeNow(keyAlerts(userId), list)
     },
 
-    removeRoom(userId: string, roomId: string) {
+    async removeRoom(userId: string, roomId: string) {
         const key = keyRoom(userId, roomId)
-        cancelTimer(key)
+        await flushKey(key)
         return store.removeItem(key).catch(() => { /* ignore */ })
-    },
-
-    removeUser(userId: string, peerId: string) {
-        const key = keyUser(userId, peerId)
-        cancelTimer(key)
-        return store.removeItem(key).catch(() => { /* ignore */ })
-    },
-
-    /** 只清空指定账号的本地数据（其它账号不受影响） */
-    async clear(userId: string) {
-        const up = `u:${userId}:`
-        const rp = `r:${userId}:`
-        const ap = keyAlerts(userId)
-        for (const key of [...saveTimers.keys()]) {
-            if (key.startsWith(up) || key.startsWith(rp) || key === ap) cancelTimer(key)
-        }
-        try {
-            const doomed: string[] = []
-            await store.iterate((_value: any, key: string) => {
-                if (key.startsWith(up) || key.startsWith(rp) || key === ap) doomed.push(key)
-            })
-            await Promise.all(doomed.map(key => store.removeItem(key)))
-        } catch { /* ignore */ }
-    },
-
-    /** 清空全部账号数据（调试 / 隐私场景使用，正常登出不要调用） */
-    clearAll() {
-        saveTimers.forEach(timer => clearTimeout(timer))
-        saveTimers.clear()
-        return store.clear().catch(() => { /* ignore */ })
-    },
-
-    /**
-     * 一次性搬迁旧版 store/modules/database.ts 的存量数据到当前账号分区。
-     * 旧库：localforage(name=location.hostname, storeName=userId)，
-     * key 为 User_Message / Room_Message / Alert_Message（整张 Map / 数组）。
-     * 只在该账号尚无数据时写入，绝不覆盖较新数据；每个用户只跑一次。
-     */
-    async migrateLegacy(userId: string) {
-        if (!userId || typeof localStorage === 'undefined') return
-        const flag = `discuss:legacy-msg-migrated:${userId}`
-        if (localStorage.getItem(flag)) return
-        try {
-            const legacy = localforage.createInstance({
-                driver: localforage.INDEXEDDB,
-                name: location.hostname,
-                version: 1.0,
-                storeName: userId,
-            })
-            const entriesOf = (v: any): [string, any[]][] => {
-                if (!v) return []
-                if (v instanceof Map) return [...v.entries()] as [string, any[]][]
-                if (typeof v === 'object') return Object.entries(v) as [string, any[]][]
-                return []
-            }
-            const userEntries = entriesOf(await legacy.getItem('User_Message'))
-            const roomEntries = entriesOf(await legacy.getItem('Room_Message'))
-            const alerts = await legacy.getItem<any[]>('Alert_Message')
-
-            for (const [peerId, list] of userEntries) {
-                const key = keyUser(userId, peerId)
-                if (!Array.isArray(list) || await store.getItem(key)) continue
-                await store.setItem(key, list.slice(-MESSAGE_CACHE_MAX))
-            }
-            for (const [roomId, list] of roomEntries) {
-                const key = keyRoom(userId, roomId)
-                if (!Array.isArray(list) || await store.getItem(key)) continue
-                await store.setItem(key, list.slice(-MESSAGE_CACHE_MAX))
-            }
-            if (Array.isArray(alerts) && alerts.length && !(await store.getItem(keyAlerts(userId)))) {
-                await store.setItem(keyAlerts(userId), alerts.slice(-MESSAGE_CACHE_MAX))
-            }
-            localStorage.setItem(flag, '1')
-        } catch { /* 迁移失败不影响启动，静默降级 */ }
     },
 
     /** 导出指定账号的备份（新 v2 结构，自描述 + 账号归属） */
@@ -247,18 +206,20 @@ export const MessageCache = {
         const room: [string, any[]][] = []
         for (const it of users) {
             if (it && typeof it.peerId === 'string' && Array.isArray(it.messages)) {
-                queueSave(keyUser(userId, it.peerId), migrate(it.messages))
-                user.push([it.peerId, migrate(it.messages)])
+                const msgs = stripSending(it.messages)
+                writeNow(keyUser(userId, it.peerId), msgs)
+                user.push([it.peerId, msgs])
             }
         }
         for (const it of rooms) {
             if (it && typeof it.roomId === 'string' && Array.isArray(it.messages)) {
-                queueSave(keyRoom(userId, it.roomId), migrate(it.messages))
-                room.push([it.roomId, migrate(it.messages)])
+                const msgs = stripSending(it.messages)
+                writeNow(keyRoom(userId, it.roomId), msgs)
+                room.push([it.roomId, msgs])
             }
         }
         if (alerts.length) {
-            queueSave(keyAlerts(userId), alerts)
+            writeNow(keyAlerts(userId), alerts)
         }
         return { user, room, alerts }
     }

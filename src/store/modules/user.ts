@@ -3,7 +3,6 @@ import { useSocketStore } from './socket'
 import { useFriendStore } from './friend'
 
 import { useRoomStore } from './room'
-import { MessageCache } from '@/utils/messageCache'
 import router from '@/router'
 import userApi from '@/api/user'
 export interface User {
@@ -61,11 +60,12 @@ export const useUserStore = defineStore('user', {
         },
 
         async getInfo() {
-            const uid = this.userInfo.id as string
             // 先清空内存运行时，防止上一个账号的消息残留到新账号
             useSocketStore().resetRuntime()
-            // 把旧 database store 的存量聊天记录一次性搬到 MessageCache（不覆盖新数据）
-            await MessageCache.migrateLegacy(uid)
+            // 关键：先把本地聊天记录恢复到内存，再建立 socket 连接。
+            // 若顺序颠倒，回执可能在恢复完成前写入空 Map，导致 hydrate 的 `if (!size)`
+            // 守卫跳过全部历史，表现为「刷新后消息消失」。await 保证恢复完才收消息。
+            await useSocketStore().hydrateMessages()
             useSocketStore().initSocket()
             useFriendStore().getFriends()
             useRoomStore().getRooms()

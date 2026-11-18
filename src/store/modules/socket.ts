@@ -27,6 +27,16 @@ function pushCapped(list: any[], message: any) {
     return list
 }
 
+/** 把一条收到的消息并入会话列表：带 clientId 的回执原地替换乐观消息，否则追加 */
+function upsertMessage(list: any[], data: any) {
+    const { status: _drop, ...message } = data
+    message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
+    const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
+    if (idx >= 0) list.splice(idx, 1, message)
+    else pushCapped(list, message)
+    return list
+}
+
 /** 图片 / 文件消息的附加字段（与文字消息共用一条发送链路） */
 type MessageMeta = { type?: string; size?: number; originalname?: string }
 
@@ -76,14 +86,13 @@ export const useSocketStore = defineStore('socket', {
             if (!uid) return
             const { user, room, alerts } = await MessageCache.load(uid)
             if (currentUid() !== uid) return
-            const revive = (list: any[]) => list.map(m =>
-                m && m.status === 'sending' ? { ...m, status: 'failed' } : m
-            )
+            // load() 已把落盘残留的 sending 剥离（视为已发送成功），
+            // 真正的失败以 status='failed' 落盘并原样保留，故这里无需再做状态转换。
             if (!this.userMessageMap.size) {
-                user.forEach(([peerId, list]) => this.userMessageMap.set(peerId, revive(list)))
+                user.forEach(([peerId, list]) => this.userMessageMap.set(peerId, list))
             }
             if (!this.roomMessageMap.size) {
-                room.forEach(([roomId, list]) => this.roomMessageMap.set(roomId, revive(list)))
+                room.forEach(([roomId, list]) => this.roomMessageMap.set(roomId, list))
             }
             if (!useAlertStore().alerts.length && alerts.length) {
                 useAlertStore().alerts = alerts
@@ -91,9 +100,9 @@ export const useSocketStore = defineStore('socket', {
         },
 
         initSocket() {
-            const { userInfo } = useUserStore()
-            // 启动即恢复本地消息，不阻塞连接建立
-            this.hydrateMessages()
+            // 本地消息恢复已由 getInfo() 在调用本方法前 await 完成。
+            // 不要在这里 fire-and-forget 地再调 hydrateMessages()：那样回执可能在恢复完成前
+            // 先写进空 Map，触发 hydrate 里的 `if (!size)` 守卫而跳过全部历史，导致消息"消失"。
             return new Promise((resolve, reject) => {
                 // 重复初始化时先安静地关掉旧连接，避免同一账号挂多条 socket
                 if (this.socket) {
@@ -325,12 +334,7 @@ export const useSocketStore = defineStore('socket', {
         /** 追加一条私聊消息；带 clientId 的回显会原地替换本地待确认消息 */
         appendUserMessage(data: any, peerId: string) {
             if (!data || !peerId) return
-            const list = this.userMessageMap.get(peerId) || []
-            const { status: _drop, ...message } = data
-            message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
-            const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
-            if (idx >= 0) list.splice(idx, 1, message)
-            else pushCapped(list, message)
+            const list = upsertMessage(this.userMessageMap.get(peerId) || [], data)
             this.userMessageMap.set(peerId, list)
             MessageCache.saveUser(currentUid(), peerId, list)
         },
@@ -338,56 +342,49 @@ export const useSocketStore = defineStore('socket', {
         /** 追加一条房间消息；自己的消息通过 clientId 与乐观本地消息对账替换，避免重复 */
         appendRoomMessage(data: any) {
             if (!data || !data.roomId) return
-            const list = this.roomMessageMap.get(data.roomId) || []
-            const { status: _drop, ...message } = data
-            message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
-            const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
-            if (idx >= 0) list.splice(idx, 1, message)
-            else pushCapped(list, message)
+            const list = upsertMessage(this.roomMessageMap.get(data.roomId) || [], data)
             this.roomMessageMap.set(data.roomId, list)
             MessageCache.saveRoom(currentUid(), data.roomId, list)
         },
 
-        /** 乐观发送私聊消息：先上屏，等 message:user 回执后由 clientId 对账 */
-        sendUser(receiver: string, content: string, meta: MessageMeta = {}) {
-            const me = useUserStore().userInfo.id
+        /**
+         * 乐观发送的公共实现：私聊 / 群聊只差「目标字段、内存 Map、落盘方法、emit 事件」。
+         * @param isRoom true=群聊，false=私聊
+         * @param target 私聊为对方 id，群聊为 roomId
+         */
+        sendMessage(isRoom: boolean, target: string, content: string, meta: MessageMeta) {
             const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
             const connected = !!this.socket?.connected
-            const message = {
+            const targetField = isRoom ? 'roomId' : 'to'
+            const message: any = {
                 id: clientId,
                 clientId,
-                from: me,
-                to: receiver,
+                from: useUserStore().userInfo.id,
+                [targetField]: target,
                 content,
                 timestamp: Date.now(),
                 ...meta,
                 status: connected ? 'sending' : 'failed',
             }
-            const list = pushCapped(this.userMessageMap.get(receiver) || [], message)
-            this.userMessageMap.set(receiver, list)
-            MessageCache.saveUser(currentUid(), receiver, list)
-            if (connected) this.socket!.emit(Event.SEND_USER, { to: receiver, content, clientId, ...meta })
+            const map = isRoom ? this.roomMessageMap : this.userMessageMap
+            const list = pushCapped(map.get(target) || [], message)
+            map.set(target, list)
+            if (isRoom) MessageCache.saveRoom(currentUid(), target, list)
+            else MessageCache.saveUser(currentUid(), target, list)
+            if (connected) {
+                const event = isRoom ? Event.SEND_ROOM : Event.SEND_USER
+                this.socket!.emit(event, { [targetField]: target, content, clientId, ...meta })
+            }
+        },
+
+        /** 乐观发送私聊消息：先上屏，等 message:user 回执后由 clientId 对账 */
+        sendUser(receiver: string, content: string, meta: MessageMeta = {}) {
+            this.sendMessage(false, receiver, content, meta)
         },
 
         /** 乐观发送房间消息（文字 / 图片 / 文件共用一条链路） */
         sendRoom(roomId: string, content: string, meta: MessageMeta = {}) {
-            const me = useUserStore().userInfo.id
-            const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-            const connected = !!this.socket?.connected
-            const message = {
-                id: clientId,
-                clientId,
-                from: me,
-                roomId,
-                content,
-                timestamp: Date.now(),
-                ...meta,
-                status: connected ? 'sending' : 'failed',
-            }
-            const list = pushCapped(this.roomMessageMap.get(roomId) || [], message)
-            this.roomMessageMap.set(roomId, list)
-            MessageCache.saveRoom(currentUid(), roomId, list)
-            if (connected) this.socket!.emit(Event.SEND_ROOM, { roomId, content, clientId, ...meta })
+            this.sendMessage(true, roomId, content, meta)
         },
 
         /** 重发失败的消息（气泡上点击「发送失败，点击重试」） */
@@ -401,8 +398,11 @@ export const useSocketStore = defineStore('socket', {
             }
             if (message.roomId) {
                 this.socket.emit(Event.SEND_ROOM, { roomId: message.roomId, content: message.content, clientId: message.clientId, ...meta })
+                // 重发即视作已发出：同步落盘（写入时剥离 sending），避免刷新后又显示失败
+                MessageCache.saveRoom(currentUid(), message.roomId, this.roomMessageMap.get(message.roomId) || [])
             } else if (message.to) {
                 this.socket.emit(Event.SEND_USER, { to: message.to, content: message.content, clientId: message.clientId, ...meta })
+                MessageCache.saveUser(currentUid(), message.to, this.userMessageMap.get(message.to) || [])
             }
         },
     }
