@@ -128,9 +128,10 @@ Discuss/
 │   ├── src/                  # 路由 + Durable Object
 │   ├── schema.sql            # D1 建表脚本
 │   └── wrangler.toml         # Worker / D1 / DO 配置
-├── .env                      # 开发环境变量
+├── .env                      # 开发环境变量（nestjs 后端）
 ├── .env.prod                 # 生产环境变量（worker 后端）
 ├── .env.stage                # 预发环境变量（nestjs 后端）
+├── .env.test                 # 测试环境变量（nestjs 后端）
 ├── .github/
 │   └── workflows/
 │       └── static.yml        # GitHub Pages 部署配置
@@ -161,33 +162,71 @@ npm install
 
 ### 配置环境变量
 
-复制 `.env` 文件并根据实际情况修改配置：
+项目提供四套环境文件，由构建命令通过 `--mode` 选择（见下方「生产构建」）。四个文件的**字段完全一致、顺序一致**，只需按环境改值：
+
+| 文件 | mode | 用途 | 后端 |
+|---|---|---|---|
+| `.env` | development | 本地开发（`npm run dev`） | `server-nestjs` |
+| `.env.test` | test | 测试环境（`build:test` / `pm2start`） | `server-nestjs` |
+| `.env.stage` | stage | 预发环境（`build:stage`） | `server-nestjs` |
+| `.env.prod` | prod | 生产环境（`build` / `build:worker` / CI） | Cloudflare Worker |
+
+以 `.env` 为例，完整的 9 个字段如下：
 
 ```env
-# 构建信息
+# 构建信息（VERSION 与 package.json version 保持一致）
 VITE_APP_BUILD_INFO=development
+VITE_APP_VERSION=0.0.0
 
-# 后端运行时：nestjs = server-nestjs，worker = Cloudflare Worker
+# 后端运行时：worker = Cloudflare Worker（Discuss/worker），nestjs = server-nestjs
 VITE_APP_RUNTIME=nestjs
 
-# API 基础路径
+# REST API 前缀（axios baseURL）
 VITE_APP_BASE_API=/api
+
+# 接口请求路径 / 图片文件前缀（vite 代理 target、socket 连接地址）
+VITE_APP_API_BASE_URL=http://192.168.58.190:3000
+
+# WebSocket 地址（worker 运行时使用；nestjs 运行时忽略此项）
+VITE_APP_WS_BASE_URL=http://192.168.58.190:3000
 
 # 路由基础路径
 VITE_APP_BASE_URL=/
 
-# 是否使用 Mock 数据
+# 是否 mock
 VITE_APP_BUILD_MODE=false
 
-# 路由路径
-VITE_BASE=/
-
-# 应用标题
-VITE_APP_TITLE=dev
-
-# 接口请求地址
-VITE_APP_API_BASE_URL=http://192.168.58.190:3000
+# 标题（会注入到 index.html 的 <title>）
+VITE_APP_TITLE=Discuss-dev
 ```
+
+各字段说明：
+
+| 字段 | 说明 | 使用位置 |
+|---|---|---|
+| `VITE_APP_BUILD_INFO` | 构建环境标识（development / test / stage / production） | 元数据，暂未在代码中读取 |
+| `VITE_APP_VERSION` | 应用版本号，作为请求头 `Base-Version` 发送 | `src/plugin/axios.ts` |
+| `VITE_APP_RUNTIME` | 后端运行时：`nestjs` 或 `worker` | `src/plugin/socket.ts`（决定 socket 实现） |
+| `VITE_APP_BASE_API` | REST 接口前缀，即 axios 的 `baseURL` | `src/plugin/axios.ts`、`src/settings/index.ts` |
+| `VITE_APP_API_BASE_URL` | 接口/图片文件基址；开发环境兼作 Vite `/api` 代理的 target | `vite.config.ts`、`src/plugin/socket.ts`、`src/components/Comment.vue` |
+| `VITE_APP_WS_BASE_URL` | WebSocket 地址，仅在 `runtime=worker` 时生效；留空则复用 `VITE_APP_API_BASE_URL` | `src/plugin/socket.ts` |
+| `VITE_APP_BASE_URL` | 路由基础路径，同时作为 Vite 的 `base` | `src/router/index.ts`、`vite.config.ts` |
+| `VITE_APP_BUILD_MODE` | `true` 时启用 Mock 数据；`false` 走真实接口 | 各 `src/api/*/index.ts`、`src/plugin/axios.ts` |
+| `VITE_APP_TITLE` | 页面标题，通过 `vite-plugin-html` 注入到 `index.html` 的 `<title>` | `vite.config.ts`、`index.html` |
+
+四个环境之间，真正需要按环境区分的变量如下（其余字段四套保持一致）：
+
+| 变量 | `.env` (dev) | `.env.test` | `.env.stage` | `.env.prod` |
+|---|---|---|---|---|
+| `VITE_APP_BUILD_INFO` | development | test | stage | production |
+| `VITE_APP_RUNTIME` | nestjs | nestjs | nestjs | worker |
+| `VITE_APP_BASE_API` | `/api` | `http://192.168.58.190:3000/api` | `http://62.234.18.27:3000/api` | `https://discuss-api.ulnae.dpdns.org/api` |
+| `VITE_APP_API_BASE_URL` | `http://192.168.58.190:3000` | `http://192.168.58.190:3000` | `http://62.234.18.27:3000` | `https://discuss-api.ulnae.dpdns.org` |
+| `VITE_APP_WS_BASE_URL` | `http://192.168.58.190:3000` | `http://192.168.58.190:3000` | `http://62.234.18.27:3000` | `https://discuss-api.ulnae.dpdns.org` |
+| `VITE_APP_BASE_URL` | `/` | `/` | `/` | `/discuss/` |
+| `VITE_APP_TITLE` | Discuss-dev | Discuss-test | Discuss-stage | Discuss |
+
+> 说明：开发环境 `VITE_APP_BASE_API=/api` 配合 Vite 的 `/api` 代理使用，代理 target 取 `VITE_APP_API_BASE_URL`；生产环境 REST 与 WebSocket 统一走 Worker 自定义域名，见下方「API 入口」。
 
 ### 开发模式
 
@@ -208,8 +247,9 @@ npm run build:test     # test 模式
 
 构建产物输出到 `dist` 目录。
 
-> 环境变量差异只有三处：`VITE_APP_RUNTIME`（socket 用哪种实现）、
-> `VITE_APP_BASE_API`、`VITE_APP_API_BASE_URL`。所以「换后端」= 换一个 `--mode`，不用改代码。
+> 「换后端」= 换一个 `--mode`，不用改代码。四套环境文件的字段完全一致，
+> 差异集中在 `VITE_APP_RUNTIME`（socket 实现）、`VITE_APP_BASE_API`、
+> `VITE_APP_API_BASE_URL`、`VITE_APP_WS_BASE_URL` 等几项，详见上方对照表。
 
 ### 预览构建
 
