@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    base: `${env.VITE_APP_BUILD_INFO === 'production' ? 'https://ulnae.github.io/discuss/' : '/'}`,
+    // base: `${env.VITE_APP_BUILD_INFO === 'production' ? 'https://ulnae.github.io/discuss/' : '/'}`,
+    base: env.VITE_APP_BASE_URL,
     plugins: [
       vue(),
       tailwindcss(),
