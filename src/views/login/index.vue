@@ -196,7 +196,7 @@ handleGetCaptcha()
     height: 100%;
     padding: 1.5rem 1rem;
     overflow: hidden;
-    background: var(--login-bg);
+    background: var(--app-bg);
 }
 
 .login-aurora {
@@ -234,9 +234,9 @@ handleGetCaptcha()
     width: min(400px, 100%);
     padding: 2rem 1.75rem 1.5rem;
     border-radius: 20px;
-    background: var(--login-card-bg);
+    background: var(--surface);
     border: 1px solid var(--login-card-border);
-    box-shadow: var(--login-card-shadow);
+    box-shadow: var(--shadow-card);
     backdrop-filter: blur(18px) saturate(1.5);
     animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -359,7 +359,7 @@ handleGetCaptcha()
     height: 2.7rem;
     padding: 0 0.75rem;
     border-radius: 11px;
-    background: var(--login-field-bg);
+    background: var(--surface-2);
     border: 1px solid transparent;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 

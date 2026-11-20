@@ -103,10 +103,11 @@ const ICONS: Record<ToastType, string> = {
     background: var(--surface-3);
 }
 
-.toast-success { --toast-accent: var(--toast-success); --toast-accent-soft: var(--toast-success-soft); }
+/* 主色复用全局状态色（success/warning/info），soft 底与 error 用 Toast 专属变量 */
+.toast-success { --toast-accent: var(--success); --toast-accent-soft: var(--toast-success-soft); }
 .toast-error   { --toast-accent: var(--toast-error); --toast-accent-soft: var(--toast-error-soft); }
-.toast-warning { --toast-accent: var(--toast-warning); --toast-accent-soft: var(--toast-warning-soft); }
-.toast-info    { --toast-accent: var(--toast-info); --toast-accent-soft: var(--toast-info-soft); }
+.toast-warning { --toast-accent: var(--warning); --toast-accent-soft: var(--toast-warning-soft); }
+.toast-info    { --toast-accent: var(--info); --toast-accent-soft: var(--toast-info-soft); }
 
 /* 进出场动效 */
 .toast-enter-from,

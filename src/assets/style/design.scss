@@ -31,23 +31,21 @@
     --text-2: #4b5462;
     --text-3: #6a7382;
 
-    /* 主色：与登录按钮同款墨黑 */
+    /* 主色：登录按钮 / 发出的聊天气泡 / CallDialog 主按钮共用同一墨黑 */
     --accent: #111111;
     --accent-hover: #000000;
     --accent-fg: #ffffff;
 
-    /* 状态色 */
+    /* 状态色：success/warning/info 亦为 Toast 对应状态色的取值来源 */
     --success: #10b981;
     --success-fg: #0f9d63;
     --warning: #f59e0b;
     --danger: #e11d48;
     --info: #0ea5e9;
 
-    /* 聊天气泡 */
+    /* 聊天气泡：发出方底色/文字色复用主色 --accent / --accent-fg */
     --bubble-in-bg: rgba(15, 23, 42, 0.03);
     --bubble-in-fg: var(--text);
-    --bubble-out-bg: #111111;
-    --bubble-out-fg: #ffffff;
 
     /* 圆角 / 阴影 / 缓动 */
     --radius-xl: 20px;
@@ -72,9 +70,6 @@
     --textarea-outline: #e8e8e8;
     --img-alt-fg: #666;
 
-    /* 危险操作 hover 底色 */
-    --danger-hover-bg: rgba(225, 29, 72, 0.1);
-
     /* 品牌块（导航 Logo / 登录 Logo / 主按钮底座） */
     --brand-fg: #fff;
     --brand-bg: #111;
@@ -95,23 +90,19 @@
     --warning-fg: #b45309;
     --warning-soft: rgba(245, 158, 11, 0.14);
 
-    /* Toast 状态色 */
-    --toast-success: #10b981;
+    /* Toast 状态色：主色复用全局状态色，这里只保留独有的 soft 底（error 主色全局无对应，独立保留） */
     --toast-success-soft: rgba(16, 185, 129, 0.14);
     --toast-error: #f43f5e;
     --toast-error-soft: rgba(244, 63, 94, 0.13);
-    --toast-warning: #f59e0b;
     --toast-warning-soft: rgba(245, 158, 11, 0.16);
-    --toast-info: #0ea5e9;
     --toast-info-soft: rgba(14, 165, 233, 0.13);
 
-    /* ===== 登录页专用（值同原硬编码，视觉不变） ===== */
-    --login-bg: radial-gradient(120% 120% at 50% 0%, #f7f8fa 0%, #eef0f4 55%, #e7e9ee 100%);
+    /* ===== 登录页专用（值同原硬编码，视觉不变） =====
+       画布背景 / 卡片背景 / 卡片阴影 / 输入框底 分别复用全局
+       --app-bg / --surface / --shadow-card / --surface-2（两套主题值相同）。 */
     --login-blob-a: rgba(160, 174, 192, 0.55);
     --login-blob-b: rgba(203, 213, 225, 0.6);
-    --login-card-bg: rgba(255, 255, 255, 0.86);
     --login-card-border: rgba(15, 23, 42, 0.06);
-    --login-card-shadow: 0 28px 70px -30px rgba(15, 23, 42, 0.35), 0 2px 10px rgba(15, 23, 42, 0.04);
     --login-title: #111827;
     --login-text-2: #6b7280;
     --login-text-3: #9ca3af;
@@ -119,7 +110,6 @@
     --login-tabs-bg: rgba(15, 23, 42, 0.055);
     --login-tab-thumb-bg: #fff;
     --login-tab-thumb-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
-    --login-field-bg: rgba(15, 23, 42, 0.04);
     --login-field-focus-bg: #fff;
     --login-field-focus-border: rgba(17, 24, 39, 0.28);
     --login-field-focus-ring: rgba(17, 24, 39, 0.05);
@@ -160,8 +150,6 @@ html.dark {
     --danger: #fb7185;
 
     --bubble-in-bg: rgba(255, 255, 255, 0.05);
-    --bubble-out-bg: #fafafa;
-    --bubble-out-fg: #111111;
 
     --shadow-card: 0 28px 70px -30px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.4);
     --shadow-soft: 0 14px 34px -22px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -175,23 +163,17 @@ html.dark {
     --brand-bg: #fafafa;
     --brand-shadow: 0 8px 20px -8px rgba(255, 255, 255, 0.35);
 
-    /* 危险操作 hover 底色（夜间） */
-    --danger-hover-bg: rgba(251, 113, 133, 0.14);
-
-    /* 在线点光晕 / 状态 soft（夜间） */
+    /* 在线点光晕 / 状态 soft（夜间）：危险操作 hover 底复用 --danger-soft */
     --online-ring: rgba(52, 211, 153, 0.2);
     --success-soft: rgba(52, 211, 153, 0.14);
     --danger-soft: rgba(251, 113, 133, 0.14);
     --warning-fg: #fbbf24;
     --warning-soft: rgba(245, 158, 11, 0.16);
 
-    /* ===== 登录页专用（值同原硬编码，视觉不变） ===== */
-    --login-bg: radial-gradient(120% 120% at 50% 0%, #1c1c1f 0%, #141416 55%, #0e0e10 100%);
+    /* ===== 登录页专用（画布/卡片/阴影/输入框底复用全局 --app-bg/--surface/--shadow-card/--surface-2） ===== */
     --login-blob-a: rgba(63, 63, 70, 0.55);
     --login-blob-b: rgba(39, 39, 42, 0.65);
-    --login-card-bg: rgba(24, 24, 27, 0.82);
     --login-card-border: rgba(255, 255, 255, 0.08);
-    --login-card-shadow: 0 28px 70px -30px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.4);
     --login-title: #f4f4f5;
     --login-text-2: #a1a1aa;
     --login-text-3: #71717a;
@@ -199,7 +181,6 @@ html.dark {
     --login-tabs-bg: rgba(255, 255, 255, 0.06);
     --login-tab-thumb-bg: rgba(255, 255, 255, 0.14);
     --login-tab-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-    --login-field-bg: rgba(255, 255, 255, 0.06);
     --login-field-focus-bg: rgba(255, 255, 255, 0.1);
     --login-field-focus-border: rgba(255, 255, 255, 0.28);
     --login-field-focus-ring: rgba(255, 255, 255, 0.05);
@@ -326,7 +307,7 @@ body {
 
     &:hover:not(:disabled) {
         color: var(--danger);
-        background: var(--danger-hover-bg);
+        background: var(--danger-soft);
     }
 }
 
@@ -757,8 +738,8 @@ body {
 .msg.is-me .bubble {
     border-radius: 14px;
     border-top-right-radius: 5px;
-    background: var(--bubble-out-bg);
-    color: var(--bubble-out-fg);
+    background: var(--accent);
+    color: var(--accent-fg);
 }
 
 /* 输入区 */
