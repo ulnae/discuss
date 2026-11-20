@@ -289,6 +289,9 @@ export const useSocketStore = defineStore('socket', {
                 this.socket.on(Event.MEMBER_REMOVED, (data) => {
                     if (!data || !data.roomId) return
                     useRoomStore().getRoomMember(data.roomId)
+                    // 分子也要即时摘除：否则在 ONLINE_ROOM 到达前（或推送丢失时）在线人数虚高
+                    const online = this.roomMemberOnlineMap.get(data.roomId)
+                    if (online && data.userId) online.delete(data.userId)
                     if (hashPath().startsWith(`/room/${data.roomId}`)) {
                         toast.info(`${data.byUsername || '群主'} 移出了一名成员`)
                     }
