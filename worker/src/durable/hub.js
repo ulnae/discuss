@@ -202,7 +202,7 @@ export class DiscussHub {
         try {
             switch (event) {
                 case EVENTS.INIT: return await this.onInit(ws);
-                case EVENTS.SEND_USER: return this.onUserMessage(ws, data);
+                case EVENTS.SEND_USER: return await this.onUserMessage(ws, data);
                 case EVENTS.SEND_ROOM: return this.onRoomMessage(ws, data);
                 case EVENTS.CALL_INVITE: return this.onCallInvite(ws, data);
                 case EVENTS.CALL_ACCEPT: return this.onCallAccept(ws, data);
@@ -314,12 +314,29 @@ export class DiscussHub {
 
     /* ==================== 消息投递 ==================== */
 
-    onUserMessage(ws, data) {
+    async onUserMessage(ws, data) {
         const me = this.attach(ws);
         const to = String((data && data.to) || '');
-        if (!me.userId || !to) return;
+        if (!me.userId || !to || to === me.userId) return;
 
-        const payload = { ...data, from: me.userId, to, timestamp: now() };
+        /* M-3：只允许给好友发私聊。好友关系是双向两条记录，查「我 -> 对方」这一条即可。
+           对比房间消息已校验 rooms 订阅，私聊此前完全不校验，任何人可给任意用户灌消息。 */
+        const { results } = await this.env.DB
+            .prepare('SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0')
+            .bind(me.userId, to)
+            .all();
+        if (!results || !results.length) return;
+
+        /* 只挑白名单字段，避免把客户端额外塞进 data 的字段透传给收信人 */
+        const payload = {
+            content: data && data.content,
+            clientId: data && data.clientId,
+            type: data && data.type,
+            size: data && data.size,
+            from: me.userId,
+            to,
+            timestamp: now()
+        };
         /* 收发双方使用同一个事件，收信人靠 from 判断发送者（不再有 message:sender 这个反向回显事件） */
         const targets = new Set([...this.userSockets(to), ...this.userSockets(me.userId)]);
         for (const socket of targets) {

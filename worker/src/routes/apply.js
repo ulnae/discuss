@@ -127,29 +127,33 @@ async function update(request, env, ctx, id) {
 
     const apply = applyView(row);
     if (apply.apply_user_id && apply.apply_user_id !== me.id) throw new ApiError('不是被申请人，不能操作', 403);
-    if (apply.apply_user_id && accepted) {
-        /* 双向好友关系：双方列表都要立刻出现对方 */
-        await run(env, 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.apply_user_id, apply.user_id, now());
-        await run(env, 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.apply_user_id, now());
-    }
 
     let room = null;
     if (apply.room_id) {
         room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', apply.room_id);
         if (!room || room.creator !== me.id) throw new ApiError('不是房间创建人，不能操作', 403);
-        if (accepted) {
-            const exist = await first(env, 'SELECT id FROM member WHERE user_id = ? AND room_id = ? AND isDeleted = 0', apply.user_id, apply.room_id);
-            if (!exist) {
-                await run(env, 'INSERT OR IGNORE INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.room_id, now());
-            }
-        }
     }
 
-    await run(
+    /* H-3：条件更新抢占 —— 只有 handle_status=0 的请求能置位成功。
+       D1 的 run() 返回 changes，并发双击时仅一个请求 changes=1，其余直接 409。
+       抢占必须放在建关系之前：否则并发的「同意」与「拒绝」请求里，落败的
+       「同意」可能已经写入好友/成员关系，造成「申请被拒但关系已建立」的不一致。 */
+    const claim = await run(
         env,
-        'UPDATE apply SET status = ?, handle_status = 1, updatedAt = ? WHERE id = ?',
+        'UPDATE apply SET status = ?, handle_status = 1, updatedAt = ? WHERE id = ? AND handle_status = 0 AND isDeleted = 0',
         accepted ? 1 : 0, now(), id
     );
+    if (!claim.changes) throw new ApiError('已处理，不能再操作', 409);
+
+    /* 抢占成功后才写入关系；INSERT OR IGNORE + 部分唯一索引保证幂等 */
+    if (apply.apply_user_id && accepted) {
+        /* 双向好友关系：双方列表都要立刻出现对方 */
+        await run(env, 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.apply_user_id, apply.user_id, now());
+        await run(env, 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.apply_user_id, now());
+    }
+    if (apply.room_id && accepted) {
+        await run(env, 'INSERT OR IGNORE INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.room_id, now());
+    }
 
     /* ---------- 实时通知：申请人立刻知道结果 ---------- */
     if (apply.apply_user_id) {

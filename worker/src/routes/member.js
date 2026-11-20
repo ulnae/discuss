@@ -109,6 +109,10 @@ async function remove(request, env, ctx, id) {
     const isOwner = !!(view.room_info && view.room_info.creator === me.id);
     if (!isSelf && !isOwner) throw new ApiError('只有群主可以移出成员', 403);
 
+    /* M-2：群主不能以「退出房间」的方式离开，否则会留下「不在成员表、但 room.creator
+       仍是他」的幽灵管理员（收不到消息却仍能改名/解散）。群主必须先解散房间。 */
+    if (isSelf && isOwner) throw new ApiError('群主不能直接退出房间，请先解散房间', 409);
+
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE id = ?', id);
 
     const roomId = row.room_id;

@@ -177,7 +177,8 @@ export const useSocketStore = defineStore('socket', {
                     })
                 })
 
-                // 异地登录-被踢下线（仅 nestjs 单端登录会发；worker 允许多端）
+                // 被踢下线：两个后端现在都允许多端并存、不再主动发 kicked；
+                // 监听保留作前向兼容（如未来做设备管理强制下线），平时不会触发。
                 this.socket.on(Event.KICKED, () => {
                     useUserStore().logout();
                 })

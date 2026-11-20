@@ -25,8 +25,8 @@
 
 | 事件 | payload | 说明 |
 |---|---|---|
-| `init` | — | 上线初始化。worker 允许多端并存；nestjs 仍为单端登录（后连接踢掉旧连接，发 `kicked`） |
-| `send:user` | `{ to, content, clientId?, type?, size?, originalname? }` | 私聊消息，`to` 是接收方 userId |
+| `init` | — | 上线初始化。两个后端都允许多端并存（多标签页/多设备），不再互踢 |
+| `send:user` | `{ to, content, clientId?, type?, size?, originalname? }` | 私聊消息，`to` 是接收方 userId；**服务端校验收发双方是好友，否则丢弃** |
 | `send:room` | `{ roomId, content, clientId?, type?, size?, originalname? }` | 群聊消息，服务端校验发送者是该房间成员 |
 | `call:invite` | `{ to }` | 发起通话 |
 | `call:accept` / `call:reject` / `call:cancel` / `call:end` | `{ callId }` | 通话状态机 |
@@ -49,7 +49,7 @@
 | `online:room` | `{ roomId, users: string[], timestamp }` | 房间在线成员名单。服务端对名单做 diff，无变化时不广播给全屋 |
 | `online:friends` | `{ users: string[], timestamp }` | 登录时一次性下发的在线好友 id |
 | `status:friend` | `{ userId, status: boolean, timestamp }` | 好友上下线 |
-| `kicked` | `{ reason, timestamp }` | 异地登录被踢。**仅 nestjs 单端语义下发送**；worker 允许多标签页共存，不会发 |
+| `kicked` | `{ reason, timestamp }` | 强制下线（如未来设备管理）。两个后端当前都不主动发送——多端并存，不再因异地登录互踢；前端监听保留作前向兼容 |
 
 ### 好友
 
