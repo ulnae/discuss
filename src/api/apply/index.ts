@@ -14,8 +14,7 @@ import { cloneDeep, get } from 'lodash-es'
 const Url: any = {
     'server': {
         'apply': '/apply', // 我发起的所有申请
-        'applyMine': '/apply/mine', // 别人申请我的
-        'applyRoom': '/apply/room', // 申请加入房间
+        'applyMine': '/apply/mine', // 待我审批的申请（好友 + 入群统一）
     }
 }
 
@@ -53,17 +52,11 @@ export default {
             data
         })
     },
+    // 待我审批的申请（好友 + 入群统一入口）
     GetApplyMine() {
         return request({
             url: `${Url[requestServerName].applyMine}`,
             method: 'get'
-        })
-    },
-    // 申请加入房间
-    getApplyRoom(id: string) {
-        return request({
-            url: `${Url[requestServerName].applyRoom}?id=${id}`,
-            method: 'get',
         })
     },
 }

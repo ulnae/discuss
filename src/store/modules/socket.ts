@@ -197,14 +197,15 @@ export const useSocketStore = defineStore('socket', {
                      - 涉及多字段合并的（好友列表、房间列表）拉一次最新数据
                    ================================================================= */
 
-                // 别人申请加我为好友
+                // 别人申请加我为好友：并入统一待办 + 右上角提示
                 this.socket.on(Event.FRIEND_REQUEST, (data) => {
                     const apply = data && data.apply
                     if (!apply) return
                     useApplyStore().addPending(apply)
                     const name = apply.user_info?.username || '有人'
-                    toast.info(`${name} 申请加你为好友`)
-                    setTitle(`${name} 申请加你为好友`)
+                    const tip = `好友申请：${name} 申请加你为好友`
+                    toast.info(tip)
+                    setTitle(tip)
                 })
 
                 // 我发起的申请被同意：双方好友列表都要出现对方
@@ -237,18 +238,20 @@ export const useSocketStore = defineStore('socket', {
                     leaveIf(`/friend/${id}`, '/friend/dashboard')
                 })
 
-                // 对方撤回了申请
+                // 对方撤回了申请（好友 / 入群统一：直接从待办里摘掉）
                 this.socket.on(Event.APPLY_REVOKED, (data) => {
                     useApplyStore().removePending(data && data.applyId)
-                    if (data && data.roomId) useRoomStore().getRoomApplies(data.roomId)
                 })
 
-                // 有人申请加入我的房间
+                // 有人申请加入我的房间：并入统一待办 + 右上角提示，房主在申请页审批
                 this.socket.on(Event.ROOM_APPLY, (data) => {
-                    const roomId = data && data.roomId
-                    if (roomId) useRoomStore().getRoomApplies(roomId)
-                    const name = (data && data.apply && data.apply.user_info && data.apply.user_info.username) || '有人'
-                    toast.info(`${name} 申请加入「${(data && data.roomName) || '房间'}」`)
+                    const apply = data && data.apply
+                    if (apply) useApplyStore().addPending(apply)
+                    const name = (apply && apply.user_info && apply.user_info.username) || '有人'
+                    const roomName = (data && data.roomName) || '房间'
+                    const tip = `入群申请：${name} 申请加入「${roomName}」`
+                    toast.info(tip)
+                    setTitle(tip)
                 })
 
                 // 我的入群申请有结果

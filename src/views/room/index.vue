@@ -112,30 +112,6 @@
         </div>
       </section>
 
-      <section v-if="applyList.length > 0" class="members-block">
-        <header class="members-head">
-          入群申请
-          <span class="chip chip-warning">{{ applyList.length }}</span>
-        </header>
-        <div class="apply-list">
-          <div v-for="apply in applyList" :key="apply.id" class="apply-row">
-            <span class="row-main">
-              <span class="row-name">{{ apply.user_info.username }}</span>
-              <span class="row-sub">申请加入房间</span>
-            </span>
-            <template v-if="apply.handle_status">
-              <span class="chip" :class="apply.status ? 'chip-success' : 'chip-danger'">
-                {{ apply.status ? '已同意' : '已拒绝' }}
-              </span>
-            </template>
-            <template v-else>
-              <button type="button" class="btn btn-primary btn-sm" @click="handleHandleApply(apply, true)">同意</button>
-              <button type="button" class="btn btn-ghost btn-sm" @click="handleHandleApply(apply, false)">拒绝</button>
-            </template>
-          </div>
-        </div>
-      </section>
-
       <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleLeaveRoom">
         {{ isOwner ? '解散房间' : '退出房间' }}
       </button>
@@ -202,30 +178,6 @@ watchEffect(() => {
   if (!roomStore.rooms.length) return
   if (!getRoomInfo.value.id) router.replace('/room/dashboard')
 })
-
-// 入群申请（房主可见）放 store：实时事件 room:apply 也能直接刷新
-const applyList = computed(() => roomStore.applyMap.get(route.params.id as string) || [])
-watch(
-  [() => route.params.id, () => roomStore.rooms.length],
-  ([id]) => {
-    if (typeof id === 'string' && id) roomStore.getRoomApplies(id)
-  },
-  { immediate: true }
-)
-
-// 处理入群申请
-function handleHandleApply(apply: any, status: boolean) {
-  ServerApi.handleApply({
-    id: apply.id,
-    status,
-  }).then((res: any) => {
-    if (res.code === 200) {
-      roomStore.getRoomApplies(route.params.id as string)
-      // 同意申请后，刷新获取房间成员
-      status && roomStore.getRoomMember(route.params.id as string);
-    }
-  });
-}
 
 // 发送消息（走 store 乐观发送：先上屏，回执后对账）
 const handleSend = () => {
@@ -462,8 +414,7 @@ function handleRemoveMember(id: string) {
     }
 }
 
-.member-list,
-.apply-list {
+.member-list {
     display: flex;
     flex-direction: column;
     gap: 1px;
@@ -511,24 +462,6 @@ function handleRemoveMember(id: string) {
 
     &:hover {
         color: var(--danger);
-    }
-}
-
-.apply-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.35rem;
-    border-radius: 9px;
-
-    &:hover {
-        background: var(--surface-2);
-    }
-
-    .btn {
-        height: 1.7rem;
-        padding: 0 0.5rem;
-        font-size: 0.7rem;
     }
 }
 

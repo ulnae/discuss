@@ -3,8 +3,7 @@
  *
  *   POST   /api/apply           发起申请（加好友 / 加房间）
  *   GET    /api/apply           我发起的申请
- *   GET    /api/apply/room?id=  某房间的待处理申请
- *   GET    /api/apply/mine      别人申请我的
+ *   GET    /api/apply/mine      待我审批的申请（好友申请 + 我创建房间的入群申请，统一入口）
  *   PATCH  /api/apply/:id       处理申请（同意时自动建立好友/成员关系）
  *   DELETE /api/apply/:id       撤回申请
  */
@@ -100,25 +99,20 @@ async function listMine(request, env, ctx) {
     return ok(rows.map(applyView), ctx.cors);
 }
 
-async function listRoom(request, env, ctx) {
-    const me = await currentUser(request, env);
-    const roomId = ctx.url.searchParams.get('id') || '';
-    if (!roomId) throw new ApiError('缺少房间 id', 400);
-    /* 申请列表里带着申请人的邮箱：只允许群主查看，否则任何登录用户都能按 room_id 拉全表 */
-    const room = await first(env, 'SELECT id, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
-    if (!room) throw new ApiError('房间不存在', 404);
-    if (room.creator !== me.id) throw new ApiError('只有群主可以查看入群申请', 403);
-    const rows = await all(
-        env,
-        `${APPLY_SELECT} WHERE a.room_id = ? AND a.isDeleted = 0 AND a.handle_status = 0 ORDER BY a.createdAt DESC`,
-        roomId
-    );
-    return ok(rows.map(applyView), ctx.cors);
-}
-
 async function listApplyToMe(request, env, ctx) {
     const me = await currentUser(request, env);
-    const rows = await all(env, `${APPLY_SELECT} WHERE a.apply_user_id = ? AND a.isDeleted = 0 ORDER BY a.createdAt DESC`, me.id);
+    /* 待我审批 = 别人申请加我为好友（apply_user_id = 我）
+       + 别人申请加入我创建的房间（room.creator = 我），两类统一在申请页展示 */
+    const rows = await all(
+        env,
+        `${APPLY_SELECT}
+         WHERE a.isDeleted = 0 AND (
+            a.apply_user_id = ?
+            OR a.room_id IN (SELECT id FROM room WHERE creator = ? AND isDeleted = 0)
+         )
+         ORDER BY a.createdAt DESC`,
+        me.id, me.id
+    );
     return ok(rows.map(applyView), ctx.cors);
 }
 
@@ -227,7 +221,6 @@ export async function handleApply(request, env, ctx, rest) {
         if (ctx.method === 'GET') return listMine(request, env, ctx);
         return null;
     }
-    if (ctx.method === 'GET' && head === 'room') return listRoom(request, env, ctx);
     if (ctx.method === 'GET' && head === 'mine') return listApplyToMe(request, env, ctx);
 
     const id = decodeURIComponent(head);

@@ -27,9 +27,6 @@ export const useRoomStore = defineStore('room', {
     state: () => ({
         // 我加入的房间（房间信息单一来源，不再维护第二份「我创建的」列表）
         rooms: [] as Rooms[],
-
-        // 房间 id - 待处理的入群申请（供房间页实时刷新）
-        applyMap: new Map<string, any[]>(),
     }),
     getters: {
         getRoomMap: (state) => {
@@ -82,20 +79,9 @@ export const useRoomStore = defineStore('room', {
                 }
             });
         },
-        // 获取某房间的待处理入群申请（群主才有）
-        getRoomApplies(room_id: string) {
-            if (!this.isOwnerOf(room_id)) {
-                this.applyMap.set(room_id, [])
-                return
-            }
-            ServerApi.getApplyRoom(room_id).then((res: any) => {
-                if (res.code === 200) this.applyMap.set(room_id, res.data || [])
-            })
-        },
         /** 被踢出 / 房间解散：把房间和它的缓存一起清掉 */
         removeRoom(room_id: string) {
             this.rooms = this.rooms.filter(item => item.room_id !== room_id)
-            this.applyMap.delete(room_id)
 
             const socketStore = useSocketStore()
             socketStore.roomMemberMap.delete(room_id)

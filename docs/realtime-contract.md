@@ -105,11 +105,10 @@
 | POST | `/api/member` | 添加成员 |
 | DELETE | `/api/member/:id` | 移出成员 / 退出房间 |
 | POST | `/api/apply` | 发起申请（好友 / 入群） |
-| GET | `/api/apply` | 我发起的申请 |
-| GET | `/api/apply/mine` | 别人申请我的 |
-| GET | `/api/apply/room?id=` | 某房间的待处理申请 |
-| PATCH | `/api/apply/:id` | 处理申请 |
-| DELETE | `/api/apply/:id` | 撤回申请 |
+| GET | `/api/apply` | 我发起的申请（好友 + 入群） |
+| GET | `/api/apply/mine` | **待我审批的申请（统一入口）**：好友申请（`apply_user_id` = 我）+ 入群申请（`room.creator` = 我），两类一起返回，申请页据此区分展示 |
+| PATCH | `/api/apply/:id` | 处理申请（好友 / 入群共用；同意时按类型建立好友 / 成员关系） |
+| DELETE | `/api/apply/:id` | 撤回申请（仅申请人本人） |
 | GET/POST/DELETE | `/api/friend` | 好友列表 / 添加 / 删除（`creator` 取 token，不接受 body 传值） |
 | POST | `/api/alert` | 全站广播，需 `x-alert-secret` 头；未配置 `ALERT_SECRET` 时返回 403 |
 
@@ -124,8 +123,13 @@
 **已移除**（不要再加回来）：
 
 - `GET /room/mine` —— 被 `/room/overview` 取代，前端已无调用方；
+- `GET /apply/room?id=` —— 入群审批已从房间页移到申请页，被拓宽后的 `GET /apply/mine` 取代，三端均已删除；
 - `POST /sse` —— 实时通道只有 WebSocket，SSE 已删除；
 - `send:message`、`system:message`、`connected`、`message:sender` 四个事件 —— 从未被前端使用或已合并进 `message:user`。
+
+**申请审核统一入口约定**：所有申请（好友 / 入群）只在申请页展示与审批，房间页不再渲染入群申请 DOM。
+审批方收到 `friend:request` / `room:apply` 实时事件时，前端把 `apply` 直接并入待审核列表并弹右上角提示；
+入群申请的服务端鉴权仍以 `room.creator === 操作者` 为准（`PATCH /apply/:id` 内校验），不能只靠前端筛选。
 
 ## 五、变更流程
 
