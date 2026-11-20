@@ -141,7 +141,6 @@ const { theme, toggleTheme } = useTheme()
     flex-direction: column;
     gap: 4px;
     padding-top: 8px;
-    border-top: 1px solid var(--border);
 }
 
 .rail-btn {
@@ -232,22 +231,10 @@ const { theme, toggleTheme } = useTheme()
         display: none;
     }
 
-    .rail-nav {
-        flex-direction: row;
-        flex: 1;
-        gap: 0;
-        justify-content: space-around;
-    }
-
+    /* 导航区与底部区扁平化为同一行：所有菜单项等宽、两组之间不留分隔线 */
+    .rail-nav,
     .rail-foot {
-        flex-direction: row;
-        align-items: stretch;
-        gap: 0;
-        margin-left: 2px;
-        padding-top: 0;
-        padding-left: 2px;
-        border-top: 0;
-        border-left: 1px solid var(--border);
+        display: contents;
     }
 
     /* 移动端底部栏放不下主题/退出，收进「设置」页里 */
@@ -257,8 +244,8 @@ const { theme, toggleTheme } = useTheme()
     }
 
     .rail-btn {
-        flex: 1;
-        min-width: 54px;
+        flex: 1 1 0;
+        min-width: 0;
         gap: 2px;
         padding: 6px 3px;
         border-radius: 10px;
