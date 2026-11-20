@@ -196,7 +196,7 @@ handleGetCaptcha()
     height: 100%;
     padding: 1.5rem 1rem;
     overflow: hidden;
-    background: radial-gradient(120% 120% at 50% 0%, #f7f8fa 0%, #eef0f4 55%, #e7e9ee 100%);
+    background: var(--login-bg);
 }
 
 .login-aurora {
@@ -216,7 +216,7 @@ handleGetCaptcha()
         height: 420px;
         top: -160px;
         left: -120px;
-        background: rgba(160, 174, 192, 0.55);
+        background: var(--login-blob-a);
     }
 
     .blob-b {
@@ -224,7 +224,7 @@ handleGetCaptcha()
         height: 380px;
         right: -140px;
         bottom: -160px;
-        background: rgba(203, 213, 225, 0.6);
+        background: var(--login-blob-b);
     }
 }
 
@@ -234,11 +234,9 @@ handleGetCaptcha()
     width: min(400px, 100%);
     padding: 2rem 1.75rem 1.5rem;
     border-radius: 20px;
-    background: rgba(255, 255, 255, 0.86);
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    box-shadow:
-        0 28px 70px -30px rgba(15, 23, 42, 0.35),
-        0 2px 10px rgba(15, 23, 42, 0.04);
+    background: var(--login-card-bg);
+    border: 1px solid var(--login-card-border);
+    box-shadow: var(--login-card-shadow);
     backdrop-filter: blur(18px) saturate(1.5);
     animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -270,22 +268,22 @@ handleGetCaptcha()
     height: 42px;
     margin-bottom: 0.85rem;
     border-radius: 13px;
-    color: #fff;
-    background: #111;
-    box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.6);
+    color: var(--brand-fg);
+    background: var(--brand-bg);
+    box-shadow: var(--brand-shadow);
 }
 
 .login-title {
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: 0.01em;
-    color: #111827;
+    color: var(--login-title);
 }
 
 .login-sub {
     margin-top: 0.3rem;
     font-size: 0.78rem;
-    color: #6b7280;
+    color: var(--login-text-2);
 }
 
 .login-tabs {
@@ -295,7 +293,7 @@ handleGetCaptcha()
     padding: 4px;
     margin-bottom: 1.15rem;
     border-radius: 12px;
-    background: rgba(15, 23, 42, 0.055);
+    background: var(--login-tabs-bg);
 }
 
 .login-tab-thumb {
@@ -305,8 +303,8 @@ handleGetCaptcha()
     left: 4px;
     width: calc(50% - 4px);
     border-radius: 9px;
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
+    background: var(--login-tab-thumb-bg);
+    box-shadow: var(--login-tab-thumb-shadow);
     transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 
     &.is-right {
@@ -319,19 +317,19 @@ handleGetCaptcha()
     z-index: 1;
     height: 2.15rem;
     font-size: 0.82rem;
-    color: #6b7280;
+    color: var(--login-text-2);
     background: transparent;
     border: 0;
     cursor: pointer;
     transition: color 0.2s ease;
 
     &.is-active {
-        color: #111827;
+        color: var(--login-title);
         font-weight: 500;
     }
 
     &:not(.is-active):hover {
-        color: #374151;
+        color: var(--login-text-hover);
     }
 }
 
@@ -351,7 +349,7 @@ handleGetCaptcha()
     font-size: 0.72rem;
     font-weight: 400;
     letter-spacing: 0.02em;
-    color: #6b7280;
+    color: var(--login-text-2);
 }
 
 .field-box {
@@ -361,24 +359,24 @@ handleGetCaptcha()
     height: 2.7rem;
     padding: 0 0.75rem;
     border-radius: 11px;
-    background: rgba(15, 23, 42, 0.04);
+    background: var(--login-field-bg);
     border: 1px solid transparent;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 
     &:focus-within {
-        background: #fff;
-        border-color: rgba(17, 24, 39, 0.28);
-        box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.05);
+        background: var(--login-field-focus-bg);
+        border-color: var(--login-field-focus-border);
+        box-shadow: 0 0 0 4px var(--login-field-focus-ring);
     }
 }
 
 .field-icon {
     flex-shrink: 0;
-    color: #9ca3af;
+    color: var(--login-text-3);
     transition: color 0.2s ease;
 
     .field-box:focus-within & {
-        color: #4b5563;
+        color: var(--login-field-icon-focus);
     }
 }
 
@@ -387,17 +385,17 @@ handleGetCaptcha()
     min-width: 0;
     height: 100%;
     font-size: 0.85rem;
-    color: #111827;
+    color: var(--login-title);
     background: transparent;
     border: 0;
     outline: none;
 
     &::placeholder {
-        color: #9ca3af;
+        color: var(--login-text-3);
     }
 
     &:-webkit-autofill {
-        -webkit-text-fill-color: #111827;
+        -webkit-text-fill-color: var(--login-title);
         transition: background-color 9999s ease-out;
     }
 }
@@ -422,14 +420,14 @@ handleGetCaptcha()
     padding: 0;
     overflow: hidden;
     border-radius: 11px;
-    background: #fff;
-    border: 1px solid rgba(15, 23, 42, 0.1);
+    background: var(--login-captcha-bg);
+    border: 1px solid var(--login-captcha-border);
     cursor: pointer;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
     &:hover:not(:disabled) {
-        border-color: rgba(17, 24, 39, 0.3);
-        box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.04);
+        border-color: var(--login-captcha-hover-border);
+        box-shadow: 0 0 0 3px var(--login-captcha-hover-ring);
     }
 
     &:disabled {
@@ -446,7 +444,7 @@ handleGetCaptcha()
 .captcha-loading {
     font-size: 0.9rem;
     letter-spacing: 0.2em;
-    color: #9ca3af;
+    color: var(--login-text-3);
 }
 
 .submit {
@@ -458,15 +456,15 @@ handleGetCaptcha()
     margin-top: 0.35rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #fff;
-    background: #111;
+    color: var(--brand-fg);
+    background: var(--brand-bg);
     border: 0;
     border-radius: 11px;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.12s ease, opacity 0.2s ease;
 
     &:hover:not(:disabled) {
-        background: #000;
+        background: var(--login-submit-hover-bg);
     }
 
     &:active:not(:disabled) {
@@ -483,8 +481,8 @@ handleGetCaptcha()
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.35);
-    border-top-color: #fff;
+    border: 2px solid var(--login-spinner-border);
+    border-top-color: var(--login-spinner-top);
     animation: spin 0.7s linear infinite;
 }
 
@@ -498,27 +496,27 @@ handleGetCaptcha()
     margin-top: 1rem;
     text-align: center;
     font-size: 0.75rem;
-    color: #6b7280;
+    color: var(--login-text-2);
 
     button {
         padding: 0;
         margin-left: 0.25rem;
         font-size: 0.75rem;
-        color: #111827;
+        color: var(--login-title);
         background: none;
         border: 0;
         cursor: pointer;
         text-decoration: underline;
         text-underline-offset: 3px;
-        text-decoration-color: rgba(17, 24, 39, 0.3);
+        text-decoration-color: var(--login-foot-underline);
 
         &:hover {
-            text-decoration-color: #111827;
+            text-decoration-color: var(--login-title);
         }
     }
 }
 
-/* ---------- 深色模式见文件底部的非 scoped 样式块 ---------- */
+/* 颜色全部走设计系统变量（含 --login-* / --brand-*），深浅模式随 html.dark 自动适配 */
 
 @media (max-width: 420px) {
     .login-card {
@@ -538,134 +536,6 @@ handleGetCaptcha()
 
     .login-tab-thumb {
         transition: none;
-    }
-}
-</style>
-
-<style lang="scss">
-/* 深色模式：单独放非 scoped 块。当前构建（rolldown-vite）对 scoped 样式里的
-   `:global(.dark) .xxx` 编译会把后代选择器丢掉，深色规则整段失效。
-   login-/field-/captcha-/submit 前缀类名在本页全局唯一，直接写全局选择器。 */
-.dark .login-page {
-    background: radial-gradient(120% 120% at 50% 0%, #1c1c1f 0%, #141416 55%, #0e0e10 100%);
-}
-
-.dark .login-aurora .blob-a {
-    background: rgba(63, 63, 70, 0.55);
-}
-
-.dark .login-aurora .blob-b {
-    background: rgba(39, 39, 42, 0.65);
-}
-
-.dark .login-card {
-    background: rgba(24, 24, 27, 0.82);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow:
-        0 28px 70px -30px rgba(0, 0, 0, 0.85),
-        0 2px 10px rgba(0, 0, 0, 0.4);
-}
-
-.dark .login-logo {
-    color: #111;
-    background: #fafafa;
-    box-shadow: 0 8px 20px -8px rgba(255, 255, 255, 0.35);
-}
-
-.dark .login-title {
-    color: #f4f4f5;
-}
-
-.dark .login-sub,
-.dark .login-foot {
-    color: #a1a1aa;
-}
-
-.dark .login-tabs {
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.dark .login-tab-thumb {
-    background: rgba(255, 255, 255, 0.14);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
-
-.dark .login-tabs button {
-    color: #a1a1aa;
-
-    &.is-active {
-        color: #f4f4f5;
-    }
-
-    &:not(.is-active):hover {
-        color: #d4d4d8;
-    }
-}
-
-.dark .field-label {
-    color: #a1a1aa;
-}
-
-.dark .field-box {
-    background: rgba(255, 255, 255, 0.06);
-
-    &:focus-within {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.28);
-        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
-    }
-}
-
-.dark .field-icon {
-    color: #71717a;
-}
-
-.dark .field-box:focus-within .field-icon {
-    color: #d4d4d8;
-}
-
-.dark .field-box input {
-    color: #f4f4f5;
-
-    &::placeholder {
-        color: #71717a;
-    }
-
-    &:-webkit-autofill {
-        -webkit-text-fill-color: #f4f4f5;
-    }
-}
-
-.dark .captcha-box {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(255, 255, 255, 0.12);
-
-    &:hover:not(:disabled) {
-        border-color: rgba(255, 255, 255, 0.35);
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
-    }
-}
-
-.dark .submit {
-    color: #111;
-    background: #fafafa;
-
-    &:hover:not(:disabled) {
-        background: #fff;
-    }
-}
-
-.dark .spinner {
-    border-color: rgba(0, 0, 0, 0.25);
-    border-top-color: #111;
-}
-
-.dark .login-foot button {
-    color: #f4f4f5;
-    text-decoration-color: rgba(255, 255, 255, 0.35);
-
-    &:hover {
-        text-decoration-color: #fff;
     }
 }
 </style>

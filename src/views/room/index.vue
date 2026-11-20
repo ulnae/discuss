@@ -8,7 +8,6 @@
             <path d="M15.75 19.5 8.25 12l7.5-7.5" />
           </svg>
         </button>
-        <span class="avatar avatar-lg">{{ initial }}</span>
         <div class="chat-head-main">
           <div class="chat-title">{{ getRoomInfo.name }}</div>
           <div class="chat-sub" :title="getRoomInfo.description">
@@ -198,7 +197,6 @@ const getUserInfo = (user_id: string) => {
 const getRoomInfo = computed(() => {
   return roomStore.getRoomMap[route.params.id as string]?.room_info || {};
 });
-const initial = computed(() => (getRoomInfo.value.name || '?').trim().charAt(0).toUpperCase())
 // 房间列表已加载但找不到该房间（被踢 / 被解散）时回房间列表，而不是甩一个 404
 watchEffect(() => {
   if (!roomStore.rooms.length) return
@@ -371,16 +369,10 @@ function handleRemoveMember(id: string) {
 
 <style lang="scss" scoped>
 /* 顶部群标题区与左侧搜索区（.side-head）整体同高：
-   padding 节奏一致（0.7rem / 0.6rem），头像压到 34px，标题 + 群描述压进一行内容高度内 */
+   padding 节奏一致（0.7rem / 0.6rem），标题 + 群描述压进一行内容高度内 */
 .chat-head {
     padding-top: 0.7rem;
     padding-bottom: 0.6rem;
-}
-
-.chat-head .avatar-lg {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
 }
 
 .chat-title {
@@ -430,7 +422,7 @@ function handleRemoveMember(id: string) {
     border: 0;
     border-radius: 999px;
     background: var(--surface-2);
-    color: var(--text-3);
+    color: var(--text-2);
     font-size: 0.7rem;
     cursor: pointer;
     transition: background-color 0.16s ease, color 0.16s ease;
@@ -452,10 +444,10 @@ function handleRemoveMember(id: string) {
     justify-content: space-between;
     gap: 0.4rem;
     font-size: 0.72rem;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 /* 抽屉关闭按钮：窄屏抽屉形态下必须可见，否则关不掉 */
@@ -559,7 +551,7 @@ function handleRemoveMember(id: string) {
         width: min(86%, 320px);
         border-left: 1px solid var(--border);
         background: var(--surface-solid);
-        box-shadow: -24px 0 48px -24px rgba(15, 23, 42, 0.45);
+        box-shadow: var(--drawer-shadow);
     }
 
     .members-mask {
@@ -568,7 +560,7 @@ function handleRemoveMember(id: string) {
         position: absolute;
         inset: 0;
         z-index: 25;
-        background: rgba(15, 23, 42, 0.28);
+        background: var(--mask-bg);
         backdrop-filter: blur(1px);
     }
 

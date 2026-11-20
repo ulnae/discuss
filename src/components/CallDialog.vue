@@ -254,13 +254,13 @@ watch(() => callStore.remoteStream, (stream) => {
 }
 
 .call-btn-reject {
-  color: #fff;
-  background: #e11d48;
-  box-shadow: 0 8px 20px -10px rgba(225, 29, 72, 0.7);
+  color: var(--btn-danger-fg);
+  background: var(--btn-danger-bg);
+  box-shadow: var(--btn-danger-shadow);
 }
 
 .call-btn-reject:hover {
-  background: #be123c;
+  background: var(--btn-danger-hover-bg);
 }
 
 .call-btn-accept {

@@ -27,7 +27,6 @@
           <span class="avatar">{{ initial(friend.friend_info.username) }}</span>
           <span class="row-main">
             <span class="row-name">{{ friend.friend_info.username }}</span>
-            <span class="row-sub">{{ isOnline(friend.friend_info.id) ? '在线' : '离线' }}</span>
           </span>
           <span class="dot" :class="{ 'dot-online': isOnline(friend.friend_info.id) }"></span>
         </button>

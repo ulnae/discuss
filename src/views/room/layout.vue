@@ -34,9 +34,6 @@
           <span class="avatar">{{ (room.room_info.name || '?').charAt(0).toUpperCase() }}</span>
           <span class="row-main">
             <span class="row-name">{{ room.room_info.name }}</span>
-            <span class="row-sub">
-              {{ socketStore.roomMemberOnlineMap.get(room.room_id)?.size || 0 }} 人在线
-            </span>
           </span>
           <span class="chip">
             {{ socketStore.roomMemberOnlineMap.get(room.room_id)?.size || 0 }}/{{ socketStore.roomMemberMap.get(room.room_id)?.length || 0 }}

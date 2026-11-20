@@ -188,7 +188,7 @@ const handleJoin = (apply_user_id?: string) => {
 
 .result-meta {
     font-size: 0.72rem;
-    color: var(--text-3);
+    color: var(--text-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

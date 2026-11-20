@@ -173,12 +173,12 @@ applyStore.getApplies()
 
 .approve:hover {
     color: var(--success-fg);
-    background: rgba(16, 185, 129, 0.12);
+    background: var(--success-soft);
 }
 
 .reject:hover {
     color: var(--danger);
-    background: rgba(225, 29, 72, 0.1);
+    background: var(--danger-soft);
 }
 
 .apply-row .avatar {

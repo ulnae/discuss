@@ -150,7 +150,7 @@ const alertStore = useAlertStore()
     padding: 0.1rem 0.4rem;
     border-radius: 6px;
     background: var(--surface-3);
-    color: var(--text-2);
+    color: var(--text);
     font-size: 0.68rem;
 }
 
@@ -164,7 +164,7 @@ const alertStore = useAlertStore()
 .notice-time {
     flex-shrink: 0;
     font-size: 0.68rem;
-    color: var(--text-3);
+    color: var(--text-2);
     font-variant-numeric: tabular-nums;
 }
 
@@ -182,7 +182,7 @@ const alertStore = useAlertStore()
 
     &:hover {
         color: var(--danger);
-        background: rgba(225, 29, 72, 0.1);
+        background: var(--danger-soft);
     }
 }
 </style>

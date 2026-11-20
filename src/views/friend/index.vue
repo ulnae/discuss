@@ -8,7 +8,6 @@
             <path d="M15.75 19.5 8.25 12l7.5-7.5" />
           </svg>
         </button>
-        <span class="avatar avatar-lg">{{ initial }}</span>
         <div class="chat-head-main">
           <div class="chat-title">{{ getFriendInfo.username }}</div>
           <div class="chat-sub" :title="getFriendInfo.email">
@@ -293,16 +292,10 @@ const goBack = () => router.push('/friend/dashboard')
 
 <style lang="scss" scoped>
 /* 顶部标题区与左侧搜索区（.side-head）整体同高，同群聊天页头部：
-   padding 节奏一致（0.7rem / 0.6rem），头像压到 34px，标题 + 邮箱压进一行内容高度内 */
+   padding 节奏一致（0.7rem / 0.6rem），标题 + 邮箱压进一行内容高度内 */
 .chat-head {
     padding-top: 0.7rem;
     padding-bottom: 0.6rem;
-}
-
-.chat-head .avatar-lg {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
 }
 
 .chat-title {
@@ -334,10 +327,10 @@ const goBack = () => router.push('/friend/dashboard')
     align-items: center;
     justify-content: space-between;
     font-size: 0.72rem;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 /* 抽屉关闭按钮：窄屏抽屉形态下必须可见，否则关不掉 */
@@ -386,7 +379,7 @@ const goBack = () => router.push('/friend/dashboard')
     border: 0;
     border-radius: 999px;
     background: var(--surface-2);
-    color: var(--text-3);
+    color: var(--text-2);
     font-size: 0.7rem;
     cursor: pointer;
     transition: background-color 0.16s ease, color 0.16s ease;
@@ -409,7 +402,7 @@ const goBack = () => router.push('/friend/dashboard')
 
 .info-k {
     font-size: 0.68rem;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 .info-v {
@@ -446,7 +439,7 @@ const goBack = () => router.push('/friend/dashboard')
         width: min(86%, 320px);
         border-left: 1px solid var(--border);
         background: var(--surface-solid);
-        box-shadow: -24px 0 48px -24px rgba(15, 23, 42, 0.45);
+        box-shadow: var(--drawer-shadow);
     }
 
     .info-mask {
@@ -455,12 +448,8 @@ const goBack = () => router.push('/friend/dashboard')
         position: absolute;
         inset: 0;
         z-index: 25;
-        background: rgba(15, 23, 42, 0.28);
+        background: var(--mask-bg);
         backdrop-filter: blur(1px);
     }
-}
-
-html.dark .info {
-    box-shadow: -24px 0 48px -24px rgba(0, 0, 0, 0.75);
 }
 </style>

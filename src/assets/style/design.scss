@@ -27,9 +27,9 @@
     --border-strong: rgba(17, 24, 39, 0.26);
 
     /* 文字 */
-    --text: #111827;
-    --text-2: #6b7280;
-    --text-3: #9ca3af;
+    --text: #23262e;
+    --text-2: #4b5462;
+    --text-3: #6a7382;
 
     /* 主色：与登录按钮同款墨黑 */
     --accent: #111111;
@@ -44,7 +44,7 @@
     --info: #0ea5e9;
 
     /* 聊天气泡 */
-    --bubble-in-bg: rgba(15, 23, 42, 0.045);
+    --bubble-in-bg: rgba(15, 23, 42, 0.03);
     --bubble-in-fg: var(--text);
     --bubble-out-bg: #111111;
     --bubble-out-fg: #ffffff;
@@ -58,6 +58,89 @@
     --shadow-soft: 0 14px 34px -22px rgba(15, 23, 42, 0.3), 0 1px 3px rgba(15, 23, 42, 0.04);
     --shadow-accent: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    /* 页面加载进度条（日间浅灰、夜间由 html.dark 覆盖） */
+    --progress-bg: oklch(87.2% 0.01 258.338);
+
+    /* 抽屉阴影 / 遮罩（移动端侧栏） */
+    --drawer-shadow: -24px 0 48px -24px rgba(15, 23, 42, 0.45);
+    --mask-bg: rgba(15, 23, 42, 0.28);
+    --rail-shadow: 0 -8px 24px -18px rgba(15, 23, 42, 0.35);
+
+    /* 遗留拟物阴影 / 图片 alt 文本色 */
+    --textarea-shadow: #c5c5c5;
+    --textarea-outline: #e8e8e8;
+    --img-alt-fg: #666;
+
+    /* 危险操作 hover 底色 */
+    --danger-hover-bg: rgba(225, 29, 72, 0.1);
+
+    /* 品牌块（导航 Logo / 登录 Logo / 主按钮底座） */
+    --brand-fg: #fff;
+    --brand-bg: #111;
+    --brand-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.6);
+
+    /* 按钮危险态 */
+    --btn-danger-fg: #fff;
+    --btn-danger-bg: #e11d48;
+    --btn-danger-hover-bg: #be123c;
+    --btn-danger-shadow: 0 8px 20px -10px rgba(225, 29, 72, 0.7);
+
+    /* 在线点光晕 */
+    --online-ring: rgba(16, 185, 129, 0.16);
+
+    /* 状态标签 soft 底 */
+    --success-soft: rgba(16, 185, 129, 0.12);
+    --danger-soft: rgba(225, 29, 72, 0.1);
+    --warning-fg: #b45309;
+    --warning-soft: rgba(245, 158, 11, 0.14);
+
+    /* Toast 状态色 */
+    --toast-success: #10b981;
+    --toast-success-soft: rgba(16, 185, 129, 0.14);
+    --toast-error: #f43f5e;
+    --toast-error-soft: rgba(244, 63, 94, 0.13);
+    --toast-warning: #f59e0b;
+    --toast-warning-soft: rgba(245, 158, 11, 0.16);
+    --toast-info: #0ea5e9;
+    --toast-info-soft: rgba(14, 165, 233, 0.13);
+
+    /* 翻页时钟（dark: 前缀控制深浅，变量值同原硬编码） */
+    --clock-bg: #e0e0e0;
+    --clock-bg-dark: linear-gradient(180deg, #6e737b 0%, #4c5057 16%, #3b3f45 52%, #2b2e33 100%);
+    --clock-shadow-dark: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 3px 8px rgba(0, 0, 0, 0.28);
+    --clock-glare: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 42%);
+    --clock-inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --clock-digit: #2b2e33;
+    --clock-digit-dark: #ffffff;
+
+    /* ===== 登录页专用（值同原硬编码，视觉不变） ===== */
+    --login-bg: radial-gradient(120% 120% at 50% 0%, #f7f8fa 0%, #eef0f4 55%, #e7e9ee 100%);
+    --login-blob-a: rgba(160, 174, 192, 0.55);
+    --login-blob-b: rgba(203, 213, 225, 0.6);
+    --login-card-bg: rgba(255, 255, 255, 0.86);
+    --login-card-border: rgba(15, 23, 42, 0.06);
+    --login-card-shadow: 0 28px 70px -30px rgba(15, 23, 42, 0.35), 0 2px 10px rgba(15, 23, 42, 0.04);
+    --login-title: #111827;
+    --login-text-2: #6b7280;
+    --login-text-3: #9ca3af;
+    --login-text-hover: #374151;
+    --login-tabs-bg: rgba(15, 23, 42, 0.055);
+    --login-tab-thumb-bg: #fff;
+    --login-tab-thumb-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
+    --login-field-bg: rgba(15, 23, 42, 0.04);
+    --login-field-focus-bg: #fff;
+    --login-field-focus-border: rgba(17, 24, 39, 0.28);
+    --login-field-focus-ring: rgba(17, 24, 39, 0.05);
+    --login-field-icon-focus: #4b5563;
+    --login-captcha-bg: #fff;
+    --login-captcha-border: rgba(15, 23, 42, 0.1);
+    --login-captcha-hover-border: rgba(17, 24, 39, 0.3);
+    --login-captcha-hover-ring: rgba(17, 24, 39, 0.04);
+    --login-submit-hover-bg: #000;
+    --login-spinner-border: rgba(255, 255, 255, 0.35);
+    --login-spinner-top: #fff;
+    --login-foot-underline: rgba(17, 24, 39, 0.3);
 }
 
 html.dark {
@@ -74,9 +157,9 @@ html.dark {
     --border: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(255, 255, 255, 0.3);
 
-    --text: #f4f4f5;
-    --text-2: #a1a1aa;
-    --text-3: #71717a;
+    --text: #e9ecf1;
+    --text-2: #bdc3ce;
+    --text-3: #9aa3b1;
 
     --accent: #fafafa;
     --accent-hover: #ffffff;
@@ -85,13 +168,59 @@ html.dark {
     --success-fg: #34d399;
     --danger: #fb7185;
 
-    --bubble-in-bg: rgba(255, 255, 255, 0.07);
+    --bubble-in-bg: rgba(255, 255, 255, 0.05);
     --bubble-out-bg: #fafafa;
     --bubble-out-fg: #111111;
 
     --shadow-card: 0 28px 70px -30px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.4);
     --shadow-soft: 0 14px 34px -22px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-accent: 0 8px 20px -8px rgba(255, 255, 255, 0.3);
+
+    /* 进度条：夜间用略亮的中灰，深色背景上可见但不刺眼 */
+    --progress-bg: rgba(255, 255, 255, 0.32);
+
+    /* 品牌块（夜间反色） */
+    --brand-fg: #111;
+    --brand-bg: #fafafa;
+    --brand-shadow: 0 8px 20px -8px rgba(255, 255, 255, 0.35);
+
+    /* 危险操作 hover 底色（夜间） */
+    --danger-hover-bg: rgba(251, 113, 133, 0.14);
+
+    /* 在线点光晕 / 状态 soft（夜间） */
+    --online-ring: rgba(52, 211, 153, 0.2);
+    --success-soft: rgba(52, 211, 153, 0.14);
+    --danger-soft: rgba(251, 113, 133, 0.14);
+    --warning-fg: #fbbf24;
+    --warning-soft: rgba(245, 158, 11, 0.16);
+
+    /* ===== 登录页专用（值同原硬编码，视觉不变） ===== */
+    --login-bg: radial-gradient(120% 120% at 50% 0%, #1c1c1f 0%, #141416 55%, #0e0e10 100%);
+    --login-blob-a: rgba(63, 63, 70, 0.55);
+    --login-blob-b: rgba(39, 39, 42, 0.65);
+    --login-card-bg: rgba(24, 24, 27, 0.82);
+    --login-card-border: rgba(255, 255, 255, 0.08);
+    --login-card-shadow: 0 28px 70px -30px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.4);
+    --login-title: #f4f4f5;
+    --login-text-2: #a1a1aa;
+    --login-text-3: #71717a;
+    --login-text-hover: #d4d4d8;
+    --login-tabs-bg: rgba(255, 255, 255, 0.06);
+    --login-tab-thumb-bg: rgba(255, 255, 255, 0.14);
+    --login-tab-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --login-field-bg: rgba(255, 255, 255, 0.06);
+    --login-field-focus-bg: rgba(255, 255, 255, 0.1);
+    --login-field-focus-border: rgba(255, 255, 255, 0.28);
+    --login-field-focus-ring: rgba(255, 255, 255, 0.05);
+    --login-field-icon-focus: #d4d4d8;
+    --login-captcha-bg: rgba(255, 255, 255, 0.9);
+    --login-captcha-border: rgba(255, 255, 255, 0.12);
+    --login-captcha-hover-border: rgba(255, 255, 255, 0.35);
+    --login-captcha-hover-ring: rgba(255, 255, 255, 0.05);
+    --login-submit-hover-bg: #fff;
+    --login-spinner-border: rgba(0, 0, 0, 0.25);
+    --login-spinner-top: #111;
+    --login-foot-underline: rgba(255, 255, 255, 0.35);
 }
 
 /* ---------------- 基础 ---------------- */
@@ -185,11 +314,11 @@ body {
 }
 
 .btn-danger {
-    color: #fff;
-    background: #e11d48;
+    color: var(--btn-danger-fg);
+    background: var(--btn-danger-bg);
 
     &:hover:not(:disabled) {
-        background: #be123c;
+        background: var(--btn-danger-hover-bg);
     }
 }
 
@@ -206,12 +335,8 @@ body {
 
     &:hover:not(:disabled) {
         color: var(--danger);
-        background: rgba(225, 29, 72, 0.1);
+        background: var(--danger-hover-bg);
     }
-}
-
-html.dark .danger-btn:hover:not(:disabled) {
-    background: rgba(251, 113, 133, 0.14);
 }
 
 .btn-block {
@@ -378,7 +503,7 @@ html.dark .danger-btn:hover:not(:disabled) {
 
 .dot-online {
     background: var(--success);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
+    box-shadow: 0 0 0 3px var(--online-ring);
 }
 
 .chip {
@@ -397,21 +522,17 @@ html.dark .danger-btn:hover:not(:disabled) {
 
 .chip-success {
     color: var(--success-fg);
-    background: rgba(16, 185, 129, 0.12);
+    background: var(--success-soft);
 }
 
 .chip-danger {
     color: var(--danger);
-    background: rgba(225, 29, 72, 0.1);
+    background: var(--danger-soft);
 }
 
 .chip-warning {
-    color: #b45309;
-    background: rgba(245, 158, 11, 0.14);
-}
-
-html.dark .chip-warning {
-    color: #fbbf24;
+    color: var(--warning-fg);
+    background: var(--warning-soft);
 }
 
 /* ---------------- 列表 ---------------- */
@@ -419,10 +540,10 @@ html.dark .chip-warning {
 .section-title {
     padding: 0.55rem 0.35rem;
     font-size: 0.7rem;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 .list-row {
@@ -458,6 +579,7 @@ html.dark .chip-warning {
 
 .row-name {
     font-size: 0.82rem;
+    font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -465,7 +587,7 @@ html.dark .chip-warning {
 
 .row-sub {
     font-size: 0.68rem;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 /* ---------------- 空状态 ---------------- */
@@ -625,7 +747,7 @@ html.dark .chip-warning {
     gap: 0.4rem;
     padding: 0 0.3rem;
     font-size: 0.68rem;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 .bubble {

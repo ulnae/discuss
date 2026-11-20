@@ -98,7 +98,7 @@ const handlePreviewImage = (url: string) => {
     display: block;
     margin-top: 2px;
     font-size: 0.65rem;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 .cm-failed {

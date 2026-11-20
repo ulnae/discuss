@@ -124,15 +124,9 @@ const { theme, toggleTheme } = useTheme()
     height: 38px;
     margin: 0 auto 14px;
     border-radius: 13px;
-    color: #fff;
-    background: #111;
-    box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.6);
-}
-
-html.dark .rail-brand {
-    color: #111;
-    background: #fafafa;
-    box-shadow: 0 8px 20px -8px rgba(255, 255, 255, 0.35);
+    color: var(--brand-fg);
+    background: var(--brand-bg);
+    box-shadow: var(--brand-shadow);
 }
 
 .rail-nav {
@@ -230,7 +224,7 @@ html.dark .rail-brand {
         border-top: 1px solid var(--border);
         border-radius: 0;
         background: var(--surface-solid);
-        box-shadow: 0 -8px 24px -18px rgba(15, 23, 42, 0.35);
+        box-shadow: var(--rail-shadow);
         backdrop-filter: none;
     }
 

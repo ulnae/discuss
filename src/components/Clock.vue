@@ -10,13 +10,13 @@
       :key="ci"
       class="relative isolate h-[84px] overflow-hidden rounded-xl px-3.5
              max-[480px]:h-16 max-[480px]:rounded-[14px]
-             bg-[#e0e0e0] transition-colors duration-300
-             dark:bg-[linear-gradient(180deg,#6e737b_0%,#4c5057_16%,#3b3f45_52%,#2b2e33_100%)]
-             dark:shadow-[0_10px_22px_-10px_rgba(0,0,0,0.55),0_3px_8px_rgba(0,0,0,0.28)]
+             bg-[var(--clock-bg)] transition-colors duration-300
+             dark:bg-[image:var(--clock-bg-dark)]
+             dark:shadow-[var(--clock-shadow-dark)]
              after:pointer-events-none after:absolute after:inset-0 after:z-[5]
              after:rounded-[inherit] after:content-['']
-             after:bg-[linear-gradient(180deg,rgba(255,255,255,0.09)_0%,rgba(255,255,255,0)_42%)]
-             after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+             after:bg-[image:var(--clock-glare)]
+             after:shadow-[var(--clock-inner-shadow)]"
     >
       <!-- 数字滚动区 -->
       <div class="flex h-full items-stretch">
@@ -39,7 +39,7 @@
               :key="n"
               class="grid h-[84px] place-items-center text-[48px] leading-none font-bold
                      tracking-[-0.02em] tabular-nums antialiased select-none
-                     text-[#2b2e33] transition-colors duration-300 dark:text-white
+                     text-[var(--clock-digit)] transition-colors duration-300 dark:text-[var(--clock-digit-dark)]
                      max-[480px]:h-16 max-[480px]:text-[36px]"
             >{{ n - 1 }}</span>
           </div>

@@ -8,7 +8,8 @@ html {
        JetBrainsMono 放前面保证代码/数字等宽，中文自动回落到系统字体。 */
     font-family: JetBrainsMono, -apple-system, BlinkMacSystemFont, 'PingFang SC',
         'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
-    font-weight: 200;
+    /* 正文默认字重从 200(ExtraLight) 提到 400：细字在小字号下最费眼 */
+    font-weight: 400;
 }
 
 #app {
@@ -23,15 +24,15 @@ html {
     padding: .6rem;
     border-radius: 1rem;
     background: var(--bgColor);
-    box-shadow: 10px 10px 30px #c5c5c5,
+    box-shadow: 10px 10px 30px var(--textarea-shadow),
         -10px -10px 30px var(--bgColor);
     transition: 0.3s;
 }
 
 .textarea:focus {
-    outline-color: #e8e8e8;
+    outline-color: var(--textarea-outline);
     background: var(--bgColor);
-    box-shadow: inset 10px 10px 30px #c5c5c5,
+    box-shadow: inset 10px 10px 30px var(--textarea-shadow),
         inset -10px -10px 30px var(--bgColor);
     transition: 0.3s;
 }
@@ -49,7 +50,7 @@ textarea {
 }
 
 #nprogress .bar {
-    background: oklch(87.2% 0.01 258.338);
+    background: var(--progress-bg);
 }
 
 /**
@@ -77,7 +78,7 @@ textarea {
 img[alt] {
     font-size: 0.75rem;
     /* 设置 alt 文本的字体大小 */
-    color: #666;
+    color: var(--img-alt-fg);
     /* 设置 alt 文本颜色 */
     display: flex;
     align-items: center;
