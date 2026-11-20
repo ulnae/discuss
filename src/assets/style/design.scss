@@ -105,15 +105,6 @@
     --toast-info: #0ea5e9;
     --toast-info-soft: rgba(14, 165, 233, 0.13);
 
-    /* 翻页时钟（dark: 前缀控制深浅，变量值同原硬编码） */
-    --clock-bg: #e0e0e0;
-    --clock-bg-dark: linear-gradient(180deg, #6e737b 0%, #4c5057 16%, #3b3f45 52%, #2b2e33 100%);
-    --clock-shadow-dark: 0 10px 22px -10px rgba(0, 0, 0, 0.55), 0 3px 8px rgba(0, 0, 0, 0.28);
-    --clock-glare: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 42%);
-    --clock-inner-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-    --clock-digit: #2b2e33;
-    --clock-digit-dark: #ffffff;
-
     /* ===== 登录页专用（值同原硬编码，视觉不变） ===== */
     --login-bg: radial-gradient(120% 120% at 50% 0%, #f7f8fa 0%, #eef0f4 55%, #e7e9ee 100%);
     --login-blob-a: rgba(160, 174, 192, 0.55);
