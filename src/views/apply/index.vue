@@ -1,7 +1,7 @@
 <template>
   <div class="apply-page">
     <!-- 待我审批：好友申请 + 入群申请统一展示 -->
-    <section class="apply-col">
+    <section class="apply-col panel-soft">
       <header class="apply-head">
         <span class="head-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
@@ -24,7 +24,7 @@
 
       <div class="apply-body">
         <div v-if="filteredPending.length > 0" class="apply-list">
-          <div v-for="item in filteredPending" :key="item.id" class="apply-row">
+          <div v-for="item in filteredPending" :key="item.id" class="list-row apply-row">
             <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
               <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -35,7 +35,7 @@
 
             <span class="row-main">
               <span class="row-title">
-                <span class="type-badge" :class="isRoom(item) ? 'badge-room' : 'badge-friend'">
+                <span class="chip type-badge">
                   {{ isRoom(item) ? '入群申请' : '好友申请' }}
                 </span>
                 <span class="row-name">{{ item.user_info?.username }}</span>
@@ -71,18 +71,8 @@
               {{ item.status ? '已同意' : '已拒绝' }}
             </span>
             <span v-else class="row-actions">
-              <button type="button" class="icon-btn approve" title="同意" @click="applyStore.handleApply(item.id, true)">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
-                  stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-              </button>
-              <button type="button" class="icon-btn reject" title="拒绝" @click="applyStore.handleApply(item.id, false)">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
-                  stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <button type="button" class="btn btn-sm approve" @click="applyStore.handleApply(item.id, true)">同意</button>
+              <button type="button" class="btn btn-sm reject" @click="applyStore.handleApply(item.id, false)">拒绝</button>
             </span>
           </div>
         </div>
@@ -100,7 +90,7 @@
     </section>
 
     <!-- 我发起的申请 -->
-    <section class="apply-col">
+    <section class="apply-col panel-soft">
       <header class="apply-head">
         <span class="head-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
@@ -121,7 +111,7 @@
 
       <div class="apply-body">
         <div v-if="filteredSent.length > 0" class="apply-list">
-          <div v-for="item in filteredSent" :key="item.id" class="apply-row">
+          <div v-for="item in filteredSent" :key="item.id" class="list-row apply-row">
             <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
               <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -131,7 +121,7 @@
             </span>
             <span class="row-main">
               <span class="row-title">
-                <span class="type-badge" :class="isRoom(item) ? 'badge-room' : 'badge-friend'">
+                <span class="chip type-badge">
                   {{ isRoom(item) ? '入群申请' : '好友申请' }}
                 </span>
                 <span class="row-name">{{ sentTarget(item) }}</span>
@@ -226,6 +216,8 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
 </script>
 
 <style lang="scss" scoped>
+/* 申请页特有布局：两栏并排。卡片/列表/头像/徽章/按钮/空状态全部复用设计系统通用类，
+   这里只写通用类覆盖不到的局部规则（筛选 tab、类型徽章、时间行、语义色、空状态占高）。 */
 .apply-page {
     display: flex;
     gap: 10px;
@@ -235,32 +227,31 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     padding: 10px;
 }
 
+/* .panel-soft 提供玻璃表面/边框/圆角，这里只管两栏的 flex 布局 */
 .apply-col {
     display: flex;
     flex: 1;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface-2);
     overflow: hidden;
 }
 
+/* 头部节奏对齐全局 .side-head */
 .apply-head {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.6rem 0.85rem;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--text);
+    padding: 0.62rem 0.7rem;
     border-bottom: 1px solid var(--border);
 
     .head-title {
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text);
         white-space: nowrap;
 
         svg {
@@ -271,12 +262,13 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     }
 }
 
+/* 分段筛选：surface 层级与 .ui-field 聚焦态一致（surface-3 底 + surface-solid 激活） */
 .filter-tabs {
     display: inline-flex;
     gap: 2px;
     margin-left: auto;
     padding: 2px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--surface-3);
 }
 
@@ -310,42 +302,25 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     }
 }
 
+/* 滚动区节奏对齐全局 .side-list */
 .apply-body {
+    display: flex;
     flex: 1;
+    flex-direction: column;
+    gap: 2px;
     min-height: 0;
     overflow-y: auto;
+    padding: 0.45rem;
 }
 
 .apply-list {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 0.4rem;
 }
 
-.apply-row {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0.5rem;
-    border-radius: 10px;
-    transition: background-color 0.16s ease;
-
-    &:hover {
-        background: var(--surface-3);
-
-        .approve,
-        .reject {
-            opacity: 1;
-        }
-    }
-}
-
-.row-actions {
-    display: inline-flex;
-    gap: 0.3rem;
-    flex-shrink: 0;
-}
+/* 行复用 .list-row（flex/gap/padding/hover 由全局提供）；
+   操作按钮的语义色 hover 见下方 .approve / .reject（需带 .apply-row 前缀提高优先级）。 */
 
 .row-title {
     display: flex;
@@ -354,23 +329,14 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     min-width: 0;
 }
 
+/* 类型徽章：文案仍用「好友申请 / 入群申请」区分类型，但两类视觉保持一致——
+   统一 info 信息蓝底（分类语义色，不占用绿=已同意/红=已拒绝/黄=待处理的状态色）。 */
 .type-badge {
     flex-shrink: 0;
-    padding: 0.08rem 0.4rem;
-    border-radius: 999px;
     font-size: 0.62rem;
     font-weight: 600;
-    line-height: 1.4;
-
-    &.badge-friend {
-        color: var(--success-fg);
-        background: var(--success-soft);
-    }
-
-    &.badge-room {
-        color: var(--info);
-        background: var(--toast-info-soft);
-    }
+    color: var(--info);
+    background: var(--toast-info-soft);
 }
 
 /* 时间信息：申请时间 + 处理时间，与名称左对齐成一行 */
@@ -378,7 +344,7 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     display: flex;
     flex-wrap: wrap;
     gap: 0.15rem 0.75rem;
-    margin-top: 0.2rem;
+    margin-top: 0.15rem;
     font-size: 0.68rem;
     line-height: 1.2;
 }
@@ -407,84 +373,50 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
 }
 
 /* 未处理时「处理」项用中性色，避免与已处理时间混淆 */
-.time-item.is-pending {
-    .time-value.time-wait {
-        color: var(--warning-fg);
-    }
+.time-item.is-pending .time-value.time-wait {
+    color: var(--warning-fg);
 }
 
-.approve,
-.reject {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    opacity: 0.55;
-    transition: opacity 0.16s ease, color 0.16s ease, background-color 0.16s ease;
-
-    svg {
-        width: 14px;
-        height: 14px;
-    }
-}
-
-.approve:hover {
-    color: var(--success-fg);
-    background: var(--success-soft);
-}
-
-.reject:hover {
-    color: var(--danger);
-    background: var(--danger-soft);
-}
-
-.apply-row .avatar {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
-    font-size: 0.72rem;
+.row-actions {
+    display: inline-flex;
+    gap: 0.3rem;
     flex-shrink: 0;
+}
 
-    &.avatar-room {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+/* 审批按钮用文字（复用 .btn.btn-sm）：平时低调的 ghost 态，hover 才显语义色。
+   必须带 .apply-row 前缀提高优先级，覆盖设计系统 .btn-ghost:hover 的默认灰底。
+   同意 = 主色墨黑实心（对齐 .btn-primary），拒绝 = 危险红 soft（对齐 .danger-btn）。 */
+.apply-row {
+    .approve,
+    .reject {
+        color: var(--text-2);
+        background: var(--surface-2);
+    }
 
-        svg {
-            width: 16px;
-            height: 16px;
-        }
+    .approve:hover {
+        color: var(--accent-fg);
+        background: var(--accent);
+    }
+
+    .reject:hover {
+        color: var(--danger);
+        background: var(--danger-soft);
     }
 }
 
+/* 房间头像用图标，居中由全局 .avatar 的 grid 完成，这里只定图标尺寸 */
+.avatar-room svg {
+    width: 17px;
+    height: 17px;
+}
+
+/* 空状态复用 .empty / .empty-icon，这里让它占满剩余高度 */
 .empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    height: 100%;
+    flex: 1;
     min-height: 120px;
-    color: var(--text-3);
-    font-size: 0.76rem;
-
-    .empty-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        color: var(--text-3);
-        background: var(--surface-3);
-
-        svg {
-            width: 20px;
-            height: 20px;
-        }
-    }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
     .apply-page {
         flex-direction: column;
         gap: 8px;
@@ -499,14 +431,6 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
 
     .apply-body {
         overflow: visible;
-    }
-
-    /* 触摸设备没有 hover，操作按钮常显并放大热区 */
-    .approve,
-    .reject {
-        width: 32px;
-        height: 32px;
-        opacity: 1;
     }
 }
 </style>
