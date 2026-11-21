@@ -67,8 +67,19 @@ export const useRoomStore = defineStore('room', {
                 Object.entries(data.members || {}).forEach(([room_id, list]) => {
                     socketStore.roomMemberMap.set(room_id, list as any[])
                 })
-                socketStore.roomMemberOnlineMap.clear()
-                Object.entries(data.online || {}).forEach(([room_id, users]) => {
+                // 在线名单按时间戳守卫做"合并"写入，绝不能先 clear 整表：
+                // 推送先于快照到达时（等 init 后拉快照几乎必然如此），clear 会把
+                // 推送刚写入的名单抹掉，而跳过逻辑又不会写回，导致全员显示离线。
+                const online = data.online || {}
+                const overviewRooms = new Set(Object.keys(online))
+                socketStore.roomMemberOnlineMap.forEach((_set, room_id) => {
+                    // overview 里没有、期间也没有新推送的房间：已不是我加入的，移除
+                    const pushAt = socketStore.onlinePushAt.get(room_id) || 0
+                    if (!overviewRooms.has(room_id) && pushAt <= requestedAt) {
+                        socketStore.roomMemberOnlineMap.delete(room_id)
+                    }
+                })
+                Object.entries(online).forEach(([room_id, users]) => {
                     // 时间戳守卫：该房间在请求发出后收到过 online:room 推送 → 保留推送结果
                     const pushAt = socketStore.onlinePushAt.get(room_id) || 0
                     if (pushAt > requestedAt) return
