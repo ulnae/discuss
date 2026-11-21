@@ -2,7 +2,6 @@
 import axios, { AxiosInstance, AxiosPromise, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
 import { APIENUM, API_ENUM_SERVICE } from '@/settings'
 import { useUserStore } from '@/store/modules/user'
-import Cookies from 'js-cookie'
 import { pinia } from '@/store'
 import { toast } from '@/components/ui/toast'
 
@@ -73,9 +72,6 @@ const service: RuquestService = axios.create({
 //   service?: string
 // }
 
-/* eggjs 默认值，可修改 */
-const xsrfCookieName = 'csrfToken';
-const xsrfHeaderName = 'x-csrf-token';
 // 请求拦截器
 service.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
@@ -89,8 +85,6 @@ service.interceptors.request.use(
         customConfig.headers['Base-Version'] = import.meta.env.VITE_APP_VERSION
         // console.log(import.meta.env.VITE_APP_VERSION,'baseURL')
 
-        /* header 中添加 csrfToken */
-        customConfig.headers[xsrfHeaderName] = Cookies.get(xsrfCookieName);
         if (useUserStore(pinia).getToken) {
             customConfig.headers['Authorization'] = `Bearer ${useUserStore().getToken}`
         }
