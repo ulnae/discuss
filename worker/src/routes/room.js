@@ -138,7 +138,13 @@ async function overview(request, env, ctx) {
             body: JSON.stringify({ rooms: roomIds })
         }).catch(() => null);
         const json = result ? await result.json().catch(() => null) : null;
-        online = (json && json.online) || {};
+        // DO 查询失败必须显式报错：之前静默退化成 online={} 且接口仍 200，
+        // 前端会 clear() 后什么都不塞，把自己和所有人刷成"离线"且无事件纠正。
+        // 报错后前端按 res.code !== 200 保留现有在线状态，等下次刷新/推送恢复。
+        if (!json || !json.ok) {
+            throw new ApiError('在线名单查询失败，请稍后重试', 503);
+        }
+        online = json.online || {};
     }
 
     return ok({
