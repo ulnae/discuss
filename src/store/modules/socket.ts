@@ -65,6 +65,11 @@ export const useSocketStore = defineStore('socket', {
         roomMemberMap: new Map<string, any[]>(),
         // 房间id - 房间在线成员id
         roomMemberOnlineMap: new Map<string, Set<string>>(),
+        // 房间id - 最近一次收到 online:room 推送的时间戳（供 overview 快照做新旧守卫）
+        onlinePushAt: new Map<string, number>(),
+        // WS 初始化就绪信号：connect + init 已发出后 resolve（见 socketReady()）
+        readyPromise: null as Promise<void> | null,
+        readyResolve: null as (() => void) | null,
     }),
     actions: {
         /** 清空内存中的运行时状态（切账号 / 登出时用），不碰本地持久化数据 */
@@ -73,6 +78,7 @@ export const useSocketStore = defineStore('socket', {
             this.roomMessageMap.clear()
             this.roomMemberMap.clear()
             this.roomMemberOnlineMap.clear()
+            this.onlinePushAt.clear()
             useAlertStore().alerts = []
         },
 
@@ -99,6 +105,30 @@ export const useSocketStore = defineStore('socket', {
             }
         },
 
+        /**
+         * 等待 WS 初始化就绪（connect + init 已发出，服务端即将/已经把我们登记在线）。
+         * 供 getRooms() 等 REST 聚合快照调用：先就绪再拉快照，避免快照不含刚上线的自己。
+         * 带 5s 兜底超时：WS 一直建不起来也不阻塞页面加载。
+         */
+        socketReady(timeoutMs = 5000) {
+            const ready = this.readyPromise || Promise.resolve()
+            return Promise.race([
+                ready,
+                new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+            ])
+        },
+
+        /**
+         * 兜底：自己已建立 WS 连接就必然在线。
+         * 服务端在线快照存在竞态（overview 在 init/join 之前拍、断连清理误判等），
+         * 可能把"我"标灰且没有后续事件纠正；这里强制把自己并回所有房间在线集合。
+         */
+        ensureSelfOnline() {
+            const me = useUserStore().userInfo.id
+            if (!me) return
+            this.roomMemberOnlineMap.forEach(set => set.add(me as string))
+        },
+
         initSocket() {
             // 本地消息恢复已由 getInfo() 在调用本方法前 await 完成。
             // 不要在这里 fire-and-forget 地再调 hydrateMessages()：那样回执可能在恢复完成前
@@ -109,6 +139,8 @@ export const useSocketStore = defineStore('socket', {
                     try { this.socket.disconnect() } catch { /* ignore */ }
                     this.socket = null
                 }
+                // 重建就绪信号：connect + init 发出后 resolve，供 socketReady() 等待
+                this.readyPromise = new Promise<void>(res => { this.readyResolve = res as () => void })
                 // VITE_APP_RUNTIME 决定用 socket.io（server-nestjs）还是原生 WebSocket（worker）
                 connectSocket(useUserStore().token).then((socket: Socket) => {
                     this.socket = socket
@@ -118,12 +150,18 @@ export const useSocketStore = defineStore('socket', {
                 let firstConnect = true
                 this.socket.on('connect', () => {
                     console.log('connect')
+                    // 兜底：连接建立即视自己在线，防止服务端快照竞态把自己标灰
+                    this.ensureSelfOnline()
                     // 首次连接立刻 init；断线重连防抖 2s，避免网络抖动引发 init/在线名单风暴
                     if (initTimer) clearTimeout(initTimer)
                     const delay = firstConnect ? 0 : 2000
                     firstConnect = false
                     initTimer = setTimeout(() => {
-                        if (this.socket && this.socket.connected) this.socket.emit(Event.INIT)
+                        if (this.socket && this.socket.connected) {
+                            this.socket.emit(Event.INIT)
+                            // init 已发出：此后服务端的在线快照就会包含自己，放行等待方
+                            this.readyResolve?.()
+                        }
                     }, delay)
                     resolve(true)
                 })
@@ -161,7 +199,13 @@ export const useSocketStore = defineStore('socket', {
 
                 // 接收房间成员在线状态
                 this.socket.on(Event.ONLINE_ROOM, (data) => {
-                    this.roomMemberOnlineMap.set(data.roomId, new Set(data.users || []))
+                    const users = new Set<string>(data.users || [])
+                    // 兜底：能收到这条推送说明自己 WS 在线，服务端名单竞态漏掉自己时强制补回
+                    const me = useUserStore().userInfo.id
+                    if (me) users.add(me as string)
+                    this.roomMemberOnlineMap.set(data.roomId, users)
+                    // 记录推送时间，供 overview 快照做"过期不覆盖"守卫
+                    this.onlinePushAt.set(data.roomId, Date.now())
                 })
 
                 // 接收好友状态更新（规范事件名 status:friend，历史拼写 status:firend 已移除）

@@ -68,6 +68,11 @@ export const useUserStore = defineStore('user', {
             await useSocketStore().hydrateMessages()
             useSocketStore().initSocket()
             useFriendStore().getFriends()
+            // 关键：等 WS connect + init 发出之后再拉 /room/overview 聚合快照。
+            // 否则快照是在自己还没 join 房间时拍的，天然不含自己；若快照又恰好
+            // 在 online:room 推送之后到达，会把正确名单覆盖成「自己离线」。
+            // socketReady 自带 5s 兜底超时，WS 建不起来也不阻塞房间列表加载。
+            await useSocketStore().socketReady()
             useRoomStore().getRooms()
         }
 

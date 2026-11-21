@@ -48,6 +48,10 @@ export const useRoomStore = defineStore('room', {
         // 获取我加入的房间、成员与在线名单 —— 单个聚合接口，替代原来的 3+N 个请求
         getRooms() {
             const userinfo = useUserStore().userInfo
+            // 记录请求发出时间：overview 的 online 是服务端处理瞬间拍的快照，
+            // 若响应期间某房间已收到更新的 online:room 推送（推送晚于请求发出），
+            // 说明快照已过期，绝不能回写覆盖。
+            const requestedAt = Date.now()
             return ServerApi.GetRoomOverview().then((res: any) => {
                 if (res.code !== 200) return
                 const data = res.data || {}
@@ -65,8 +69,13 @@ export const useRoomStore = defineStore('room', {
                 })
                 socketStore.roomMemberOnlineMap.clear()
                 Object.entries(data.online || {}).forEach(([room_id, users]) => {
+                    // 时间戳守卫：该房间在请求发出后收到过 online:room 推送 → 保留推送结果
+                    const pushAt = socketStore.onlinePushAt.get(room_id) || 0
+                    if (pushAt > requestedAt) return
                     socketStore.roomMemberOnlineMap.set(room_id, new Set(users as string[]))
                 })
+                // 兜底：快照竞态漏掉自己时强制补回（自己 WS 在线就必然在线）
+                socketStore.ensureSelfOnline()
             })
         },
         // 获取单个房间的成员（成员变动事件后的定点刷新）
