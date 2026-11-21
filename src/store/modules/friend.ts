@@ -15,6 +15,9 @@ export const useFriendStore = defineStore('friend', {
     state: () => ({
         friends: [] as Friend[],
 
+        /** 好友列表是否正在加载（首次进入 / 刷新时给列表和详情页展示 loading） */
+        loading: false,
+
         /** 好友列表里还没有这个人时收到的在线状态（同意申请瞬间事件可能先于列表刷新到达），先缓存 */
         pendingStatus: new Map<string, boolean>(),
     }),
@@ -29,6 +32,7 @@ export const useFriendStore = defineStore('friend', {
     },
     actions: {
         getFriends() {
+            this.loading = true
             return new Promise((resolve, reject) => {
                 ServerApi.GetFriends().then((res:any) => {
                     const old = this.getFriendMap
@@ -40,7 +44,9 @@ export const useFriendStore = defineStore('friend', {
                     }))
                     this.pendingStatus.clear()
                     resolve(res.data)
-                }).catch(reject)
+                }).catch(reject).finally(() => {
+                    this.loading = false
+                })
             })
         },
         setFriendStatus(id: string, status: boolean) {

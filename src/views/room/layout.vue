@@ -29,27 +29,35 @@
       </div>
 
       <div class="side-list">
-        <button v-for="room in getRooms" :key="room.id" type="button" class="list-row"
-          :class="{ 'is-active': paramsID === room.room_id }" @click="handleRoomClick(room)">
-          <span class="avatar">{{ (room.room_info.name || '?').charAt(0).toUpperCase() }}</span>
-          <span class="row-main">
-            <span class="row-name">{{ room.room_info.name }}</span>
-          </span>
-          <span class="chip">
-            {{ socketStore.roomMemberOnlineMap.get(room.room_id)?.size || 0 }}/{{ socketStore.roomMemberMap.get(room.room_id)?.length || 0 }}
-          </span>
-        </button>
-
-        <div v-if="getRooms.length === 0" class="empty">
-          <span class="empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M20.25 8.5c.9.3 1.5 1.1 1.5 2.1v4.3c0 1.1-.8 2.1-2 2.2l-1 .1v3l-3-3c-1.4 0-2.7-.1-4-.2" />
-              <path d="M16.5 6.6c0-1.6-1.2-3-2.8-3.2A48 48 0 0 0 5 3.4C3.4 3.6 2.2 5 2.2 6.6v6.2c0 1.6 1.2 3 2.8 3.2L7 16.2V21l4.2-4.2" />
-            </svg>
-          </span>
-          还没有加入任何房间
+        <!-- 首次进入 / 刷新时 overview 在途：展示 loading，避免误以为"没有房间" -->
+        <div v-if="roomStore.loading" class="list-loading">
+          <span class="loading-spinner"></span>
+          正在加载房间…
         </div>
+
+        <template v-else>
+          <button v-for="room in getRooms" :key="room.id" type="button" class="list-row"
+            :class="{ 'is-active': paramsID === room.room_id }" @click="handleRoomClick(room)">
+            <span class="avatar">{{ (room.room_info.name || '?').charAt(0).toUpperCase() }}</span>
+            <span class="row-main">
+              <span class="row-name">{{ room.room_info.name }}</span>
+            </span>
+            <span class="chip">
+              {{ socketStore.roomMemberOnlineMap.get(room.room_id)?.size || 0 }}/{{ socketStore.roomMemberMap.get(room.room_id)?.length || 0 }}
+            </span>
+          </button>
+
+          <div v-if="getRooms.length === 0" class="empty">
+            <span class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M20.25 8.5c.9.3 1.5 1.1 1.5 2.1v4.3c0 1.1-.8 2.1-2 2.2l-1 .1v3l-3-3c-1.4 0-2.7-.1-4-.2" />
+                <path d="M16.5 6.6c0-1.6-1.2-3-2.8-3.2A48 48 0 0 0 5 3.4C3.4 3.6 2.2 5 2.2 6.6v6.2c0 1.6 1.2 3 2.8 3.2L7 16.2V21l4.2-4.2" />
+              </svg>
+            </span>
+            还没有加入任何房间
+          </div>
+        </template>
       </div>
     </aside>
 

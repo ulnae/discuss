@@ -9,7 +9,7 @@
           </svg>
         </button>
         <div class="chat-head-main">
-          <div class="chat-title">{{ getRoomInfo.name }}</div>
+          <div class="chat-title">{{ getRoomInfo.name || (roomStore.loading ? '加载中…' : '未知房间') }}</div>
           <div class="chat-sub" :title="getRoomInfo.description">
             {{ getRoomInfo.description || '这个房间还没有描述' }}
           </div>
@@ -29,7 +29,12 @@
         <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
           查看更早的消息
         </button>
-        <div v-if="!getHistory.length" class="empty">
+        <!-- 房间信息 / 成员（overview）在途：展示 loading；本地已有消息缓存则不打扰 -->
+        <div v-if="roomStore.loading && !getHistory.length" class="list-loading">
+          <span class="loading-spinner"></span>
+          正在加载…
+        </div>
+        <div v-else-if="!getHistory.length" class="empty">
           <span class="empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
               stroke-linejoin="round">

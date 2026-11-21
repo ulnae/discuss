@@ -27,6 +27,9 @@ export const useRoomStore = defineStore('room', {
     state: () => ({
         // 我加入的房间（房间信息单一来源，不再维护第二份「我创建的」列表）
         rooms: [] as Rooms[],
+
+        /** 房间列表 / 详情是否正在加载（overview 聚合接口在途时给列表和聊天页展示 loading） */
+        loading: false,
     }),
     getters: {
         getRoomMap: (state) => {
@@ -48,6 +51,7 @@ export const useRoomStore = defineStore('room', {
         // 获取我加入的房间、成员与在线名单 —— 单个聚合接口，替代原来的 3+N 个请求
         getRooms() {
             const userinfo = useUserStore().userInfo
+            this.loading = true
             // 记录请求发出时间：overview 的 online 是服务端处理瞬间拍的快照，
             // 若响应期间某房间已收到更新的 online:room 推送（推送晚于请求发出），
             // 说明快照已过期，绝不能回写覆盖。
@@ -87,6 +91,8 @@ export const useRoomStore = defineStore('room', {
                 })
                 // 兜底：快照竞态漏掉自己时强制补回（自己 WS 在线就必然在线）
                 socketStore.ensureSelfOnline()
+            }).finally(() => {
+                this.loading = false
             })
         },
         // 获取单个房间的成员（成员变动事件后的定点刷新）

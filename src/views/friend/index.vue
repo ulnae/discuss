@@ -9,7 +9,7 @@
           </svg>
         </button>
         <div class="chat-head-main">
-          <div class="chat-title">{{ getFriendInfo.username }}</div>
+          <div class="chat-title">{{ getFriendInfo.username || (friendStore.loading ? '加载中…' : '未知好友') }}</div>
           <div class="chat-sub" :title="getFriendInfo.email">
             {{ getFriendInfo.email || '—' }}
           </div>
@@ -29,7 +29,12 @@
         <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
           查看更早的消息
         </button>
-        <div v-if="!getHistory.length" class="empty">
+        <!-- 好友列表（资料来源）在途：展示 loading；本地已有消息缓存则不打扰 -->
+        <div v-if="friendStore.loading && !getHistory.length" class="list-loading">
+          <span class="loading-spinner"></span>
+          正在加载…
+        </div>
+        <div v-else-if="!getHistory.length" class="empty">
           <span class="empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
               stroke-linejoin="round">
