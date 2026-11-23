@@ -38,6 +38,14 @@ export const useApplyStore = defineStore('apply', {
         applies: [] as Apply[],
         // 待我审批的申请列表（好友 + 入群统一，由 GET /apply/mine 返回）
         pendingApplies: [] as Apply[],
+
+        // 两栏各自独立的加载状态；初始 true，刷新后首帧直接是 loading，避免空状态闪现
+        pendingLoading: true,
+        sentLoading: true,
+        // 拉取序号：只有最后一次「主动拉取」才有权复位 loading，
+        // 避免并发时旧请求提前关掉 loading（silent 刷新不参与竞争）
+        pendingFetchId: 0,
+        sentFetchId: 0,
     }),
     getters: {
         /** 该申请是否为入群申请 */
@@ -56,15 +64,40 @@ export const useApplyStore = defineStore('apply', {
         },
     },
     actions: {
-        getApplies() {
-            serverApi.getApply().then((res: any) => {
+        /**
+         * 拉取我发起的申请。
+         * @param silent 静默刷新（审批 / 实时事件后的兜底拉取）：完全不碰 loading，
+         *               避免与页面主动拉取并发时提前关掉 loading
+         */
+        getApplies(silent = false) {
+            // 静默刷新只更新数据，绝不读写 loading / fetchId
+            if (silent) {
+                return serverApi.getApply().then((res: any) => {
+                    this.applies = res.data || []
+                })
+            }
+            const fetchId = ++this.sentFetchId
+            this.sentLoading = true
+            return serverApi.getApply().then((res: any) => {
                 this.applies = res.data || []
+            }).finally(() => {
+                // 仅最后一次主动拉取能复位，先返回的旧请求不打断新请求的 loading
+                if (fetchId === this.sentFetchId) this.sentLoading = false
             })
         },
-        /** 拉取待我审批的全部申请（好友 + 入群），接口已统一 */
-        getPendingApplies() {
-            serverApi.GetApplyMine().then((res: any) => {
+        /** 拉取待我审批的全部申请（好友 + 入群），接口已统一；silent 含义同上 */
+        getPendingApplies(silent = false) {
+            if (silent) {
+                return serverApi.GetApplyMine().then((res: any) => {
+                    this.pendingApplies = res.data || []
+                })
+            }
+            const fetchId = ++this.pendingFetchId
+            this.pendingLoading = true
+            return serverApi.GetApplyMine().then((res: any) => {
                 this.pendingApplies = res.data || []
+            }).finally(() => {
+                if (fetchId === this.pendingFetchId) this.pendingLoading = false
             })
         },
         /** 收到实时申请（friend:request / room:apply）：直接插到待处理列表顶部，不用重新请求 */
@@ -83,7 +116,7 @@ export const useApplyStore = defineStore('apply', {
                 if (res && res.code !== 200) return
                 // 先本地摘掉，列表立刻响应；随后拉一次权威列表兜底
                 this.removePending(id)
-                this.getPendingApplies()
+                this.getPendingApplies(true)
                 // 同意后刷新：入群 → 房间列表；好友 → 好友列表
                 if (status) {
                     useRoomStore().getRooms()

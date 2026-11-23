@@ -29,8 +29,9 @@
       </div>
 
       <div class="side-list">
-        <!-- 首次进入 / 刷新时 overview 在途：展示 loading，避免误以为"没有房间" -->
-        <div v-if="roomStore.loading" class="list-loading">
+        <!-- 首次进入 / 刷新时 overview 在途：展示 loading，避免误以为"没有房间"。
+             已有数据时即便后台静默刷新也不闪 loading（成员/入群事件会重拉列表） -->
+        <div v-if="roomStore.loading && !roomStore.rooms.length" class="list-loading">
           <span class="loading-spinner"></span>
           正在加载房间…
         </div>

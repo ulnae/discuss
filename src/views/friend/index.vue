@@ -11,7 +11,7 @@
         <div class="chat-head-main">
           <div class="chat-title">{{ getFriendInfo.username || (friendStore.loading ? '加载中…' : '未知好友') }}</div>
           <div class="chat-sub" :title="getFriendInfo.email">
-            {{ getFriendInfo.email || '—' }}
+            {{ getFriendInfo.email || (friendStore.loading ? '' : '—') }}
           </div>
         </div>
         <div class="chat-head-actions">
@@ -99,6 +99,13 @@
         </button>
       </div>
 
+      <!-- 好友资料随列表一起加载：在途时用 loading 占位，避免头像/用户名先闪出 ? 和 — -->
+      <div v-if="infoLoading" class="list-loading panel-loading">
+        <span class="loading-spinner"></span>
+        正在加载好友资料…
+      </div>
+
+      <template v-else>
       <div class="info-card">
         <span class="avatar avatar-xl">{{ initial }}</span>
         <div class="info-name">{{ getFriendInfo.username }}</div>
@@ -122,8 +129,9 @@
           <span class="info-v">{{ getFriendInfo.createdAt ? dayjs(getFriendInfo.createdAt).format('YYYY/MM/DD') : '—' }}</span>
         </div>
       </div>
+      </template>
 
-      <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleRemoveFriend">
+      <button v-if="!infoLoading" type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleRemoveFriend">
         删除好友
       </button>
     </aside>
@@ -182,6 +190,8 @@ const { pinToBottom } = useAutoScroll(containerRef, {
 const getFriendInfo = computed(() => {
   return friendStore.getFriendMap[route.params.id as string]?.friend_info || {};
 });
+// 好友资料是否仍在加载（列表在途且本地还没有该好友信息）
+const infoLoading = computed(() => friendStore.loading && !getFriendInfo.value.id);
 // 好友是否在线（在线才允许拨打语音通话）
 const isFriendOnline = computed(() => {
   return !!friendStore.getFriendMap[route.params.id as string]?.status;
@@ -311,6 +321,8 @@ const goBack = () => router.push('/friend/dashboard')
 .chat-sub {
     display: block;
     line-height: 1.2;
+    /* loading 时副行为空字符串，锁住一行高度，避免加载完成瞬间标题整体跳动 */
+    min-height: 1.2em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -348,6 +360,11 @@ const goBack = () => router.push('/friend/dashboard')
         width: 14px;
         height: 14px;
     }
+}
+
+/* 资料 / 成员面板内的 loading 占位：比通用列表更紧凑 */
+.panel-loading {
+    padding: 2rem 0.5rem;
 }
 
 .info-card {

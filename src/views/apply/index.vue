@@ -11,7 +11,7 @@
           </svg>
           待我审批
         </span>
-        <span class="count-badge" :class="{ 'is-emphasis': applyStore.pendingCount > 0 }">{{ applyStore.pendingCount }}</span>
+        <span class="count-badge" :class="{ 'is-emphasis': applyStore.pendingCount > 0 }">{{ applyStore.pendingLoading ? '…' : applyStore.pendingCount }}</span>
 
         <div class="filter-tabs" role="tablist" aria-label="待审批申请类型筛选">
           <button v-for="tab in filterTabs" :key="tab.value" type="button" class="filter-tab"
@@ -23,6 +23,11 @@
       </header>
 
       <div class="apply-body">
+        <div v-if="applyStore.pendingLoading" class="list-loading">
+          <span class="loading-spinner"></span>
+          正在加载待审批申请…
+        </div>
+        <template v-else>
         <div v-if="filteredPending.length > 0" class="apply-list">
           <article v-for="item in filteredPending" :key="item.id" class="apply-card"
             :class="{ 'is-done': item.handle_status }">
@@ -98,6 +103,7 @@
           </span>
           {{ pendingFilter === 'all' ? '暂无待处理申请' : `暂无${pendingFilter === 'friend' ? '好友' : '入群'}申请` }}
         </div>
+        </template>
       </div>
     </section>
 
@@ -111,7 +117,7 @@
           </svg>
           我发起的申请
         </span>
-        <span class="count-badge">{{ applyStore.applies.length }}</span>
+        <span class="count-badge">{{ applyStore.sentLoading ? '…' : applyStore.applies.length }}</span>
 
         <div class="filter-tabs" role="tablist" aria-label="我发起的申请类型筛选">
           <button v-for="tab in filterTabs" :key="tab.value" type="button" class="filter-tab"
@@ -122,6 +128,11 @@
       </header>
 
       <div class="apply-body">
+        <div v-if="applyStore.sentLoading" class="list-loading">
+          <span class="loading-spinner"></span>
+          正在加载我发起的申请…
+        </div>
+        <template v-else>
         <div v-if="filteredSent.length > 0" class="apply-list">
           <article v-for="item in filteredSent" :key="item.id" class="apply-card"
             :class="{ 'is-done': item.handle_status }">
@@ -190,6 +201,7 @@
           </span>
           还没有发起过申请
         </div>
+        </template>
       </div>
     </section>
   </div>
@@ -201,8 +213,8 @@ import { useApplyStore, type Apply } from "@/store/modules/apply";
 import dayjs from "@/plugin/dayjs";
 
 const applyStore = useApplyStore();
-applyStore.getPendingApplies();
-applyStore.getApplies();
+// 两栏数据已纳入 userStore.getInfo() 全局启动链路（刷新 / 登录都会拉取），
+// 这里不再重复请求；socket 事件的增量刷新由 store 内部以 silent 方式处理。
 
 type FilterValue = 'all' | 'friend' | 'room';
 const pendingFilter = ref<FilterValue>('all');
@@ -559,7 +571,11 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     }
 }
 
-/* 空状态复用 .empty / .empty-icon，这里让它占满剩余高度 */
+/* loading / 空状态占满剩余高度，视觉节奏一致 */
+.apply-body > .list-loading {
+    flex: 1;
+}
+
 .empty {
     flex: 1;
     min-height: 120px;

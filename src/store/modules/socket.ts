@@ -257,7 +257,7 @@ export const useSocketStore = defineStore('socket', {
                 this.socket.on(Event.FRIEND_ACCEPTED, (data) => {
                     const name = (data && data.username) || '对方'
                     useFriendStore().getFriends()
-                    useApplyStore().getApplies()
+                    useApplyStore().getApplies(true)
                     useApplyStore().removePending(data && data.applyId)
                     toast.success(`${name} 通过了你的好友申请`)
                 })
@@ -265,7 +265,7 @@ export const useSocketStore = defineStore('socket', {
                 // 我发起的申请被拒绝
                 this.socket.on(Event.FRIEND_REJECTED, (data) => {
                     const name = (data && data.username) || '对方'
-                    useApplyStore().getApplies()
+                    useApplyStore().getApplies(true)
                     toast.warning(`${name} 拒绝了你的好友申请`)
                 })
 

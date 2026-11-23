@@ -28,8 +28,8 @@ export const useRoomStore = defineStore('room', {
         // 我加入的房间（房间信息单一来源，不再维护第二份「我创建的」列表）
         rooms: [] as Rooms[],
 
-        /** 房间列表 / 详情是否正在加载（overview 聚合接口在途时给列表和聊天页展示 loading） */
-        loading: false,
+        /** 房间列表 / 详情是否正在加载；初始 true，刷新后首帧直接是 loading，避免空状态闪现 */
+        loading: true,
     }),
     getters: {
         getRoomMap: (state) => {

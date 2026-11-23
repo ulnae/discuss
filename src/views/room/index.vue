@@ -11,7 +11,7 @@
         <div class="chat-head-main">
           <div class="chat-title">{{ getRoomInfo.name || (roomStore.loading ? '加载中…' : '未知房间') }}</div>
           <div class="chat-sub" :title="getRoomInfo.description">
-            {{ getRoomInfo.description || '这个房间还没有描述' }}
+            {{ getRoomInfo.description || (roomStore.loading ? '' : '这个房间还没有描述') }}
           </div>
         </div>
         <div class="chat-head-actions">
@@ -87,7 +87,7 @@
         <header class="members-head">
           <span>
             群成员
-            <span class="chip">{{ getMember.length }}</span>
+            <span class="chip">{{ memberLoading ? '…' : getMember.length }}</span>
           </span>
           <button type="button" class="icon-btn members-close" title="关闭" @click="infoVisiable = false">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
@@ -97,6 +97,12 @@
           </button>
         </header>
         <div class="member-list">
+          <!-- 成员名单随房间信息一起加载：在途时用 loading 占位，避免先闪出 0 人空列表 -->
+          <div v-if="memberLoading" class="list-loading panel-loading">
+            <span class="loading-spinner"></span>
+            正在加载群成员…
+          </div>
+          <template v-else>
           <div v-for="member in getMember" :key="member.user_id" class="member-row"
             :class="{ 'is-me': member.user_id === userStore.userInfo.id, 'is-online': getMemberOnline.has(member.user_id) }">
             <span class="avatar">{{ (member.user_info.username || '?').charAt(0).toUpperCase() }}</span>
@@ -118,10 +124,11 @@
               </svg>
             </button>
           </div>
+          </template>
         </div>
       </section>
 
-      <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleLeaveRoom">
+      <button v-if="!memberLoading" type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleLeaveRoom">
         {{ isOwner ? '解散房间' : '退出房间' }}
       </button>
     </aside>
@@ -182,6 +189,8 @@ const { pinToBottom } = useAutoScroll(containerRef, {
 const getMember = computed(() => {
   return socketStore.roomMemberMap.get(route.params.id as string) || [];
 });
+// 群成员名单是否仍在加载（overview 在途且本地还没有该房间成员）
+const memberLoading = computed(() => roomStore.loading && !getMember.value.length);
 // 获取房间成员在线状态
 const getMemberOnline = computed(() => {
   return (
@@ -345,6 +354,8 @@ function handleRemoveMember(id: string) {
 .chat-sub {
     display: block;
     line-height: 1.2;
+    /* loading 时副行为空字符串，锁住一行高度，避免加载完成瞬间标题整体跳动 */
+    min-height: 1.2em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -403,6 +414,11 @@ function handleRemoveMember(id: string) {
         width: 14px;
         height: 14px;
     }
+}
+
+/* 群成员面板内的 loading 占位：比通用列表更紧凑 */
+.panel-loading {
+    padding: 2rem 0.5rem;
 }
 
 .member-list {

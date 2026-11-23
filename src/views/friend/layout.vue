@@ -22,8 +22,9 @@
       </div>
 
       <div class="side-list">
-        <!-- 首次进入 / 刷新时列表在途：展示 loading，避免误以为"没有好友" -->
-        <div v-if="friendStore.loading" class="list-loading">
+        <!-- 首次进入 / 刷新时列表在途：展示 loading，避免误以为"没有好友"。
+             已有数据时即便后台静默刷新也不闪 loading（好友关系变动事件会重拉列表） -->
+        <div v-if="friendStore.loading && !friendStore.friends.length" class="list-loading">
           <span class="loading-spinner"></span>
           正在加载好友…
         </div>
