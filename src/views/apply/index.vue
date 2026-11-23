@@ -28,10 +28,13 @@
             :class="{ 'is-done': item.handle_status }">
             <!-- 主信息：头像 + 身份 + 申请事由 -->
             <div class="card-top">
-              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
-                <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }"
+                :style="isRoom(item) ? undefined : avatarStyle(item.user_info?.username)">
+                <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                   stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" />
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
                 <template v-else>{{ (item.user_info?.username || '?').charAt(0).toUpperCase() }}</template>
               </span>
@@ -122,12 +125,15 @@
           <article v-for="item in filteredSent" :key="item.id" class="apply-card"
             :class="{ 'is-done': item.handle_status }">
             <div class="card-top">
-              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
-                <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }"
+                :style="isRoom(item) ? undefined : avatarStyle(sentTarget(item))">
+                <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                   stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" />
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <template v-else>+</template>
+                <template v-else>{{ sentTarget(item).charAt(0).toUpperCase() }}</template>
               </span>
 
               <div class="card-identity">
@@ -225,6 +231,24 @@ const sentTarget = (item: Apply) => isRoom(item)
 
 /** 我发起的列表事由：与顶部「目标」配合，说明申请类型 */
 const sentDescribe = (item: Apply) => isRoom(item) ? '申请加入该群' : '申请添加好友';
+
+/** 首字母头像的柔和配色：按名字 hash 稳定取色，避免单调灰块 */
+const AVATAR_COLORS = [
+    ['#e8f0fe', '#1a73e8'], // 蓝
+    ['#fce8e6', '#c5221f'], // 红
+    ['#e6f4ea', '#137333'], // 绿
+    ['#fef7e0', '#b06000'], // 橙
+    ['#f3e8fd', '#8430ce'], // 紫
+    ['#e0f7fa', '#00796b'], // 青
+    ['#fce4ec', '#c2185b'], // 粉
+];
+const avatarStyle = (name?: string) => {
+    const key = name || '?';
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    const [bg, fg] = AVATAR_COLORS[hash % AVATAR_COLORS.length];
+    return { background: bg, color: fg };
+};
 
 /** 列表里的紧凑时间：月/日 时:分，无值显示占位 */
 const shortTime = (ts?: string) => (ts ? dayjs(ts).format('MM/DD HH:mm') : '—')
@@ -507,10 +531,15 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     }
 }
 
-/* 房间头像用图标，居中由全局 .avatar 的 grid 完成，这里只定图标尺寸 */
-.avatar-room svg {
-    width: 17px;
-    height: 17px;
+/* 群组头像：柔和蓝底 + 群组图标，与彩色首字母头像协调；居中由全局 .avatar 的 grid 完成 */
+.avatar-room {
+    color: var(--info);
+    background: var(--toast-info-soft);
+
+    svg {
+        width: 19px;
+        height: 19px;
+    }
 }
 
 /* 空状态复用 .empty / .empty-icon，这里让它占满剩余高度 */
