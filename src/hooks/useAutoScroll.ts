@@ -163,5 +163,5 @@ export function useAutoScroll(
         if (raf) cancelAnimationFrame(raf)
     })
 
-    return { scrollToBottom, pinToBottom, loadMore }
+    return { pinToBottom }
 }

@@ -27,9 +27,6 @@
 
       <div id="messageContainer" ref="containerRef" class="chat-body">
         <div class="msg-list">
-          <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="loadMore">
-            上滑或点击加载更早的消息
-          </button>
           <!-- 好友列表（资料来源）在途：展示 loading；本地已有消息缓存则不打扰 -->
           <div v-if="friendStore.loading && !getHistory.length" class="list-loading">
             <span class="loading-spinner"></span>
@@ -176,7 +173,7 @@ const hasEarlierMessages = computed(() => getHistory.value.length > visibleCount
 
 // 聊天区自动滚动：新消息显式跟随 + 上滑到顶加载更早消息（并做视觉锚定）
 const containerRef = ref<HTMLElement | null>(null);
-const { pinToBottom, loadMore } = useAutoScroll(containerRef, {
+const { pinToBottom } = useAutoScroll(containerRef, {
   lastMessageKey: () => getHistory.value[getHistory.value.length - 1]?.id,
   hasEarlier: () => hasEarlierMessages.value,
   loadEarlier: () => { visibleCount.value += 50 },
@@ -377,24 +374,6 @@ const goBack = () => router.push('/friend/dashboard')
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
-}
-
-/* 查看更早的消息 */
-.load-earlier {
-    align-self: center;
-    margin: 0.2rem 0;
-    padding: 0.25rem 0.7rem;
-    border: 0;
-    border-radius: 999px;
-    background: var(--surface-2);
-    color: var(--text-2);
-    font-size: 0.7rem;
-    cursor: pointer;
-    transition: background-color 0.16s ease, color 0.16s ease;
-
-    &:hover {
-        color: var(--text);
-    }
 }
 
 /* 删除好友按钮贴在资料面板底部，同群房间页的退出/解散按钮 */
