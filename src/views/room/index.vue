@@ -102,8 +102,8 @@
             <span class="loading-spinner"></span>
             正在加载群成员…
           </div>
-          <template v-else>
-          <div v-for="member in getMember" :key="member.user_id" class="member-row"
+          <TransitionGroup v-else name="member" tag="div" class="member-rows" :key="String(route.params.id)">
+          <div v-for="member in sortedMember" :key="member.user_id" class="member-row"
             :class="{ 'is-me': member.user_id === userStore.userInfo.id, 'is-online': getMemberOnline.has(member.user_id) }">
             <span class="avatar">{{ (member.user_info.username || '?').charAt(0).toUpperCase() }}</span>
             <span class="row-main">
@@ -124,7 +124,7 @@
               </svg>
             </button>
           </div>
-          </template>
+          </TransitionGroup>
         </div>
       </section>
 
@@ -196,6 +196,18 @@ const getMemberOnline = computed(() => {
   return (
     socketStore.roomMemberOnlineMap.get(route.params.id as string) || new Set()
   );
+});
+// 群成员排序：群主（含离线）恒定第一 → 在线成员 → 离线成员；
+// 组内保持后端原始顺序（稳定排序用原始下标做 tiebreak，避免推送导致无关成员乱跳）
+const sortedMember = computed(() => {
+  const online = getMemberOnline.value;
+  const ownerId = getRoomInfo.value.creator;
+  const rank = (m: any) =>
+    m.user_id === ownerId ? 0 : online.has(m.user_id) ? 1 : 2;
+  return getMember.value
+    .map((m: any, i: number) => ({ m, i }))
+    .sort((a: any, b: any) => rank(a.m) - rank(b.m) || a.i - b.i)
+    .map((x: any) => x.m);
 });
 // 获取用户信息
 const getUserInfo = (user_id: string) => {
@@ -427,13 +439,29 @@ function handleRemoveMember(id: string) {
     gap: 1px;
 }
 
+/* TransitionGroup 的移动动画：在线状态切换导致成员重排时平滑位移 */
+.member-move {
+    transition: transform 0.32s var(--ease);
+}
+
+/* 尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+
+    .member-row,
+    .member-move {
+        transition: none;
+    }
+}
+
 .member-row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.32rem 0.35rem;
     border-radius: 9px;
-    transition: background-color 0.16s ease;
+    /* transform 与 hover 底色共用一条 transition：切 room 时整组重建不触发位移，
+       在线状态变化引起的重排由 .member-move 的 FLIP 平滑过渡 */
+    transition: background-color 0.16s ease, transform 0.32s var(--ease);
 
     &:hover {
         background: var(--surface-2);
