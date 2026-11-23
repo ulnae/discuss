@@ -103,7 +103,12 @@
             <span class="row-main">
               <span class="row-name">{{ member.user_info.username }}</span>
             </span>
-            <span class="chip chip-warning" v-if="getRoomInfo.creator === member.user_id">群主</span>
+            <span class="owner-badge" v-if="getRoomInfo.creator === member.user_id">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <path d="M3 6.5l4.5 3.5L12 4l4.5 6L21 6.5 19 18H5L3 6.5z" />
+              </svg>
+              群主
+            </span>
             <span class="dot" :class="{ 'dot-online': getMemberOnline.has(member.user_id) }"></span>
             <button v-if="getRoomInfo.creator !== member.user_id && roomStore.isOwnerOf(route.params.id as string)"
               type="button" class="icon-btn kick" title="移出群聊" @click="handleRemoveMember(member.id)">
@@ -432,6 +437,27 @@ function handleRemoveMember(id: string) {
     height: 26px;
     border-radius: 8px;
     font-size: 0.68rem;
+}
+
+/* 群主身份徽章：项目主色墨黑 + 皇冠图标，与申请页徽章/头像同一色板，凸显身份 */
+.owner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+    padding: 0.08rem 0.4rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: 0.64rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+
+    svg {
+        width: 11px;
+        height: 11px;
+    }
 }
 
 .kick {

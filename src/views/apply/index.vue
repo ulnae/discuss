@@ -11,7 +11,7 @@
           </svg>
           待我审批
         </span>
-        <span class="chip chip-warning">{{ applyStore.pendingCount }}</span>
+        <span class="count-badge" :class="{ 'is-emphasis': applyStore.pendingCount > 0 }">{{ applyStore.pendingCount }}</span>
 
         <div class="filter-tabs" role="tablist" aria-label="待审批申请类型筛选">
           <button v-for="tab in filterTabs" :key="tab.value" type="button" class="filter-tab"
@@ -28,21 +28,22 @@
             :class="{ 'is-done': item.handle_status }">
             <!-- 主信息：头像 + 身份 + 申请事由 -->
             <div class="card-top">
-              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }"
-                :style="isRoom(item) ? undefined : avatarStyle(item.user_info?.username)">
+              <span class="avatar apply-avatar">
                 <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                   stroke-linecap="round" stroke-linejoin="round">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
                   <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <template v-else>{{ (item.user_info?.username || '?').charAt(0).toUpperCase() }}</template>
+                <template v-else>{{ avatarInitial(item.user_info?.username) }}</template>
               </span>
 
               <div class="card-identity">
                 <div class="identity-line">
                   <span class="row-name">{{ item.user_info?.username }}</span>
-                  <span class="chip type-badge">{{ isRoom(item) ? '入群申请' : '好友申请' }}</span>
+                  <span class="chip type-badge" :class="typeBadgeClass(item)">
+                    {{ typeBadgeLabel(item) }}
+                  </span>
                 </div>
                 <p class="card-reason">{{ describe(item) }}</p>
               </div>
@@ -110,7 +111,7 @@
           </svg>
           我发起的申请
         </span>
-        <span class="chip">{{ applyStore.applies.length }}</span>
+        <span class="count-badge">{{ applyStore.applies.length }}</span>
 
         <div class="filter-tabs" role="tablist" aria-label="我发起的申请类型筛选">
           <button v-for="tab in filterTabs" :key="tab.value" type="button" class="filter-tab"
@@ -125,21 +126,22 @@
           <article v-for="item in filteredSent" :key="item.id" class="apply-card"
             :class="{ 'is-done': item.handle_status }">
             <div class="card-top">
-              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }"
-                :style="isRoom(item) ? undefined : avatarStyle(sentTarget(item))">
+              <span class="avatar apply-avatar">
                 <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                   stroke-linecap="round" stroke-linejoin="round">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
                   <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <template v-else>{{ sentTarget(item).charAt(0).toUpperCase() }}</template>
+                <template v-else>{{ avatarInitial(friendName(item)) }}</template>
               </span>
 
               <div class="card-identity">
                 <div class="identity-line">
                   <span class="row-name">{{ sentTarget(item) }}</span>
-                  <span class="chip type-badge">{{ isRoom(item) ? '入群申请' : '好友申请' }}</span>
+                  <span class="chip type-badge" :class="typeBadgeClass(item)">
+                    {{ typeBadgeLabel(item) }}
+                  </span>
                 </div>
                 <p class="card-reason">{{ sentDescribe(item) }}</p>
               </div>
@@ -232,23 +234,15 @@ const sentTarget = (item: Apply) => isRoom(item)
 /** 我发起的列表事由：与顶部「目标」配合，说明申请类型 */
 const sentDescribe = (item: Apply) => isRoom(item) ? '申请加入该群' : '申请添加好友';
 
-/** 首字母头像的柔和配色：按名字 hash 稳定取色，避免单调灰块 */
-const AVATAR_COLORS = [
-    ['#e8f0fe', '#1a73e8'], // 蓝
-    ['#fce8e6', '#c5221f'], // 红
-    ['#e6f4ea', '#137333'], // 绿
-    ['#fef7e0', '#b06000'], // 橙
-    ['#f3e8fd', '#8430ce'], // 紫
-    ['#e0f7fa', '#00796b'], // 青
-    ['#fce4ec', '#c2185b'], // 粉
-];
-const avatarStyle = (name?: string) => {
-    const key = name || '?';
-    let hash = 0;
-    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-    const [bg, fg] = AVATAR_COLORS[hash % AVATAR_COLORS.length];
-    return { background: bg, color: fg };
-};
+/* ---- 头像 / 类型徽章：两栏共用同一套计算，保证视觉完全一致 ---- */
+/** 我发起的·好友申请里「对方」的名字（与待我审批取申请人的视角一致） */
+const friendName = (item: Apply) => item.apply_user_info?.username || '用户';
+/** 首字母：缺名统一显示 ?（两栏共用一个兜底口径） */
+const avatarInitial = (name?: string) => (name || '?').charAt(0).toUpperCase();
+/** 类型徽章 class：两栏统一，好友=中性灰、入群=主色墨黑 */
+const typeBadgeClass = (item: Apply) => isRoom(item) ? 'badge-room' : 'badge-friend';
+/** 类型徽章文案 */
+const typeBadgeLabel = (item: Apply) => isRoom(item) ? '入群申请' : '好友申请';
 
 /** 列表里的紧凑时间：月/日 时:分，无值显示占位 */
 const shortTime = (ts?: string) => (ts ? dayjs(ts).format('MM/DD HH:mm') : '—')
@@ -360,30 +354,20 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     gap: 0.5rem;
 }
 
-/* 卡片式申请项：上=身份与事由，下=时间线与操作，两栏用细分割线区隔。
+/* 申请项：上=身份与事由，下=时间线与操作，两栏用细分割线区隔。
+   去掉边框/阴影/悬浮高亮，默认用实色(--surface-solid)与淡灰面板形成柔和层次；
    待我审批 / 我发起的共用同一套结构，只在底部操作区有差异。 */
 .apply-card {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
     padding: 0.7rem 0.75rem;
-    border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface-solid);
-    box-shadow: var(--shadow-soft);
-    transition: border-color 0.16s ease, box-shadow 0.16s ease;
 
-    &:hover {
-        border-color: var(--border-strong, var(--border));
-    }
-
-    /* 已处理的申请弱化显示，视觉上让位于待处理项 */
+    /* 已处理的申请弱化显示，视觉上让位于待处理项（无 hover 恢复） */
     &.is-done {
         opacity: 0.66;
-
-        &:hover {
-            opacity: 1;
-        }
     }
 }
 
@@ -416,13 +400,44 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     color: var(--text-2);
 }
 
-/* 类型徽章：统一 info 蓝底，与右侧状态色（绿/红/黄）区分开 */
+/* 头部计数徽章：圆形紧凑，有待办用主色实心强调，为 0 时弱化 */
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--surface-3);
+    color: var(--text-3);
+    font-size: 0.64rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+
+    &.is-emphasis {
+        background: var(--accent);
+        color: var(--accent-fg);
+    }
+}
+
+/* 类型徽章：好友=info 蓝 soft，入群=主色实心；与右侧状态色（绿/红/黄）区分开 */
 .type-badge {
     flex-shrink: 0;
     font-size: 0.62rem;
     font-weight: 600;
-    color: var(--info);
-    background: var(--toast-info-soft);
+}
+
+/* 好友徽章：中性灰（项目色板内的低调标识色，不使用 info 蓝等状态彩色） */
+.badge-friend {
+    color: var(--text-2);
+    background: var(--surface-3);
+}
+
+.badge-room {
+    color: var(--accent-fg);
+    background: var(--accent);
 }
 
 /* 状态标记：待处理=黄、已同意=绿、已拒绝=红；圆点 + 文案 */
@@ -531,10 +546,12 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     }
 }
 
-/* 群组头像：柔和蓝底 + 群组图标，与彩色首字母头像协调；居中由全局 .avatar 的 grid 完成 */
-.avatar-room {
-    color: var(--info);
-    background: var(--toast-info-soft);
+/* 申请项头像：好友与入群统一复用项目主色（同登录按钮 / 发出气泡），
+   浅色墨黑底、深色反色底，全部落在项目墨黑 + 灰阶色板内，无彩色；
+   居中由全局 .avatar 的 grid 完成 */
+.apply-avatar {
+    color: var(--accent-fg);
+    background: var(--accent);
 
     svg {
         width: 19px;

@@ -44,7 +44,7 @@
     --info: #0ea5e9;
 
     /* 聊天气泡：发出方底色/文字色复用主色 --accent / --accent-fg */
-    --bubble-in-bg: rgba(15, 23, 42, 0.03);
+    --bubble-in-bg: rgba(15, 23, 42, 0.07);
     --bubble-in-fg: var(--text);
 
     /* 圆角 / 阴影 / 缓动 */
@@ -149,7 +149,7 @@ html.dark {
     --success-fg: #34d399;
     --danger: #fb7185;
 
-    --bubble-in-bg: rgba(255, 255, 255, 0.05);
+    --bubble-in-bg: rgba(255, 255, 255, 0.1);
 
     --shadow-card: 0 28px 70px -30px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.4);
     --shadow-soft: 0 14px 34px -22px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.3);
