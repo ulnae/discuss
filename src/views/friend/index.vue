@@ -162,15 +162,19 @@ const story = ref("");
 const inputAreaRef = ref<HTMLElement | null>(null);
 useResizable(inputAreaRef, { direction: 'vertical', minSize: 150, maxSize: 600, initialSize: 180 });
 
-// 聊天区自动滚动：ResizeObserver 统一感知内容高度变化 + rAF 合并，仅贴底时跟随
-const containerRef = ref<HTMLElement | null>(null);
-const { pinToBottom } = useAutoScroll(containerRef);
 const route = useRoute();
 const router = useRouter();
 
 const getHistory = computed(() => {
   return socketStore.userMessageMap.get(route.params.id as string) || [];
 });
+
+// 聊天区自动滚动：新消息显式触发 + ResizeObserver 补高度变化，仅贴底时跟随
+const containerRef = ref<HTMLElement | null>(null);
+const { pinToBottom } = useAutoScroll(
+  containerRef,
+  () => getHistory.value[getHistory.value.length - 1]?.id
+);
 
 const getFriendInfo = computed(() => {
   return friendStore.getFriendMap[route.params.id as string]?.friend_info || {};
