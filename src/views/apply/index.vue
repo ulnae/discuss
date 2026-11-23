@@ -24,24 +24,36 @@
 
       <div class="apply-body">
         <div v-if="filteredPending.length > 0" class="apply-list">
-          <div v-for="item in filteredPending" :key="item.id" class="list-row apply-row">
-            <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
-              <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" />
-              </svg>
-              <template v-else>{{ (item.user_info?.username || '?').charAt(0).toUpperCase() }}</template>
-            </span>
-
-            <span class="row-main">
-              <span class="row-title">
-                <span class="chip type-badge">
-                  {{ isRoom(item) ? '入群申请' : '好友申请' }}
-                </span>
-                <span class="row-name">{{ item.user_info?.username }}</span>
+          <article v-for="item in filteredPending" :key="item.id" class="apply-card"
+            :class="{ 'is-done': item.handle_status }">
+            <!-- 主信息：头像 + 身份 + 申请事由 -->
+            <div class="card-top">
+              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
+                <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" />
+                </svg>
+                <template v-else>{{ (item.user_info?.username || '?').charAt(0).toUpperCase() }}</template>
               </span>
-              <span class="row-sub">{{ describe(item) }}</span>
-              <span class="row-times">
+
+              <div class="card-identity">
+                <div class="identity-line">
+                  <span class="row-name">{{ item.user_info?.username }}</span>
+                  <span class="chip type-badge">{{ isRoom(item) ? '入群申请' : '好友申请' }}</span>
+                </div>
+                <p class="card-reason">{{ describe(item) }}</p>
+              </div>
+
+              <span v-if="item.handle_status" class="status-flag"
+                :class="item.status ? 'flag-success' : 'flag-danger'">
+                {{ item.status ? '已同意' : '已拒绝' }}
+              </span>
+              <span v-else class="status-flag flag-wait">待处理</span>
+            </div>
+
+            <!-- 底部：时间线 + 审批操作 -->
+            <div class="card-foot">
+              <div class="card-times">
                 <span class="time-item">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                     stroke-linejoin="round">
@@ -63,18 +75,14 @@
                   </time>
                   <span v-else class="time-value time-wait">待处理</span>
                 </span>
-              </span>
-            </span>
+              </div>
 
-            <span v-if="item.handle_status" class="chip"
-              :class="item.status ? 'chip-success' : 'chip-danger'">
-              {{ item.status ? '已同意' : '已拒绝' }}
-            </span>
-            <span v-else class="row-actions">
-              <button type="button" class="btn btn-sm approve" @click="applyStore.handleApply(item.id, true)">同意</button>
-              <button type="button" class="btn btn-sm reject" @click="applyStore.handleApply(item.id, false)">拒绝</button>
-            </span>
-          </div>
+              <div v-if="!item.handle_status" class="card-actions">
+                <button type="button" class="btn btn-sm reject" @click="applyStore.handleApply(item.id, false)">拒绝</button>
+                <button type="button" class="btn btn-sm approve" @click="applyStore.handleApply(item.id, true)">同意</button>
+              </div>
+            </div>
+          </article>
         </div>
 
         <div v-else class="empty">
@@ -111,23 +119,34 @@
 
       <div class="apply-body">
         <div v-if="filteredSent.length > 0" class="apply-list">
-          <div v-for="item in filteredSent" :key="item.id" class="list-row apply-row">
-            <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
-              <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" />
-              </svg>
-              <template v-else>+</template>
-            </span>
-            <span class="row-main">
-              <span class="row-title">
-                <span class="chip type-badge">
-                  {{ isRoom(item) ? '入群申请' : '好友申请' }}
-                </span>
-                <span class="row-name">{{ sentTarget(item) }}</span>
+          <article v-for="item in filteredSent" :key="item.id" class="apply-card"
+            :class="{ 'is-done': item.handle_status }">
+            <div class="card-top">
+              <span class="avatar" :class="{ 'avatar-room': isRoom(item) }">
+                <svg v-if="isRoom(item)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" />
+                </svg>
+                <template v-else>+</template>
               </span>
-              <span class="row-sub">{{ item.handle_status ? '对方已处理' : '等待对方处理' }}</span>
-              <span class="row-times">
+
+              <div class="card-identity">
+                <div class="identity-line">
+                  <span class="row-name">{{ sentTarget(item) }}</span>
+                  <span class="chip type-badge">{{ isRoom(item) ? '入群申请' : '好友申请' }}</span>
+                </div>
+                <p class="card-reason">{{ sentDescribe(item) }}</p>
+              </div>
+
+              <span v-if="item.handle_status" class="status-flag"
+                :class="item.status ? 'flag-success' : 'flag-danger'">
+                {{ item.status ? '已同意' : '已拒绝' }}
+              </span>
+              <span v-else class="status-flag flag-wait">待处理</span>
+            </div>
+
+            <div class="card-foot">
+              <div class="card-times">
                 <span class="time-item">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                     stroke-linejoin="round">
@@ -149,14 +168,9 @@
                   </time>
                   <span v-else class="time-value time-wait">待处理</span>
                 </span>
-              </span>
-            </span>
-
-            <span v-if="item.handle_status" class="chip" :class="item.status ? 'chip-success' : 'chip-danger'">
-              {{ item.status ? '已同意' : '已拒绝' }}
-            </span>
-            <span v-else class="chip chip-warning">待处理</span>
-          </div>
+              </div>
+            </div>
+          </article>
         </div>
 
         <div v-else class="empty">
@@ -208,6 +222,9 @@ const describe = (item: Apply) => isRoom(item)
 const sentTarget = (item: Apply) => isRoom(item)
     ? item.room_info?.name || '房间'
     : item.apply_user_info?.username || '用户';
+
+/** 我发起的列表事由：与顶部「目标」配合，说明申请类型 */
+const sentDescribe = (item: Apply) => isRoom(item) ? '申请加入该群' : '申请添加好友';
 
 /** 列表里的紧凑时间：月/日 时:分，无值显示占位 */
 const shortTime = (ts?: string) => (ts ? dayjs(ts).format('MM/DD HH:mm') : '—')
@@ -316,21 +333,66 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
 .apply-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0.5rem;
 }
 
-/* 行复用 .list-row（flex/gap/padding/hover 由全局提供）；
-   操作按钮的语义色 hover 见下方 .approve / .reject（需带 .apply-row 前缀提高优先级）。 */
+/* 卡片式申请项：上=身份与事由，下=时间线与操作，两栏用细分割线区隔。
+   待我审批 / 我发起的共用同一套结构，只在底部操作区有差异。 */
+.apply-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-soft);
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
 
-.row-title {
+    &:hover {
+        border-color: var(--border-strong, var(--border));
+    }
+
+    /* 已处理的申请弱化显示，视觉上让位于待处理项 */
+    &.is-done {
+        opacity: 0.66;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+.card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+}
+
+.card-identity {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.identity-line {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     min-width: 0;
 }
 
-/* 类型徽章：文案仍用「好友申请 / 入群申请」区分类型，但两类视觉保持一致——
-   统一 info 信息蓝底（分类语义色，不占用绿=已同意/红=已拒绝/黄=待处理的状态色）。 */
+/* 申请事由：单独一行强调“要做什么”，比旧版塞进副标题更醒目 */
+.card-reason {
+    margin: 0;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    color: var(--text-2);
+}
+
+/* 类型徽章：统一 info 蓝底，与右侧状态色（绿/红/黄）区分开 */
 .type-badge {
     flex-shrink: 0;
     font-size: 0.62rem;
@@ -339,12 +401,52 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     background: var(--toast-info-soft);
 }
 
-/* 时间信息：申请时间 + 处理时间，与名称左对齐成一行 */
-.row-times {
+/* 状态标记：待处理=黄、已同意=绿、已拒绝=红；圆点 + 文案 */
+.status-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+}
+
+.flag-wait {
+    color: var(--warning-fg);
+}
+
+.flag-success {
+    color: var(--success-fg);
+}
+
+.flag-danger {
+    color: var(--danger);
+}
+
+/* 底部：时间线（左）+ 操作按钮（右），细分割线与主体隔开 */
+.card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--border);
+}
+
+.card-times {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.15rem 0.75rem;
-    margin-top: 0.15rem;
+    gap: 0.2rem 0.85rem;
+    min-width: 0;
     font-size: 0.68rem;
     line-height: 1.2;
 }
@@ -352,12 +454,12 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
 .time-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.22rem;
+    gap: 0.28rem;
     white-space: nowrap;
 
     svg {
-        width: 11px;
-        height: 11px;
+        width: 12px;
+        height: 12px;
         flex-shrink: 0;
         color: var(--text-3);
     }
@@ -372,35 +474,36 @@ const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') 
     font-variant-numeric: tabular-nums;
 }
 
-/* 未处理时「处理」项用中性色，避免与已处理时间混淆 */
+/* 未处理时「处理」项用警示色，避免与已处理时间混淆 */
 .time-item.is-pending .time-value.time-wait {
     color: var(--warning-fg);
 }
 
-.row-actions {
+.card-actions {
     display: inline-flex;
-    gap: 0.3rem;
+    gap: 0.4rem;
     flex-shrink: 0;
 }
 
-/* 审批按钮用文字（复用 .btn.btn-sm）：平时低调的 ghost 态，hover 才显语义色。
-   必须带 .apply-row 前缀提高优先级，覆盖设计系统 .btn-ghost:hover 的默认灰底。
-   同意 = 主色墨黑实心（对齐 .btn-primary），拒绝 = 危险红 soft（对齐 .danger-btn）。 */
-.apply-row {
-    .approve,
+/* 审批按钮：同意=主色实心（主操作），拒绝=低调描边，hover 才显危险红 */
+.apply-card {
+    .approve {
+        color: var(--accent-fg);
+        background: var(--accent);
+
+        &:hover {
+            background: var(--accent-hover);
+        }
+    }
+
     .reject {
         color: var(--text-2);
         background: var(--surface-2);
-    }
 
-    .approve:hover {
-        color: var(--accent-fg);
-        background: var(--accent);
-    }
-
-    .reject:hover {
-        color: var(--danger);
-        background: var(--danger-soft);
+        &:hover {
+            color: var(--danger);
+            background: var(--danger-soft);
+        }
     }
 }
 
