@@ -115,18 +115,38 @@ async function update(request, env, ctx, id) {
     if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404);
     if (me.id !== id) throw new ApiError('您没有权限更新该用户', 403);
 
+    /* 一次更新用户名 / 邮箱 / 密码。
+       但要改密码或邮箱时必须有原密码（oldPassword）确认身份，
+       否则任何持有 token 的人都能裸改这两个字段接管账号。 */
+    const oldPassword = String(body.oldPassword || '');
+    const wantPassword = !!body.password;
+    const wantEmail = !!body.email && String(body.email).trim() !== exist.email;
+    if (wantPassword || wantEmail) {
+        if (!oldPassword || !(await verifyPassword(oldPassword, exist.password))) {
+            throw new ApiError('原密码错误', 400);
+        }
+    }
+
     const fields = [];
     const args = [];
     if (body.username) {
-        await ensureUnique(env, 'username', String(body.username).trim(), '用户名已存在');
-        fields.push('username = ?'); args.push(String(body.username).trim());
+        const username = String(body.username).trim();
+        if (username !== exist.username) {
+            await ensureUnique(env, 'username', username, '用户名已存在');
+            fields.push('username = ?'); args.push(username);
+        }
     }
-    if (body.email) {
-        await ensureUnique(env, 'email', String(body.email).trim(), '邮箱已被注册');
-        fields.push('email = ?'); args.push(String(body.email).trim());
+    if (wantEmail) {
+        const email = String(body.email).trim();
+        await ensureUnique(env, 'email', email, '邮箱已被注册');
+        fields.push('email = ?'); args.push(email);
     }
-    if (body.password) {
-        fields.push('password = ?'); args.push(await hashPassword(String(body.password), iterationsOf(env)));
+    if (wantPassword) {
+        const password = String(body.password);
+        if (password.length < 6 || password.length > 32) {
+            throw new ApiError('密码长度需为 6-32 位', 400);
+        }
+        fields.push('password = ?'); args.push(await hashPassword(password, iterationsOf(env)));
     }
     if (fields.length) {
         fields.push('updatedAt = ?'); args.push(now(), id);

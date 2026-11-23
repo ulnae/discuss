@@ -81,6 +81,14 @@ export default {
             }
         })
     },
+    /** 更新本人资料：一次可改 username / email / password（改密码或邮箱需带 oldPassword） */
+    UpdateUser(id: string, data?: any) {
+        return request({
+            url: `${Url[requestServerName].register}/${id}`,
+            method: 'patch',
+            data
+        })
+    },
     GetCaptcha() {
         return request({
             url: Url[requestServerName].GetCaptcha,

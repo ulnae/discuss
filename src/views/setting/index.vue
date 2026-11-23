@@ -5,14 +5,64 @@
             <p class="settings-sub">账号信息与本地聊天记录</p>
         </header>
 
+        <!-- 账号信息：查看 / 编辑两种模式切换 -->
         <section class="settings-card">
-            <header class="card-head">账号信息</header>
-            <div class="kv">
+            <header class="card-head card-head-action">
+                <span>账号信息</span>
+                <button v-if="!accountEditing" type="button" class="edit-toggle" @click="startEdit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    编辑
+                </button>
+            </header>
+
+            <!-- 查看模式 -->
+            <div v-if="!accountEditing" class="kv">
                 <div v-for="row in accountRows" :key="row.k" class="kv-row">
                     <span class="kv-k">{{ row.k }}</span>
                     <span class="kv-v">{{ row.v }}</span>
                 </div>
             </div>
+
+            <!-- 编辑模式：用户名 / 邮箱 / 密码一次提交，改密码或邮箱需填原密码 -->
+            <form v-else class="card-form" @submit.prevent="handleSaveAccount">
+                <label class="form-field">
+                    <span class="form-label">用户名</span>
+                    <input v-model.trim="accountForm.username" type="text" autocomplete="username"
+                        placeholder="请输入用户名" maxlength="100" />
+                </label>
+                <label class="form-field">
+                    <span class="form-label">邮箱</span>
+                    <input v-model.trim="accountForm.email" type="email" autocomplete="email"
+                        placeholder="请输入邮箱" maxlength="100" />
+                </label>
+                <label class="form-field">
+                    <span class="form-label">新密码 <em>（留空则不修改）</em></span>
+                    <input v-model="accountForm.password" type="password" autocomplete="new-password"
+                        placeholder="6-32 位，留空不改" maxlength="32" />
+                </label>
+                <label class="form-field">
+                    <span class="form-label">确认新密码</span>
+                    <input v-model="accountForm.confirmPassword" type="password" autocomplete="new-password"
+                        placeholder="再次输入新密码" maxlength="32" />
+                </label>
+                <label class="form-field">
+                    <span class="form-label">当前密码 <em>（改邮箱或密码时必填）</em></span>
+                    <input v-model="accountForm.oldPassword" type="password" autocomplete="current-password"
+                        placeholder="请输入当前密码以确认身份" />
+                </label>
+                <div class="form-footer">
+                    <button type="button" class="btn btn-ghost btn-sm" :disabled="accountSaving" @click="cancelEdit">
+                        取消
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-sm" :disabled="accountSaving">
+                        {{ accountSaving ? '保存中…' : '保存' }}
+                    </button>
+                </div>
+            </form>
         </section>
 
         <section class="settings-card">
@@ -72,10 +122,11 @@
 import { useUserStore } from '@/store/modules/user'
 import { useSocketStore } from '@/store/modules/socket'
 import { useAlertStore } from '@/store/modules/alert'
+import userApi from '@/api/user'
 import { MessageCache } from '@/utils/messageCache'
 import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { sortBy, uniqWith, isEqual } from 'lodash-es';
 import { useTheme } from '@/hooks/theme'
 const userStore = useUserStore()
@@ -101,6 +152,100 @@ const accountRows = computed(() =>
 )
 
 const currentUid = () => userStore.userInfo.id as string
+
+/* ---------- 账号信息：查看 / 编辑策略模式 ---------- */
+const accountEditing = ref(false)
+const accountSaving = ref(false)
+const accountForm = reactive({ username: '', email: '', password: '', confirmPassword: '', oldPassword: '' })
+
+/** 进入编辑：用当前资料填充表单，密码字段留空 */
+const startEdit = () => {
+    accountForm.username = userStore.userInfo.username || ''
+    accountForm.email = userStore.userInfo.email || ''
+    accountForm.password = ''
+    accountForm.confirmPassword = ''
+    accountForm.oldPassword = ''
+    accountEditing.value = true
+}
+
+const cancelEdit = () => {
+    accountEditing.value = false
+}
+
+/** 保存：一次提交 username / email / password，改密码或邮箱需带 oldPassword */
+const handleSaveAccount = async () => {
+    if (accountSaving.value) return
+
+    if (!accountForm.username) {
+        toast.warning('用户名不能为空')
+        return
+    }
+    if (!accountForm.email) {
+        toast.warning('邮箱不能为空')
+        return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountForm.email)) {
+        toast.warning('邮箱格式不正确')
+        return
+    }
+
+    const password = accountForm.password
+    const emailChanged = accountForm.email !== userStore.userInfo.email
+    const passwordChanged = !!password
+
+    if (passwordChanged) {
+        if (password.length < 6 || password.length > 32) {
+            toast.warning('新密码长度需为 6-32 位')
+            return
+        }
+        if (password !== accountForm.confirmPassword) {
+            toast.warning('两次输入的新密码不一致')
+            return
+        }
+        if (password === accountForm.oldPassword) {
+            toast.warning('新密码不能与原密码相同')
+            return
+        }
+    }
+    /* 改邮箱或密码都要原密码确认 */
+    if ((emailChanged || passwordChanged) && !accountForm.oldPassword) {
+        toast.warning('修改邮箱或密码时，请填写当前密码确认身份')
+        return
+    }
+
+    accountSaving.value = true
+    try {
+        const payload: any = {
+            username: accountForm.username,
+            email: accountForm.email
+        }
+        if (emailChanged || passwordChanged) payload.oldPassword = accountForm.oldPassword
+        if (passwordChanged) payload.password = password
+
+        await userApi.UpdateUser(currentUid(), payload)
+
+        if (passwordChanged) {
+            // 改了密码：前端登出让旧 token 失效（决策：不做服务端 tokenVersion）
+            toast.success('账号信息已更新，请重新登录')
+            accountEditing.value = false
+            userStore.logout()
+        } else {
+            // 只改用户名/邮箱：同步本地资料并退回查看模式
+            userStore.userInfo = {
+                ...userStore.userInfo,
+                username: accountForm.username,
+                email: accountForm.email
+            }
+            localStorage.setItem('userInfo', JSON.stringify(userStore.userInfo))
+            toast.success('账号信息已更新')
+            accountEditing.value = false
+        }
+    } catch {
+        /* 错误提示由 axios 拦截器统一弹出，这里不重复 */
+    } finally {
+        accountSaving.value = false
+    }
+}
 
 const handleExport = async () => {
     try {
@@ -239,6 +384,38 @@ onMounted(() => {
     font-weight: 500;
     color: var(--text);
     border-bottom: 1px solid var(--border);
+
+    &.card-head-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* 账号信息卡片的「编辑」切换按钮 */
+.edit-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+
+    svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    &:hover {
+        background: var(--surface-2);
+        border-color: var(--accent);
+    }
 }
 
 .card-desc {
@@ -246,6 +423,61 @@ onMounted(() => {
     font-size: 0.74rem;
     line-height: 1.6;
     color: var(--text-2);
+}
+
+/* 账号信息编辑表单：沿用登录页字段视觉语言 */
+.card-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 0.9rem 1rem 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-label {
+    font-size: 0.74rem;
+    color: var(--text-3);
+
+    em {
+        font-style: normal;
+        color: var(--text-3);
+        opacity: 0.75;
+    }
+}
+
+.form-field input {
+    width: 100%;
+    height: 2.6rem;
+    padding: 0 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &::placeholder {
+        color: var(--text-3);
+    }
+
+    &:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft, var(--surface-3));
+    }
+}
+
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.15rem;
 }
 
 .card-actions {
