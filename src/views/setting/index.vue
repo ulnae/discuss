@@ -172,6 +172,14 @@ onMounted(() => {
     margin: 0 auto;
     padding: 1.6rem 1.25rem 2rem;
     overflow-y: auto;
+
+    /* 关键：flex column 容器高度固定，空间不足时子项默认 flex-shrink:1 会被
+       压缩；而 .settings-card 带 overflow:hidden，被压扁后内部内容（更新时间、
+       退出登录按钮等）会被直接裁掉，且因没有真正溢出导致 overflow-y:auto 不滚动。
+       锁死子项不收缩，让内容自然撑开并正常滚动，小屏也能滚到底看到完整内容。 */
+    >* {
+        flex-shrink: 0;
+    }
 }
 
 /* 外观与账号卡片：桌面端底部栏已有主题/退出，只在移动端展示 */
