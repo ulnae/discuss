@@ -47,6 +47,9 @@
     --bubble-in-bg: rgba(15, 23, 42, 0.07);
     --bubble-in-fg: var(--text);
 
+    /* 双栏顶部栏统一高度：左侧搜索栏与右侧聊天标题栏共用，保证底部分割线齐平 */
+    --head-h: 3.6rem;
+
     /* 圆角 / 阴影 / 缓动 */
     --radius-xl: 20px;
     --radius-lg: 16px;
@@ -640,7 +643,10 @@ body {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.7rem 0.7rem 0.6rem;
+    /* 与 .chat-head 共用固定高度：高度由 --head-h 决定，不再被内部搜索框 / 按钮撑开 */
+    height: var(--head-h);
+    box-sizing: border-box;
+    padding: 0 0.7rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -681,7 +687,10 @@ body {
     display: flex;
     align-items: center;
     gap: 0.65rem;
-    padding: 0.65rem 0.9rem;
+    /* 与 .side-head 共用固定高度，两侧标题栏 / 搜索栏底边严格齐平 */
+    height: var(--head-h);
+    box-sizing: border-box;
+    padding: 0 0.9rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -898,7 +907,7 @@ body {
     }
 
     .side-head {
-        padding: 0.55rem 0.6rem;
+        padding: 0 0.6rem;
     }
 
     .side-list {
@@ -910,7 +919,7 @@ body {
     }
 
     .chat-head {
-        padding: 0.5rem 0.6rem;
+        padding: 0 0.6rem;
     }
 
     .chat-body {
