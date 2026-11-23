@@ -337,8 +337,14 @@ export const useSocketStore = defineStore('socket', {
                     // 分子也要即时摘除：否则在 ONLINE_ROOM 到达前（或推送丢失时）在线人数虚高
                     const online = this.roomMemberOnlineMap.get(data.roomId)
                     if (online && data.userId) online.delete(data.userId)
+                    // 操作者本人的本地流程已有 toast（已移出成员 / 你已退出），这里跳过回弹，避免重复
+                    if (data.byUserId && data.byUserId === currentUid()) return
                     if (hashPath().startsWith(`/room/${data.roomId}`)) {
-                        toast.info(`${data.byUsername || '群主'} 移出了一名成员`)
+                        // 区分「主动退出」与「被移出」：后端 reason 为 left / kicked
+                        const who = data.byUsername || '成员'
+                        toast.info(data.reason === 'left'
+                            ? `${who} 退出了房间`
+                            : `${who} 移出了一名成员`)
                     }
                 })
 
@@ -347,7 +353,8 @@ export const useSocketStore = defineStore('socket', {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
-                    toast.warning(`你已被移出「${(data && data.roomName) || '房间'}」`)
+                    const who = (data && data.byUsername) ? `${data.byUsername} ` : ''
+                    toast.warning(`你已被${who}移出「${(data && data.roomName) || '房间'}」`)
                     leaveIf(`/room/${roomId}`, '/room/dashboard')
                 })
 
@@ -365,8 +372,11 @@ export const useSocketStore = defineStore('socket', {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
-                    toast.warning(`「${(data && data.roomName) || '房间'}」已被群主解散`)
                     leaveIf(`/room/${roomId}`, '/room/dashboard')
+                    // 群主自己解散时本地流程已有 toast，跳过 WS 回弹
+                    if (data.byUserId && data.byUserId === currentUid()) return
+                    const who = (data && data.byUsername) ? ` ${data.byUsername} ` : '群主'
+                    toast.warning(`「${(data && data.roomName) || '房间'}」已被${who}解散`)
                 })
                 }).catch(error => {
                     console.error('socket connect failed', error)

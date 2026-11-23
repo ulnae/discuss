@@ -334,7 +334,7 @@ async function handleLeaveRoom() {
   const res: any = await ServerApi.RemoveMember(self.id)
   if (res.code === 200) {
     roomStore.removeRoom(roomId)
-    toast.info('已退出房间')
+    // 提示交给服务端回推的 ROOM_LEFT（含房间名、多标签页同步），避免本地重复弹
     router.replace('/room/dashboard')
   }
 }
