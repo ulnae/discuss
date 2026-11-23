@@ -1,9 +1,8 @@
 <template>
     <img v-if="message.type === 'image'" :src="`${VITE_APP_API_BASE_URL}${message.content}`" alt="图片已失效"
-        class="cm-image" @load="handleLoaded" @error="handleLoaded" @click="handlePreviewImage(message.content)" />
+        class="cm-image" @click="handlePreviewImage(message.content)" />
     <template v-else-if="message.type === 'file'">
-        <video class="cm-media" controls v-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['mp4', 'webm'])"
-            @loadedmetadata="handleLoaded" @error="handleLoaded">
+        <video class="cm-media" controls v-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['mp4', 'webm'])">
             <source :src="`${VITE_APP_API_BASE_URL}${message.content}`">
         </video>
         <audio class="cm-audio" controls v-else-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['mp3', 'wav'])">
@@ -38,14 +37,13 @@ defineProps({
     }
 });
 
-const emit = defineEmits(['resend', 'loaded']);
+defineEmits(['resend']);
 
 const VITE_APP_API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL
 const handlePreviewImage = (url: string) => {
     window.open(`${VITE_APP_API_BASE_URL}${url}`);
 }
-// 图片 / 视频加载完成后容器高度会变化，通知父级补滚到底（否则最新消息被撑到视口下方）
-const handleLoaded = () => emit('loaded')
+// 媒体加载导致的高度变化统一由父级 ResizeObserver 感知，组件不再关心滚动
 </script>
 
 <style lang="scss" scoped>

@@ -726,6 +726,14 @@ body {
     padding: 1rem 0.9rem 0.5rem;
 }
 
+/* 消息内容层：接管 .chat-body 原本的 flex 布局（单子元素时容器的 gap 不再生效），
+   同时作为 ResizeObserver 的观察目标 —— 高度随图片加载 / 新消息插入而变化 */
+.msg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
 .msg {
     display: flex;
     flex-direction: column;

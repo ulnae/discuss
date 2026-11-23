@@ -25,33 +25,35 @@
         </div>
       </header>
 
-      <div id="messageContainer" class="chat-body" @scroll.passive="handleScroll">
-        <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
-          查看更早的消息
-        </button>
-        <!-- 好友列表（资料来源）在途：展示 loading；本地已有消息缓存则不打扰 -->
-        <div v-if="friendStore.loading && !getHistory.length" class="list-loading">
-          <span class="loading-spinner"></span>
-          正在加载…
-        </div>
-        <div v-else-if="!getHistory.length" class="empty">
-          <span class="empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4.2-.9L3 21l1.9-4.4A8.2 8.2 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z" />
-            </svg>
-          </span>
-          还没有聊天记录，发条消息打个招呼吧
-        </div>
-
-        <div v-for="message in visibleMessages" :key="message.id" class="msg"
-          :class="{ 'is-me': message.from !== route.params.id }">
-          <div class="msg-meta">
-            <span>{{ dayjs(message.timestamp).fromNow() }}</span>
-            <span v-if="message.type">{{ formatFileSize(message.size) }}</span>
+      <div id="messageContainer" ref="containerRef" class="chat-body">
+        <div class="msg-list">
+          <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
+            查看更早的消息
+          </button>
+          <!-- 好友列表（资料来源）在途：展示 loading；本地已有消息缓存则不打扰 -->
+          <div v-if="friendStore.loading && !getHistory.length" class="list-loading">
+            <span class="loading-spinner"></span>
+            正在加载…
           </div>
-          <div class="bubble">
-            <Comment :message="message" @resend="handleResend(message)" @loaded="handleMediaLoaded" />
+          <div v-else-if="!getHistory.length" class="empty">
+            <span class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4.2-.9L3 21l1.9-4.4A8.2 8.2 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z" />
+              </svg>
+            </span>
+            还没有聊天记录，发条消息打个招呼吧
+          </div>
+
+          <div v-for="message in visibleMessages" :key="message.id" class="msg"
+            :class="{ 'is-me': message.from !== route.params.id }">
+            <div class="msg-meta">
+              <span>{{ dayjs(message.timestamp).fromNow() }}</span>
+              <span v-if="message.type">{{ formatFileSize(message.size) }}</span>
+            </div>
+            <div class="bubble">
+              <Comment :message="message" @resend="handleResend(message)" />
+            </div>
           </div>
         </div>
       </div>
@@ -144,10 +146,11 @@ import { useRoute, useRouter } from "vue-router";
 import dayjs from "@/plugin/dayjs";
 import serverApi from "@/api";
 import { vEnter } from "@/directives/vEnter";
-import { formatFileSize, scrollToBottom, isAtBottom } from "@/utils";
+import { formatFileSize } from "@/utils";
 import { compressImage, imageFilename } from "@/utils/image";
 import { usePaste } from "@/hooks/paste";
 import { useResizable } from "@/hooks/resizable";
+import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { Comment } from "@/components";
 import { toast } from "@/components/ui/toast";
 
@@ -158,6 +161,10 @@ const callStore = useCallStore();
 const story = ref("");
 const inputAreaRef = ref<HTMLElement | null>(null);
 useResizable(inputAreaRef, { direction: 'vertical', minSize: 150, maxSize: 600, initialSize: 180 });
+
+// 聊天区自动滚动：ResizeObserver 统一感知内容高度变化 + rAF 合并，仅贴底时跟随
+const containerRef = ref<HTMLElement | null>(null);
+const { pinToBottom } = useAutoScroll(containerRef);
 const route = useRoute();
 const router = useRouter();
 
@@ -256,10 +263,7 @@ onMounted(() => {
     uploadFile(file);
     (e.target as HTMLInputElement).value = "";
   });
-
-  // 首次进入默认贴底：消息多为异步 hydrate，先置真，等消息渲染 / 图片加载完成后补滚
-  stickToBottom.value = true;
-  scrollToBottom("messageContainer");
+  // 首次滚动由 useAutoScroll 在 onMounted 内完成（含 hydrate / 图片加载的后续补滚）
 });
 
 // 快捷上传图片及文件
@@ -270,32 +274,11 @@ const visibleCount = ref(100)
 const visibleMessages = computed(() => getHistory.value.slice(-visibleCount.value))
 const hasEarlierMessages = computed(() => getHistory.value.length > visibleCount.value)
 
-// 换好友时把「已展开的条数」收回去，避免上个会话的展开状态带过来
+// 换好友时把「已展开的条数」收回去，并强制回到贴底状态
 watch(
   () => route.params.id,
-  () => { visibleCount.value = 100 }
+  () => { visibleCount.value = 100; pinToBottom() }
 )
-
-// 是否跟随底部：由容器 scroll 事件维护。图片 / 视频加载撑高容器不会触发 scroll，
-// 因此这个标志能正确区分「刚滚到底后图片撑高（应补滚）」与「用户主动上翻（不打扰）」。
-const stickToBottom = ref(true);
-const handleScroll = () => {
-  stickToBottom.value = isAtBottom("messageContainer");
-};
-
-// 图片 / 视频加载完成后撑高了容器：贴底状态才补滚，避免打断上翻看历史
-const handleMediaLoaded = () => {
-  if (stickToBottom.value) scrollToBottom("messageContainer");
-};
-
-// 新消息到达时自动滚到底部（监听最后一条 id，替代原 deep watch 的全量 diff）
-// 同样只在用户贴底时跟随；上翻看历史时来新消息不强行拽走
-watch(
-  () => getHistory.value[getHistory.value.length - 1]?.id,
-  () => {
-    if (stickToBottom.value) scrollToBottom("messageContainer");
-  }
-);
 
 const infoVisiable = ref(!isNarrow());
 const handleSwitchInfo = () => {
