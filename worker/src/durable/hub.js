@@ -284,7 +284,11 @@ export class DiscussHub {
         if (remaining.length) return;
 
         for (const room of me.rooms || []) {
-            const users = this.roomUsers(room);
+            /* 关键：排除正在离线的自己。webSocketClose 期间 ws 仍在 getWebSockets() 里，
+               不排除会让重算的名单仍含离线者，diff 判定「没变」而不广播，
+               其他成员的群列表数字 / 成员状态点就得不到更新。
+               注意 sendToRoom 不排除，仍推给房间内其余在线成员（离线者的 ws 发送会自然失败）。 */
+            const users = this.roomUsers(room, me.userId);
             if (await this.roomOnlineChanged(room, users)) {
                 this.sendToRoom(room, EVENTS.ONLINE_ROOM, { roomId: room, users, timestamp: now() });
             }
@@ -588,11 +592,22 @@ export class DiscussHub {
         return false;
     }
 
-    roomUsers(roomId) {
+    /**
+     * 某房间当前在线的用户（去重）。
+     * @param excludeUserId 要从名单里排除的用户 —— 断线路径必须传：
+     *   Cloudflare 在 webSocketClose 执行期间，正在关闭的 socket 仍在 getWebSockets() 里，
+     *   roomSockets() 会把它算进来；不排除就会把刚离线的人仍算成在线，
+     *   与 storage 里的旧名单比对相同 → 漏发 ONLINE_ROOM。
+     *   其余调用点（上线 / overview / 成员变动补发）不传，行为不变。
+     */
+    roomUsers(roomId, excludeUserId) {
+        const exclude = excludeUserId != null && excludeUserId !== '' ? String(excludeUserId) : null;
         const users = new Set();
         for (const socket of this.roomSockets(roomId)) {
             const info = this.attach(socket);
-            if (info && info.userId) users.add(info.userId);
+            if (!info || !info.userId) continue;
+            if (exclude !== null && String(info.userId) === exclude) continue;
+            users.add(info.userId);
         }
         return Array.from(users);
     }
