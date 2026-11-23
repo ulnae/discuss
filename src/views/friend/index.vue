@@ -25,7 +25,7 @@
         </div>
       </header>
 
-      <div id="messageContainer" class="chat-body">
+      <div id="messageContainer" class="chat-body" @scroll.passive="handleScroll">
         <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
           查看更早的消息
         </button>
@@ -51,7 +51,7 @@
             <span v-if="message.type">{{ formatFileSize(message.size) }}</span>
           </div>
           <div class="bubble">
-            <Comment :message="message" @resend="handleResend(message)" />
+            <Comment :message="message" @resend="handleResend(message)" @loaded="handleMediaLoaded" />
           </div>
         </div>
       </div>
@@ -144,7 +144,7 @@ import { useRoute, useRouter } from "vue-router";
 import dayjs from "@/plugin/dayjs";
 import serverApi from "@/api";
 import { vEnter } from "@/directives/vEnter";
-import { formatFileSize, scrollToBottom } from "@/utils";
+import { formatFileSize, scrollToBottom, isAtBottom } from "@/utils";
 import { compressImage, imageFilename } from "@/utils/image";
 import { usePaste } from "@/hooks/paste";
 import { useResizable } from "@/hooks/resizable";
@@ -257,6 +257,8 @@ onMounted(() => {
     (e.target as HTMLInputElement).value = "";
   });
 
+  // 首次进入默认贴底：消息多为异步 hydrate，先置真，等消息渲染 / 图片加载完成后补滚
+  stickToBottom.value = true;
   scrollToBottom("messageContainer");
 });
 
@@ -274,11 +276,24 @@ watch(
   () => { visibleCount.value = 100 }
 )
 
+// 是否跟随底部：由容器 scroll 事件维护。图片 / 视频加载撑高容器不会触发 scroll，
+// 因此这个标志能正确区分「刚滚到底后图片撑高（应补滚）」与「用户主动上翻（不打扰）」。
+const stickToBottom = ref(true);
+const handleScroll = () => {
+  stickToBottom.value = isAtBottom("messageContainer");
+};
+
+// 图片 / 视频加载完成后撑高了容器：贴底状态才补滚，避免打断上翻看历史
+const handleMediaLoaded = () => {
+  if (stickToBottom.value) scrollToBottom("messageContainer");
+};
+
 // 新消息到达时自动滚到底部（监听最后一条 id，替代原 deep watch 的全量 diff）
+// 同样只在用户贴底时跟随；上翻看历史时来新消息不强行拽走
 watch(
   () => getHistory.value[getHistory.value.length - 1]?.id,
   () => {
-    scrollToBottom("messageContainer");
+    if (stickToBottom.value) scrollToBottom("messageContainer");
   }
 );
 
