@@ -21,10 +21,21 @@
         </a>
     </template>
     <span v-else class="cm-text">{{ message.content }}</span>
-    <span v-if="message.status === 'sending'" class="cm-status">发送中…</span>
-    <span v-else-if="message.status === 'failed'" class="cm-status cm-failed" @click="$emit('resend')">
-        发送失败，点击重试
+    <!-- 发送状态：绝对定位成气泡角标，脱离文档流 —— 状态切换不再改变消息高度 -->
+    <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" title="发送中…">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
+            aria-hidden="true">
+            <path d="M12 4a8 8 0 1 0 8 8" />
+        </svg>
     </span>
+    <button v-else-if="message.status === 'failed'" type="button" class="cm-status cm-status-failed"
+        title="发送失败，点击重试" aria-label="发送失败，点击重试" @click="$emit('resend')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 7.5v5.5" />
+            <circle cx="12" cy="16.8" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+    </button>
 </template>
 
 <script setup lang="ts">
@@ -95,19 +106,55 @@ const handlePreviewImage = (url: string) => {
     white-space: pre-wrap;
 }
 
+/* 发送状态做成气泡右下角的圆形角标：absolute 脱离文档流，
+   状态出现/消失不撑高消息，也就不会扰动滚动位置（配合 ResizeObserver 的补滚更稳） */
 .cm-status {
-    display: block;
-    margin-top: 2px;
-    font-size: 0.65rem;
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-solid, var(--surface-2));
+    box-shadow: 0 0 0 1px var(--border);
     color: var(--text-2);
+    line-height: 0;
+
+    svg {
+        width: 11px;
+        height: 11px;
+    }
 }
 
-.cm-failed {
-    color: var(--danger);
+/* 发送中：灰色旋转环 */
+.cm-status-sending svg {
+    animation: cm-spin 0.75s linear infinite;
+}
+
+/* 发送失败：红色角标，点击重试；hover 放大提示可点 */
+.cm-status-failed {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 0 0 2px var(--surface-solid, var(--surface-2));
     cursor: pointer;
+    transition: transform 0.12s ease;
 
     &:hover {
-        text-decoration: underline;
+        transform: scale(1.15);
+    }
+    &:active {
+        transform: scale(0.94);
+    }
+}
+
+@keyframes cm-spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 </style>

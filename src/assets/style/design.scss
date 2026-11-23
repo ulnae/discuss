@@ -757,6 +757,7 @@ body {
 }
 
 .bubble {
+    position: relative; /* 发送状态角标的定位基准 */
     max-width: 100%;
     padding: 0.5rem 0.72rem;
     border-radius: 14px;
@@ -767,6 +768,11 @@ body {
     line-height: 1.55;
     word-break: break-word;
     overflow-wrap: anywhere;
+}
+
+/* 失败消息描边高亮：用 box-shadow 而非 border，不改变盒模型、不撑高消息 */
+.bubble:has(.cm-status-failed) {
+    box-shadow: 0 0 0 1px var(--danger);
 }
 
 .msg.is-me .bubble {
