@@ -1,13 +1,3 @@
-/*
- * @Author       : eug yyh3531@163.com
- * @Date         : 2022-08-31 15:08:14
- * @LastEditors  : Eug yyh3531@163.com
- * @LastEditTime : 2025-11-23 23:17:18
- * @FilePath     : \e-talk\src\api\room\index.ts
- * @Description  : filename
- * 
- * Copyright (c) 2023 by ${git_name_email}, All Rights Reserved. 
- */
 import request from '@/plugin/axios'
 import { Room } from '@/store/modules/room'
 import { cloneDeep, get } from 'lodash-es'
