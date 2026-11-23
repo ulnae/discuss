@@ -27,8 +27,8 @@
 
       <div id="messageContainer" ref="containerRef" class="chat-body">
         <div class="msg-list">
-          <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="visibleCount += 100">
-            查看更早的消息
+          <button v-if="hasEarlierMessages" type="button" class="load-earlier" @click="loadMore">
+            上滑或点击加载更早的消息
           </button>
           <!-- 好友列表（资料来源）在途：展示 loading；本地已有消息缓存则不打扰 -->
           <div v-if="friendStore.loading && !getHistory.length" class="list-loading">
@@ -169,12 +169,18 @@ const getHistory = computed(() => {
   return socketStore.userMessageMap.get(route.params.id as string) || [];
 });
 
-// 聊天区自动滚动：新消息显式触发 + ResizeObserver 补高度变化，仅贴底时跟随
+// 聊天区只渲染最近 50 条，避免长会话 DOM 堆积；上滑到顶 / 点击顶部按钮再加载 50 条
+const visibleCount = ref(50)
+const visibleMessages = computed(() => getHistory.value.slice(-visibleCount.value))
+const hasEarlierMessages = computed(() => getHistory.value.length > visibleCount.value)
+
+// 聊天区自动滚动：新消息显式跟随 + 上滑到顶加载更早消息（并做视觉锚定）
 const containerRef = ref<HTMLElement | null>(null);
-const { pinToBottom } = useAutoScroll(
-  containerRef,
-  () => getHistory.value[getHistory.value.length - 1]?.id
-);
+const { pinToBottom, loadMore } = useAutoScroll(containerRef, {
+  lastMessageKey: () => getHistory.value[getHistory.value.length - 1]?.id,
+  hasEarlier: () => hasEarlierMessages.value,
+  loadEarlier: () => { visibleCount.value += 50 },
+});
 
 const getFriendInfo = computed(() => {
   return friendStore.getFriendMap[route.params.id as string]?.friend_info || {};
@@ -273,15 +279,10 @@ onMounted(() => {
 // 快捷上传图片及文件
 usePaste(uploadImage, uploadFile);
 
-// 聊天区只渲染最近 100 条，避免长会话 DOM 堆积；更早的点击按钮分页加载
-const visibleCount = ref(100)
-const visibleMessages = computed(() => getHistory.value.slice(-visibleCount.value))
-const hasEarlierMessages = computed(() => getHistory.value.length > visibleCount.value)
-
 // 换好友时把「已展开的条数」收回去，并强制回到贴底状态
 watch(
   () => route.params.id,
-  () => { visibleCount.value = 100; pinToBottom() }
+  () => { visibleCount.value = 50; pinToBottom() }
 )
 
 const infoVisiable = ref(!isNarrow());
