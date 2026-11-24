@@ -2,9 +2,8 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
 /**
- * 聊天消息 Markdown 渲染（唯一入口）：
- * - 气泡正文（Comment.vue）与输入框预览（MessageComposer.vue）共用同一函数，
- *   保证「所见即所发」。
+ * 聊天消息 Markdown 渲染（唯一入口，供消息气泡 Comment.vue 使用）：
+ * - 输入区无任何 Markdown UI（隐藏彩蛋）：用户手写 Markdown 语法发送，气泡渲染成富文本。
  * - 消息来自他人，绝不允许裸 v-html：输出必须经 DOMPurify 消毒。
  * - LRU 缓存按原文缓存 HTML，50 条可见窗口滚动/重渲染时不重复解析。
  */
