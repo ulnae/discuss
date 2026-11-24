@@ -19,22 +19,6 @@
       </nav>
 
       <div class="rail-foot">
-        <button type="button" class="rail-btn rail-btn-theme" :title="theme === 'light' ? '切换到深色' : '切换到浅色'" @click="toggleTheme">
-          <span class="rail-icon">
-            <svg v-if="theme === 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-              stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-            </svg>
-          </span>
-          <span class="rail-text">主题</span>
-        </button>
-
         <button type="button" class="rail-btn" :class="{ 'is-active': getPath === 'setting' }" title="设置"
           @click="handleSetting">
           <span class="rail-icon">
@@ -47,16 +31,6 @@
           </span>
           <span class="rail-text">设置</span>
         </button>
-
-        <button type="button" class="rail-btn rail-btn-quiet rail-btn-logout" title="退出登录" @click="handleLogout">
-          <span class="rail-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
-          </span>
-          <span class="rail-text">退出</span>
-        </button>
       </div>
     </aside>
 
@@ -68,12 +42,10 @@
 </template>
 
 <script lang="ts" setup>
-import { useUserStore } from "@/store/modules/user";
 import router from "@/router";
 import { computed, ref, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import { initRoutes } from "@/router/routes";
-import { useTheme } from '@/hooks/theme'
 
 function handleClick(page: any) {
   router.push({
@@ -81,13 +53,7 @@ function handleClick(page: any) {
   });
 }
 
-const userStore = useUserStore();
-
-const handleLogout = () => {
-  userStore.logout();
-};
-
-// 关于
+// 设置
 const handleSetting = () => {
   router.push({
     name: "setting",
@@ -102,8 +68,6 @@ watchEffect(() => {
 const getPath = computed(() => {
   return routePath.value?.split('/').filter(Boolean)[0]
 })
-
-const { theme, toggleTheme } = useTheme()
 </script>
 
 <style lang="scss" scoped>
@@ -165,10 +129,6 @@ const { theme, toggleTheme } = useTheme()
     &.is-active {
         color: var(--text);
         background: var(--surface-3);
-    }
-
-    &.rail-btn-quiet:hover {
-        color: var(--danger);
     }
 }
 
@@ -235,12 +195,6 @@ const { theme, toggleTheme } = useTheme()
     .rail-nav,
     .rail-foot {
         display: contents;
-    }
-
-    /* 移动端底部栏放不下主题/退出，收进「设置」页里 */
-    .rail-btn-theme,
-    .rail-btn-logout {
-        display: none;
     }
 
     .rail-btn {

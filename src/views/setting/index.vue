@@ -133,7 +133,7 @@ import { useTheme } from '@/hooks/theme'
 const userStore = useUserStore()
 const socketStore = useSocketStore()
 
-// 移动端底部栏放不下主题/退出，收进设置页
+// 主题切换与退出登录统一收敛在设置页（导航栏仅保留设置入口）
 const { theme, toggleTheme } = useTheme()
 const handleLogout = () => userStore.logout()
 
@@ -328,18 +328,9 @@ onMounted(() => {
     }
 }
 
-/* 外观与账号卡片：桌面端底部栏已有主题/退出，只在移动端展示 */
-.settings-account {
-    display: none;
-}
-
 @media (max-width: 768px) {
     .settings {
         padding: 1rem 0.85rem calc(1.2rem + env(safe-area-inset-bottom));
-    }
-
-    .settings-account {
-        display: block;
     }
 }
 
