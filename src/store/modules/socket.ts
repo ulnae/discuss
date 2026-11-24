@@ -227,12 +227,10 @@ export const useSocketStore = defineStore('socket', {
                     useUserStore().logout();
                 })
 
-                // 系统通知
+                // 系统通知（addAlert 内部已落盘，无需在此重复写）
                 this.socket.on(Event.SYSTEM_ALERT, (data) => {
                     setTitle(`[${data.senderName}] ${data.message}`)
-                    const alertStore = useAlertStore()
-                    alertStore.addAlert(data)
-                    MessageCache.saveAlerts(currentUid(), alertStore.alerts)
+                    useAlertStore().addAlert(data)
                 })
 
                 /* ==================== 好友 / 房间 / 申请的实时同步 ====================

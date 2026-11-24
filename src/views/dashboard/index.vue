@@ -30,12 +30,13 @@
             </div>
 
             <div v-else class="notice-list">
-                <div v-for="(item, idx) in alertStore.alerts" :key="idx" class="notice-row">
+                <div v-for="(item, idx) in alertStore.alerts" :key="`${item.timestamp}-${item.senderName}-${item.message}`"
+                    class="notice-row">
                     <span class="notice-sender">{{ item.senderName }}</span>
                     <span class="notice-text">{{ item.message }}</span>
                     <span class="notice-time">{{ dayjs(item.timestamp).format('MM/DD HH:mm') }}</span>
                     <button type="button" class="icon-btn notice-del" title="删除这条通知"
-                        @click="alertStore.alerts.splice(idx, 1)">
+                        @click="alertStore.removeAlert(idx)">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
                             stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M6 18 18 6M6 6l12 12" />

@@ -287,10 +287,10 @@ onMounted(() => {
                 const userMessage = socketStore.userMessageMap.get(key) || []
                 socketStore.userMessageMap.set(key, sortBy(uniqWith([...userMessage, ...value], isEqual), 'timestamp'))
             })
-            // 系统广播
+            // 系统广播：合并去重后按时间降序（最新在上），replaceAlerts 内部会落盘
             if (alerts.length) {
                 const alertStore = useAlertStore()
-                alertStore.alerts = sortBy(uniqWith([...alertStore.alerts, ...alerts], isEqual), 'timestamp')
+                alertStore.replaceAlerts(uniqWith([...alertStore.alerts, ...alerts], isEqual))
             }
             toast.success('聊天记录导入成功')
         } catch (error: any) {
