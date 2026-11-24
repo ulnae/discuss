@@ -143,7 +143,8 @@ const LABELS: Record<string, string> = {
     username: '用户名',
     email: '邮箱',
     createdAt: '创建时间',
-    updatedAt: '更新时间'
+    updatedAt: '更新时间',
+    expires_in: '过期时间'
 }
 const HIDDEN = ['access_token', 'token_type']
 const accountRows = computed(() =>
