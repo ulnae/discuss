@@ -9,6 +9,7 @@
         <section class="settings-card">
             <header class="card-head card-head-action">
                 <span>账号信息</span>
+                <!-- 查看模式：编辑按钮；编辑模式：取消 / 保存，二者都放在标题行右侧 -->
                 <button v-if="!accountEditing" type="button" class="edit-toggle" @click="startEdit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                         stroke-linecap="round" stroke-linejoin="round">
@@ -17,6 +18,14 @@
                     </svg>
                     编辑
                 </button>
+                <div v-else class="head-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" :disabled="accountSaving" @click="cancelEdit">
+                        取消
+                    </button>
+                    <button type="submit" form="account-form" class="btn btn-primary btn-sm" :disabled="accountSaving">
+                        {{ accountSaving ? '保存中…' : '保存' }}
+                    </button>
+                </div>
             </header>
 
             <!-- 查看模式 -->
@@ -28,7 +37,7 @@
             </div>
 
             <!-- 编辑模式：用户名 / 邮箱 / 密码一次提交，改密码或邮箱需填原密码 -->
-            <form v-else class="card-form" @submit.prevent="handleSaveAccount">
+            <form v-else id="account-form" class="card-form" @submit.prevent="handleSaveAccount">
                 <label class="form-field">
                     <span class="form-label">用户名</span>
                     <input v-model.trim="accountForm.username" type="text" autocomplete="username"
@@ -54,14 +63,6 @@
                     <input v-model="accountForm.oldPassword" type="password" autocomplete="current-password"
                         placeholder="请输入当前密码以确认身份" />
                 </label>
-                <div class="form-footer">
-                    <button type="button" class="btn btn-ghost btn-sm" :disabled="accountSaving" @click="cancelEdit">
-                        取消
-                    </button>
-                    <button type="submit" class="btn btn-primary btn-sm" :disabled="accountSaving">
-                        {{ accountSaving ? '保存中…' : '保存' }}
-                    </button>
-                </div>
             </form>
         </section>
 
@@ -389,7 +390,22 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 0.5rem;
+        /* 查看态是编辑按钮、编辑态是取消+保存按钮，两者高度不同。
+           锁死标题行高度 + 垂直居中，切换模式时这一行不再跳动。 */
+        box-sizing: border-box;
+        height: 3.4rem;
+        padding-top: 0;
+        padding-bottom: 0;
     }
+}
+
+/* 编辑态标题行右侧的取消 / 保存按钮组 */
+.head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
 }
 
 /* 账号信息卡片的「编辑」切换按钮 */
@@ -471,13 +487,6 @@ onMounted(() => {
         border-color: var(--accent);
         box-shadow: 0 0 0 3px var(--accent-soft, var(--surface-3));
     }
-}
-
-.form-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding-top: 0.15rem;
 }
 
 .card-actions {
