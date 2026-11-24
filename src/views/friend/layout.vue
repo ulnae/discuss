@@ -1,62 +1,24 @@
 <template>
-  <div class="side-shell" :class="{ 'has-detail': hasDetail }">
-    <aside ref="sidebarRef" class="side">
-      <div class="side-head">
-        <div class="ui-field ui-field-sm">
-          <span class="ui-field-icon">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.6-3.6" />
-            </svg>
-          </span>
-          <input v-model="username" type="text" placeholder="搜索好友" />
-        </div>
-
-        <router-link to="/friend/search" class="icon-btn" title="添加好友">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
-            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-        </router-link>
-      </div>
-
-      <div class="side-list">
-        <!-- 首次进入 / 刷新时列表在途：展示 loading，避免误以为"没有好友"。
-             已有数据时即便后台静默刷新也不闪 loading（好友关系变动事件会重拉列表） -->
-        <div v-if="friendStore.loading && !friendStore.friends.length" class="list-loading">
-          <span class="loading-spinner"></span>
-          正在加载好友…
-        </div>
-
-        <template v-else>
-          <button v-for="friend in getFriends" :key="friend.id" type="button" class="list-row"
-            :class="{ 'is-active': paramsID === friend.friend_info.id }" @click="handleFriendClick(friend)">
-            <span class="avatar">{{ initial(friend.friend_info.username) }}</span>
-            <span class="row-main">
-              <span class="row-name">{{ friend.friend_info.username }}</span>
-            </span>
-            <span class="dot" :class="{ 'dot-online': isOnline(friend.friend_info.id) }"></span>
-          </button>
-
-          <div v-if="getFriends.length === 0" class="empty">
-            <span class="empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M18 18.7a9.1 9.1 0 0 0 3.7-.5 3 3 0 0 0-4.7-2.7m.9 3.2v.1c0 .2 0 .4-.1.6A12 12 0 0 1 12 21a12 12 0 0 1-6-1.6V19a6 6 0 0 1 6-6 6 6 0 0 1 6 6Z" />
-                <circle cx="12" cy="7" r="3.4" />
-              </svg>
-            </span>
-            还没有好友，点右上角 + 搜索添加
-          </div>
-        </template>
-      </div>
-    </aside>
-
-    <section class="side-body">
+  <SidePanel v-model="username" :items="getFriends" :item-key="(item: any) => item.friend_info.id"
+    :active-id="paramsID" :has-detail="hasDetail" :loading="friendStore.loading && !friendStore.friends.length"
+    loading-text="正在加载好友…" :empty="getFriends.length === 0" empty-icon="users"
+    empty-text="还没有好友，点右上角 + 搜索添加" search-placeholder="搜索好友" @select="handleFriendClick">
+    <template #head-actions>
+      <router-link to="/friend/search" class="icon-btn" title="添加好友">
+        <AppIcon name="plus" :size="17" :stroke-width="1.6" />
+      </router-link>
+    </template>
+    <template #row="{ item }">
+      <UserAvatar :name="item.friend_info.username" />
+      <span class="row-main">
+        <span class="row-name">{{ item.friend_info.username }}</span>
+      </span>
+      <span class="dot" :class="{ 'dot-online': isOnline(item.friend_info.id) }"></span>
+    </template>
+    <template #body>
       <router-view></router-view>
-    </section>
-  </div>
+    </template>
+  </SidePanel>
 </template>
 
 <script setup lang="ts">
@@ -64,12 +26,12 @@ import { useFriendStore } from "@/store/modules/friend";
 import router from "@/router";
 import { useRoute } from "vue-router";
 import { ref, computed, watchEffect } from "vue";
-import { useResizable } from "@/hooks/resizable";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import UserAvatar from "@/components/ui/UserAvatar.vue";
+import SidePanel from "@/components/SidePanel.vue";
 
 const friendStore = useFriendStore();
 const username = ref('')
-const sidebarRef = ref<HTMLElement | null>(null);
-useResizable(sidebarRef, { direction: 'horizontal', minSize: 180, maxSize: 480, initialSize: 240 });
 const getFriends = computed(() => {
   return friendStore.friends.filter((friend: any) => friend.friend_info.username.includes(username.value))
 })
@@ -94,42 +56,7 @@ const handleFriendClick = (friend: any) => {
   });
 };
 
-/** 头像取名字首字，中文取第一个字 */
-const initial = (name?: string) => (name || '?').trim().charAt(0).toUpperCase()
-
 /** 好友是否在线 */
 const isOnline = (id?: string) => !!id && !!friendStore.getFriendMap[id]?.status
 </script>
 
-<style lang="scss" scoped>
-.side-head {
-    .ui-field {
-        flex: 1;
-        min-width: 0;
-    }
-}
-
-/* 移动端：列表和聊天分两屏，避免两栏挤在一起 */
-@media (max-width: 768px) {
-    .side-shell {
-        position: relative;
-    }
-
-    .side {
-        width: 100% !important;
-        border-right: 0;
-    }
-
-    .side-body {
-        display: none;
-    }
-
-    .side-shell.has-detail .side {
-        display: none;
-    }
-
-    .side-shell.has-detail .side-body {
-        display: flex;
-    }
-}
-</style>

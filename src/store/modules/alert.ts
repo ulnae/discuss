@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { useUserStore } from './user'
 import { MessageCache } from '@/utils/messageCache'
+import { mergeAlerts } from '@/utils/messageMerge'
 
 interface Alert {
     senderName: string
@@ -33,7 +34,7 @@ export const useAlertStore = defineStore('alert', {
         },
         /** 导入备份：调用方先合并去重，这里统一按时间降序并落盘 */
         replaceAlerts(list: Alert[]) {
-            this.alerts = [...list].sort((a, b) => b.timestamp - a.timestamp)
+            this.alerts = mergeAlerts([], list)
             persist(this.alerts)
         },
     }

@@ -1,51 +1,37 @@
 import request from '@/plugin/axios'
-import { Room } from '@/store/modules/room'
-import { cloneDeep, get } from 'lodash-es'
+import type { Room } from '@/store/modules/room'
 
-const Url:any = {
-    'server': {
-        'room': '/room',
-        'roomSearch': '/room/search',
-    }
+const Url = {
+    'room': '/room',
+    'roomSearch': '/room/search',
 }
-
-/// mock
-const o = cloneDeep(Url.server)
-Url['mock'] = {}
-Object.entries(o).forEach(item => {
-    Url['mock'][item[0]] = '/mock' + item[1]
-})
-
-const isMock = import.meta.env.VITE_APP_BUILD_MODE === 'true'
-
-const requestServerName = isMock ? 'mock' : 'server'
 
 export default {
 
     // 登录/重连聚合拉取：我加入的房间 + 每房成员 + 每房在线名单（1 个请求替代 3+N 个）
     GetRoomOverview() {
         return request({
-            url: `${Url[requestServerName].room}/overview`,
+            url: `${Url.room}/overview`,
             method: 'get',
         })
     },
     CreateRoom(data:Room) {
         return request({
-            url: Url[requestServerName].room,
+            url: Url.room,
             method: 'post',
             data
         })
     },
     SearchRoom(name?:string) {
         return request({
-            url: `${Url[requestServerName].roomSearch}?name=${name}`,
+            url: `${Url.roomSearch}?name=${name}`,
             method: 'get'
         })
     },
     // 解散房间（群主）；成员会实时收到 room:deleted
     DeleteRoom(id: string) {
         return request({
-            url: `${Url[requestServerName].room}/${id}`,
+            url: `${Url.room}/${id}`,
             method: 'delete'
         })
     },

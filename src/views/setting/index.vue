@@ -127,9 +127,10 @@ import userApi from '@/api/user'
 import { MessageCache } from '@/utils/messageCache'
 import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { sortBy, uniqWith, isEqual } from 'lodash-es';
+import { computed, reactive, ref } from 'vue'
 import { useTheme } from '@/hooks/theme'
+import { useFilePicker } from '@/hooks/useFilePicker'
+import { mergeAlerts, mergeChatMessages } from '@/utils/messageMerge'
 const userStore = useUserStore()
 const socketStore = useSocketStore()
 
@@ -233,12 +234,10 @@ const handleSaveAccount = async () => {
             userStore.logout()
         } else {
             // 只改用户名/邮箱：同步本地资料并退回查看模式
-            userStore.userInfo = {
-                ...userStore.userInfo,
+            userStore.syncProfile({
                 username: accountForm.username,
                 email: accountForm.email
-            }
-            localStorage.setItem('userInfo', JSON.stringify(userStore.userInfo))
+            })
             toast.success('账号信息已更新')
             accountEditing.value = false
         }
@@ -267,41 +266,31 @@ const handleImport = () => {
 }
 
 
-onMounted(() => {
-    document.getElementById('chooseHistoryFile')?.addEventListener('change', async (e) => {
-        const input = e.target as HTMLInputElement
-        const file = input.files?.[0]
-        if (!file) return
+useFilePicker('chooseHistoryFile', async (file) => {
+    try {
+        const text = await file.text()
+        // 解析 + 校验格式 / 版本 / 账号归属（他人备份会被拒绝），并落盘到当前账号
+        const { user, room, alerts } = await MessageCache.importBackup(currentUid(), text)
 
-        try {
-            const text = await file.text()
-            // 解析 + 校验格式 / 版本 / 账号归属（他人备份会被拒绝），并落盘到当前账号
-            const { user, room, alerts } = await MessageCache.importBackup(currentUid(), text)
-
-            // 群聊记录：去重合并进内存 Map（落盘已由 importBackup 完成）
-            room.forEach(([key, value]) => {
-                const roomMessage = socketStore.roomMessageMap.get(key) || []
-                socketStore.roomMessageMap.set(key, sortBy(uniqWith([...roomMessage, ...value], isEqual), 'timestamp'))
-            })
-            // 私聊记录
-            user.forEach(([key, value]) => {
-                const userMessage = socketStore.userMessageMap.get(key) || []
-                socketStore.userMessageMap.set(key, sortBy(uniqWith([...userMessage, ...value], isEqual), 'timestamp'))
-            })
-            // 系统广播：合并去重后按时间降序（最新在上），replaceAlerts 内部会落盘
-            if (alerts.length) {
-                const alertStore = useAlertStore()
-                alertStore.replaceAlerts(uniqWith([...alertStore.alerts, ...alerts], isEqual))
-            }
-            toast.success('聊天记录导入成功')
-        } catch (error: any) {
-            console.error('解析失败:', error)
-            toast.error(error?.message || '导入失败')
-        } finally {
-            input.value = ''  // 允许重复选择同一文件
+        // 群聊 / 私聊记录：统一按 clientId/id 去重并合并进内存 Map
+        room.forEach(([key, value]) => {
+            const roomMessage = socketStore.roomMessageMap.get(key) || []
+            socketStore.roomMessageMap.set(key, mergeChatMessages(roomMessage, value))
+        })
+        user.forEach(([key, value]) => {
+            const userMessage = socketStore.userMessageMap.get(key) || []
+            socketStore.userMessageMap.set(key, mergeChatMessages(userMessage, value))
+        })
+        // 系统广播：合并去重后按时间降序（最新在上），replaceAlerts 内部会落盘
+        if (alerts.length) {
+            const alertStore = useAlertStore()
+            alertStore.replaceAlerts(mergeAlerts(alertStore.alerts, alerts))
         }
-    })
-
+        toast.success('聊天记录导入成功')
+    } catch (error: any) {
+        console.error('解析失败:', error)
+        toast.error(error?.message || '导入失败')
+    }
 })
 
 </script>
@@ -477,7 +466,7 @@ onMounted(() => {
 
     &:focus {
         border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--accent-soft, var(--surface-3));
+        box-shadow: 0 0 0 3px var(--surface-3);
     }
 }
 

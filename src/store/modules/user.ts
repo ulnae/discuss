@@ -39,6 +39,11 @@ export const useUserStore = defineStore('user', {
             })
 
         },
+        /** 修改账号资料后统一更新内存与本地缓存 */
+        syncProfile(patch: Partial<User>) {
+            this.userInfo = { ...this.userInfo, ...patch }
+            localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+        },
         logout() {
             this.isLogin = false;
             this.token = ''

@@ -8,7 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_APP_API_BASE_URL: string
   readonly VITE_APP_WS_BASE_URL: string
   readonly VITE_APP_BASE_URL: string
-  readonly VITE_APP_BUILD_MODE: string
   readonly VITE_APP_TITLE: string
 }
 

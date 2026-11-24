@@ -139,7 +139,7 @@ const handlePreviewImage = (url: string) => {
 /* 发送失败：红色角标，点击重试；hover 放大提示可点 */
 .cm-status-failed {
     background: var(--danger);
-    color: #fff;
+    color: var(--danger-fg);
     box-shadow: 0 0 0 2px var(--surface-solid, var(--surface-2));
     cursor: pointer;
     transition: transform 0.12s ease;

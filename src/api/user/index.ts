@@ -1,28 +1,12 @@
 import request from '@/plugin/axios'
-import { cloneDeep, get } from 'lodash-es'
 
-const Url:any = {
-    'server': {
-        'login': '/user/login',
-        'register': '/user',
-        'userSearch': '/user/search',
-        'userUpload': '/user/upload',
-        'GetCaptcha': '/captcha',
-
-
-    }
+const Url = {
+    'login': '/user/login',
+    'register': '/user',
+    'userSearch': '/user/search',
+    'userUpload': '/user/upload',
+    'GetCaptcha': '/captcha',
 }
-
-/// mock
-const o = cloneDeep(Url.server)
-Url['mock'] = {}
-Object.entries(o).forEach(item => {
-    Url['mock'][item[0]] = '/mock' + item[1]
-})
-
-const isMock = import.meta.env.VITE_APP_BUILD_MODE === 'true'
-
-const requestServerName = isMock ? 'mock' : 'server'
 
 /**
  * Worker 后端没有 express-session，验证码答案由服务端落库、用 captchaId 关联。
@@ -35,33 +19,33 @@ const withCaptcha = (data?: any) => (captchaId ? { ...(data || {}), captchaId } 
 export default {
     Login(data?:any) {
         return request({
-            url: Url[requestServerName].login,
+            url: Url.login,
             method: 'post',
             data: withCaptcha(data)
         })
     },
     Register(data?:any) {
         return request({
-            url: Url[requestServerName].register,
+            url: Url.register,
             method: 'post',
             data: withCaptcha(data)
         })
     },
     GetUserInfo(id?:string) {
         return request({
-            url: `${Url[requestServerName].register}/${id}`,
+            url: `${Url.register}/${id}`,
             method: 'get'
         })
     },
     SearchUser(name?:string) {
         return request({
-            url: `${Url[requestServerName].userSearch}?username=${name}`,
+            url: `${Url.userSearch}?username=${name}`,
             method: 'get'
         })
     },
     UploadUser(data?:any) {
         return request({
-            url: Url[requestServerName].userUpload,
+            url: Url.userUpload,
             method: 'post',
             data,
             // 上传比常规接口慢，单独放宽超时
@@ -74,14 +58,14 @@ export default {
     /** 更新本人资料：一次可改 username / email / password（改密码或邮箱需带 oldPassword） */
     UpdateUser(id: string, data?: any) {
         return request({
-            url: `${Url[requestServerName].register}/${id}`,
+            url: `${Url.register}/${id}`,
             method: 'patch',
             data
         })
     },
     GetCaptcha() {
         return request({
-            url: Url[requestServerName].GetCaptcha,
+            url: Url.GetCaptcha,
             method: 'get'
         }).then((res: any) => {
             // worker：{ code:200, msg, data:{ id, svg } }

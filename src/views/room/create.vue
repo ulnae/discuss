@@ -1,19 +1,10 @@
 <template>
     <div class="create-page">
-        <button type="button" class="icon-btn back-btn page-back" title="返回房间列表" @click="goBack">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
-                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-        </button>
+        <BackButton class="page-back" title="返回房间列表" @click="goBack" />
         <div class="create-card">
             <header class="create-head">
                 <div class="create-logo" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20.25 8.5c.9.3 1.5 1.1 1.5 2.1v4.3c0 1.1-.8 2.1-2 2.2l-1 .1v3l-3-3c-1.4 0-2.7-.1-4-.2" />
-                        <path d="M16.5 6.6c0-1.6-1.2-3.1-2.8-3.3A48 48 0 0 0 5 3.4C3.4 3.6 2.2 5 2.2 6.6v6.2c0 1.6 1.2 3.1 2.8 3.3L7 16.2V21l4.2-4.2" />
-                    </svg>
+                    <AppIcon name="room" :size="20" />
                 </div>
                 <h1 class="create-title">创建房间</h1>
                 <p class="create-sub">起个名字，拉上朋友一起聊</p>
@@ -24,11 +15,7 @@
                     <span class="ui-label">房间名</span>
                     <div class="ui-field">
                         <span class="ui-field-icon">
-                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
-                                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 10.5 12 3l9 7.5" />
-                                <path d="M5 9.8V20a1 1 0 0 0 1 1h4v-5a2 2 0 0 1 4 0v5h4a1 1 0 0 0 1-1V9.8" />
-                            </svg>
+                            <AppIcon name="house" :size="15" />
                         </span>
                         <input v-model.trim="room.name" type="text" placeholder="例如：深夜代码局" />
                     </div>
@@ -56,6 +43,8 @@ import { useRouter } from "vue-router";
 import ServerApi from "@/api";
 import { useRoomStore } from "@/store/modules/room";
 import { toast } from "@/components/ui/toast";
+import AppIcon from "@/components/ui/AppIcon.vue";
+import BackButton from "@/components/ui/BackButton.vue";
 const router = useRouter()
 const roomStore = useRoomStore()
 

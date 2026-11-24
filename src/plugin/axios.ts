@@ -143,7 +143,7 @@ service.interceptors.response.use(
         const status = error && error.response && error.response.status
 
         // 401：清掉本地登录态并回登录页（提示由 errorLog 统一弹出）
-        if (status === 401 && import.meta.env.VITE_APP_BUILD_MODE !== 'true') {
+        if (status === 401) {
             useUserStore(pinia).logout()
         }
 

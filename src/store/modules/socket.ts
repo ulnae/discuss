@@ -8,6 +8,7 @@ import { useAlertStore } from "./alert";
 import { useApplyStore } from './apply'
 import { useCallStore } from './call'
 import { updateTitle } from '@/utils'
+import { mergeChatMessages } from '@/utils/messageMerge'
 import { MessageCache } from '@/utils/messageCache'
 import { toast } from '@/components/ui/toast'
 import { Event } from '@/constants/events'
@@ -30,10 +31,9 @@ function pushCapped(list: any[], message: any) {
 /** 把一条收到的消息并入会话列表：带 clientId 的回执原地替换乐观消息，否则追加 */
 function upsertMessage(list: any[], data: any) {
     const { status: _drop, ...message } = data
-    message.id = message.id || message.clientId || `${message.from}-${message.timestamp}`
-    const idx = data.clientId ? list.findIndex(m => m.clientId === data.clientId) : -1
-    if (idx >= 0) list.splice(idx, 1, message)
-    else pushCapped(list, message)
+    const merged = mergeChatMessages(list, [message])
+    list.splice(0, list.length, ...merged)
+    if (list.length > MAX_IN_MEMORY) list.splice(0, list.length - MAX_IN_MEMORY)
     return list
 }
 

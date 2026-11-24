@@ -3,6 +3,7 @@ import serverApi from "@/api";
 import { User } from './user'
 import { Room, useRoomStore } from './room'
 import { useFriendStore } from './friend'
+import { createFetchGuard } from '../helpers/fetchGuard'
 
 
 /**
@@ -76,14 +77,15 @@ export const useApplyStore = defineStore('apply', {
                     this.applies = res.data || []
                 })
             }
-            const fetchId = ++this.sentFetchId
-            this.sentLoading = true
+            const guard = createFetchGuard({
+                getId: () => this.sentFetchId,
+                setId: id => { this.sentFetchId = id },
+                setLoading: value => { this.sentLoading = value }
+            })
+            const fetchId = guard.start()
             return serverApi.getApply().then((res: any) => {
                 this.applies = res.data || []
-            }).finally(() => {
-                // 仅最后一次主动拉取能复位，先返回的旧请求不打断新请求的 loading
-                if (fetchId === this.sentFetchId) this.sentLoading = false
-            })
+            }).finally(() => guard.finish(fetchId))
         },
         /** 拉取待我审批的全部申请（好友 + 入群），接口已统一；silent 含义同上 */
         getPendingApplies(silent = false) {
@@ -92,13 +94,15 @@ export const useApplyStore = defineStore('apply', {
                     this.pendingApplies = res.data || []
                 })
             }
-            const fetchId = ++this.pendingFetchId
-            this.pendingLoading = true
+            const guard = createFetchGuard({
+                getId: () => this.pendingFetchId,
+                setId: id => { this.pendingFetchId = id },
+                setLoading: value => { this.pendingLoading = value }
+            })
+            const fetchId = guard.start()
             return serverApi.GetApplyMine().then((res: any) => {
                 this.pendingApplies = res.data || []
-            }).finally(() => {
-                if (fetchId === this.pendingFetchId) this.pendingLoading = false
-            })
+            }).finally(() => guard.finish(fetchId))
         },
         /** 收到实时申请（friend:request / room:apply）：直接插到待处理列表顶部，不用重新请求 */
         addPending(apply: Apply) {

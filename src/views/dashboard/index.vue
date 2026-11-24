@@ -2,11 +2,7 @@
     <div class="dashboard">
         <header class="welcome">
             <div class="welcome-logo" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.9 9.9 0 0 1-4.2-.9L3 21l1.9-4.4A8.2 8.2 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 8.4Z" />
-                    <path d="M8.5 11.5h7M8.5 8.5h4" />
-                </svg>
+                <AppIcon name="chat" :size="22" />
             </div>
             <h1 class="welcome-title">欢迎使用 Discuss</h1>
             <p class="welcome-sub">选择好友或房间，开始一段对话</p>
@@ -18,16 +14,7 @@
                 <span v-if="alertStore.alerts.length" class="chip">{{ alertStore.alerts.length }}</span>
             </header>
 
-            <div v-if="alertStore.alerts.length === 0" class="empty">
-                <span class="empty-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-                        <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
-                    </svg>
-                </span>
-                暂无通知，一切都安静
-            </div>
+            <EmptyState v-if="alertStore.alerts.length === 0" icon="bell" text="暂无通知，一切都安静" />
 
             <div v-else class="notice-list">
                 <div v-for="(item, idx) in alertStore.alerts" :key="`${item.timestamp}-${item.senderName}-${item.message}`"
@@ -37,10 +24,7 @@
                     <span class="notice-time">{{ dayjs(item.timestamp).format('MM/DD HH:mm') }}</span>
                     <button type="button" class="icon-btn notice-del" title="删除这条通知"
                         @click="alertStore.removeAlert(idx)">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
-                            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M6 18 18 6M6 6l12 12" />
-                        </svg>
+                        <AppIcon name="close" :size="15" />
                     </button>
                 </div>
             </div>
@@ -50,6 +34,8 @@
 
 <script setup lang="ts">
 import { useAlertStore } from '@/store/modules/alert'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import dayjs from 'dayjs';
 
 const alertStore = useAlertStore()

@@ -41,6 +41,7 @@
     --success-fg: #0f9d63;
     --warning: #f59e0b;
     --danger: #e11d48;
+    --danger-fg: #ffffff;
     --info: #0ea5e9;
 
     /* 聊天气泡：发出方底色/文字色复用主色 --accent / --accent-fg */
@@ -151,6 +152,7 @@ html.dark {
 
     --success-fg: #34d399;
     --danger: #fb7185;
+    --danger-fg: #111111;
 
     --bubble-in-bg: rgba(255, 255, 255, 0.1);
 
@@ -667,6 +669,15 @@ body {
     flex-direction: column;
 }
 
+.side-head .ui-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.list-row .chip {
+    font-variant-numeric: tabular-nums;
+}
+
 /* ---------------- 聊天 ---------------- */
 
 .chat-shell {
@@ -793,12 +804,15 @@ body {
 
 /* 输入区 */
 .composer {
+    display: flex;
     padding: 0.7rem 0.9rem 0.9rem;
     border-top: 1px solid var(--border);
 }
 
 .composer-box {
     position: relative;
+    flex: 1;
+    min-width: 0;
     border: 1px solid transparent;
     border-radius: var(--radius-lg);
     background: var(--surface-2);
@@ -876,6 +890,123 @@ body {
     }
 }
 
+/* ---------------- 搜索页（好友搜索 / 房间搜索共用） ---------------- */
+
+.search-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.search-page .page-back {
+    align-self: flex-start;
+    margin: 0.55rem 0.75rem 0;
+}
+
+.search-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 2.2rem 1.25rem 1.5rem;
+}
+
+.search-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text);
+}
+
+.search-sub {
+    font-size: 0.75rem;
+    color: var(--text-2);
+    text-align: center;
+}
+
+.search-field {
+    width: min(440px, 100%);
+    margin-top: 0.9rem;
+    box-shadow: var(--shadow-soft);
+}
+
+.search-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(440px, 100%);
+    margin: 0 auto;
+    padding: 0 1.25rem 2rem;
+}
+
+.result-card {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+
+    &:hover {
+        border-color: var(--border-strong);
+        background: var(--surface-3);
+    }
+}
+
+.result-card--compact {
+    padding: 0.65rem 0.75rem;
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.result-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+}
+
+.result-main--tight {
+    gap: 0.12rem;
+}
+
+.result-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.result-name--with-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.result-desc {
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-2);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.result-meta {
+    margin-top: 0.15rem;
+    font-size: 0.72rem;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ---------------- 滚动条细化 ---------------- */
 
 * {
@@ -908,6 +1039,28 @@ body {
 
     .side-head {
         padding: 0 0.6rem;
+    }
+
+    /* 移动端列表与详情分两屏：由 has-detail 控制当前显示哪一屏 */
+    .side-shell {
+        position: relative;
+    }
+
+    .side {
+        width: 100% !important;
+        border-right: 0;
+    }
+
+    .side-body {
+        display: none;
+    }
+
+    .side-shell.has-detail .side {
+        display: none;
+    }
+
+    .side-shell.has-detail .side-body {
+        display: flex;
     }
 
     .side-list {

@@ -60,30 +60,49 @@
 
 ```
 Discuss/
+├── docs/                      # 协议文档
+│   └── realtime-contract.md   # 实时事件唯一事实来源
 ├── public/                    # 静态资源（原样拷入 dist）
 │   ├── favicon.svg           # 站点图标（现代浏览器优先）
 │   ├── favicon.ico           # 站点图标兜底（16/32/48）
 │   ├── apple-touch-icon.png  # iOS 主屏图标
 │   └── 404.html              # GitHub Pages 兜底页：旧 history 深链转 hash
 ├── src/
-│   ├── api/                  # API 接口模块
+│   ├── api/                  # API 接口模块（路径常量直接写在各自 index.ts）
+│   │   ├── index.ts          # 自动聚合所有接口模块
 │   │   ├── apply/            # 申请相关接口
 │   │   ├── friend/           # 好友相关接口
 │   │   ├── member/           # 成员相关接口
+│   │   ├── rtc/              # ICE 配置接口
 │   │   ├── room/             # 房间相关接口
 │   │   └── user/             # 用户相关接口
 │   ├── assets/               # 资源文件
+│   │   ├── font/             # 字体资源
 │   │   └── style/            # 全局样式
+│   │       ├── design.scss   # 设计变量与公共组件样式
 │   │       ├── index.scss    # 主样式文件
 │   │       └── taillwind.css # Tailwind CSS 入口
 │   ├── components/           # 公共组件
-│   │   └── index.ts          # 组件导出入口
+│   │   ├── index.ts          # 组件导出入口
+│   │   ├── ui/               # 基础 UI：AppIcon / UserAvatar / LoadingBlock / EmptyState 等
+│   │   │   ├── alert/        # 系统广播展示
+│   │   │   └── toast/        # 轻提示
+│   │   ├── ApplyCard.vue     # 申请卡片
+│   │   ├── CallDialog.vue    # 通话弹窗
+│   │   ├── ChatHeader.vue    # 聊天头部
+│   │   ├── Comment.vue       # 消息气泡
+│   │   ├── MessageComposer.vue # 消息输入框
+│   │   ├── SearchPage.vue    # 搜索页骨架
+│   │   └── SidePanel.vue     # 会话侧栏
+│   ├── constants/            # 常量定义
+│   │   └── events.ts         # 实时通信事件名（业务代码勿写字符串字面量）
 │   ├── directives/           # 自定义指令
 │   │   └── vEnter.ts         # 回车事件指令
+│   ├── hooks/                # 组合式函数（聊天会话、文件选择、自动滚动、主题等）
 │   ├── layout/               # 布局组件
 │   │   └── index.vue         # 主布局
 │   ├── plugin/               # 插件配置
-│   │   ├── axios.ts          # Axios 实例配置
+│   │   ├── axios.ts          # Axios 实例与统一拦截器
 │   │   ├── socket.ts         # Socket 适配层（Socket.IO / 原生 WebSocket 二选一）
 │   │   └── dayjs.ts          # Dayjs 插件配置
 │   ├── router/               # 路由配置
@@ -93,6 +112,8 @@ Discuss/
 │   │   └── index.ts          # 全局配置
 │   ├── store/                # 状态管理
 │   │   ├── index.ts          # Pinia 实例
+│   │   ├── helpers/          # store 内部公共逻辑
+│   │   │   └── fetchGuard.ts # 拉取竞态守卫
 │   │   └── modules/          # Pinia 模块
 │   │       ├── alert.ts      # 系统广播
 │   │       ├── apply.ts      # 申请状态
@@ -102,8 +123,11 @@ Discuss/
 │   │       ├── socket.ts     # Socket 状态
 │   │       └── user.ts       # 用户状态
 │   ├── utils/                # 工具函数
-│   │   └── messageCache.ts   # 聊天记录本地存储（唯一入口，按账号隔离）
-│   ├── utils/                # 工具函数
+│   │   ├── messageCache.ts   # 聊天记录本地存储（唯一入口，按账号隔离）
+│   │   ├── messageMerge.ts   # 消息去重与排序
+│   │   ├── format.ts         # 展示格式化
+│   │   ├── image.ts          # 图片处理
+│   │   ├── dailyCountdown.ts # 倒计时
 │   │   └── index.ts          # 通用工具
 │   ├── views/                # 页面视图
 │   │   ├── 404/              # 404 页面
@@ -137,7 +161,7 @@ Discuss/
 │       └── static.yml        # GitHub Pages 部署配置
 ├── .gitignore                # Git 忽略文件
 ├── .vscode/
-│   └── extensions.json       # VSCode 推荐扩展
+│   └── extensions.json       # VSCode 推荐扩展（Volar，禁用 Vetur）
 ├── dist/                     # 构建输出目录
 ├── index.html                # HTML 入口
 ├── package.json              # 项目依赖配置
@@ -171,7 +195,7 @@ npm install
 | `.env.stage` | stage | 预发环境（`build:stage`） | `server-nestjs` |
 | `.env.prod` | prod | 生产环境（`build` / `build:worker` / CI） | Cloudflare Worker |
 
-以 `.env` 为例，完整的 9 个字段如下：
+以 `.env` 为例，完整的 8 个字段如下：
 
 ```env
 # 构建信息（VERSION 与 package.json version 保持一致）
@@ -193,9 +217,6 @@ VITE_APP_WS_BASE_URL=http://192.168.58.190:3000
 # 路由基础路径
 VITE_APP_BASE_URL=/
 
-# 是否 mock
-VITE_APP_BUILD_MODE=false
-
 # 标题（会注入到 index.html 的 <title>）
 VITE_APP_TITLE=Discuss-dev
 ```
@@ -211,7 +232,6 @@ VITE_APP_TITLE=Discuss-dev
 | `VITE_APP_API_BASE_URL` | 接口/图片文件基址；开发环境兼作 Vite `/api` 代理的 target | `vite.config.ts`、`src/plugin/socket.ts`、`src/components/Comment.vue` |
 | `VITE_APP_WS_BASE_URL` | WebSocket 地址，仅在 `runtime=worker` 时生效；留空则复用 `VITE_APP_API_BASE_URL` | `src/plugin/socket.ts` |
 | `VITE_APP_BASE_URL` | 路由基础路径，同时作为 Vite 的 `base` | `src/router/index.ts`、`vite.config.ts` |
-| `VITE_APP_BUILD_MODE` | `true` 时启用 Mock 数据；`false` 走真实接口 | 各 `src/api/*/index.ts`、`src/plugin/axios.ts` |
 | `VITE_APP_TITLE` | 页面标题，通过 `vite-plugin-html` 注入到 `index.html` 的 `<title>` | `vite.config.ts`、`index.html` |
 
 四个环境之间，真正需要按环境区分的变量如下（其余字段四套保持一致）：
@@ -234,7 +254,7 @@ VITE_APP_TITLE=Discuss-dev
 npm run dev
 ```
 
-访问 http://localhost:8000
+访问 http://localhost:8090
 
 ### 生产构建
 
@@ -351,13 +371,14 @@ sys:<userId>:alerts      系统广播
 
 ### API 模块
 
-项目采用模块化的 API 设计，各模块职责清晰：
+项目采用模块化的 API 设计，各模块职责清晰。所有模块共用 `src/plugin/axios.ts` 导出的实例，请求路径常量直接写在各自 `index.ts` 中，统一走 `VITE_APP_BASE_API`，不存在接口切换分支：
 
-- **api/user** - 用户登录、登出、信息获取
-- **api/friend** - 好友添加、搜索、列表获取
-- **api/member** - 成员管理
-- **api/room** - 房间创建、搜索、加入
+- **api/user** - 登录、注册、用户信息、搜索、上传、资料更新、验证码
+- **api/friend** - 好友列表与删除
+- **api/member** - 房间成员列表与移出
+- **api/room** - 房间总览、创建、搜索、解散
 - **api/apply** - 申请处理（好友/房间）
+- **api/rtc** - ICE 配置（TURN 短期凭证）
 
 ### 状态管理
 
@@ -421,7 +442,7 @@ VITE_APP_WS_BASE_URL=https://discuss-api.ulnae.dpdns.org
 ### Vite 配置
 
 - 使用 **rolldown-vite** 作为构建工具，性能更优
-- 开发服务器端口：8000
+- 开发服务器端口：8090
 - 自动打开浏览器
 - 配置 `/api` 代理到后端服务
 - 路径别名 `@` 指向 `src` 目录
