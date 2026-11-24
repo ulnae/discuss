@@ -1,4 +1,3 @@
-import { nextTick } from 'vue';
 import { toast } from '@/components/ui/toast';
 /**
  * 文件大小格式化选项
@@ -38,33 +37,6 @@ function formatFileSize(bytes: number, options: FormatOptions = {}): string {
   return `${size}${space ? ' ' : ''}${sizes[i]}`;
 }
 
-
-/**
- * 滚动容器到底部（进入聊天页 / 新消息到达时调用）。
- * @param id 滚动容器 id
- * @param smooth 是否平滑滚动，默认 false —— 首次渲染必须瞬时到位，
- *   否则 smooth 动画未完成会停在半路，表现为最新消息只露出时间行、气泡被截在视口下方。
- */
-function scrollToBottom(id: string, smooth = false) {
-  nextTick(() => {
-    const el = document.getElementById(id)
-    if (!el) return
-    // 直接定位到容器最大滚动距离，浏览器会自动 clamp 到 scrollHeight - clientHeight。
-    // 不用 lastElementChild.scrollIntoView：它受容器 padding / 子元素 margin / block 对齐影响，
-    // 且图片消息异步撑高容器后目标位置偏小，导致"差一点到底"。
-    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
-  })
-}
-
-/**
- * 判断滚动容器是否已到底部（40px 容差，兼容亚像素与 padding）。
- * 用于新消息 / 图片加载后决定是否自动跟随：用户上翻看历史时不强行拽到底。
- */
-function isAtBottom(id: string, threshold = 40): boolean {
-  const el = document.getElementById(id)
-  if (!el) return true
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
-}
 
 /**
  * 将数据导出为 JSON 文件并下载
@@ -148,4 +120,4 @@ function isUrlEndWith(url: string, suffix: string | string[]) {
   return normalizedSuffixes.some(suf => lowerPathname.endsWith(suf));
 }
 
-export { formatFileSize, type FormatOptions, scrollToBottom, isAtBottom, downloadJSON, updateTitle, isUrlEndWith };
+export { formatFileSize, type FormatOptions, downloadJSON, updateTitle, isUrlEndWith };

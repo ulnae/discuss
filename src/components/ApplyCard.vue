@@ -27,13 +27,13 @@
         <span class="time-item">
           <AppIcon name="clock" :size="12" :stroke-width="1.8" />
           <span class="time-label">申请</span>
-          <time class="time-value" :title="fullTime(item.createdAt)">{{ shortTime(item.createdAt) }}</time>
+          <time class="time-value" :title="formatFullTime(item.createdAt)">{{ formatShortTime(item.createdAt) }}</time>
         </span>
         <span class="time-item" :class="{ 'is-pending': !item.handle_status }">
           <AppIcon name="clock" :size="12" :stroke-width="1.8" />
           <span class="time-label">处理</span>
-          <time v-if="item.handle_status" class="time-value" :title="fullTime(item.updatedAt)">
-            {{ shortTime(item.updatedAt) }}
+          <time v-if="item.handle_status" class="time-value" :title="formatFullTime(item.updatedAt)">
+            {{ formatShortTime(item.updatedAt) }}
           </time>
           <span v-else class="time-value time-wait">待处理</span>
         </span>
@@ -49,9 +49,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import dayjs from '@/plugin/dayjs'
 import AppIcon from '@/components/ui/AppIcon.vue'
-import { avatarInitial } from '@/utils/format'
+import { avatarInitial, formatShortTime, formatFullTime } from '@/utils/format'
 import type { Apply } from '@/store/modules/apply'
 
 const props = withDefaults(defineProps<{
@@ -70,8 +69,6 @@ const emit = defineEmits<{
 }>()
 
 const isRoom = computed(() => !!props.item.room_id)
-const shortTime = (ts?: string) => (ts ? dayjs(ts).format('MM/DD HH:mm') : '—')
-const fullTime = (ts?: string) => (ts ? dayjs(ts).format('YYYY/MM/DD HH:mm:ss') : '')
 </script>
 
 <style lang="scss" scoped>

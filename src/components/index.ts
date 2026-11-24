@@ -7,6 +7,7 @@ import UserAvatar from '@/components/ui/UserAvatar.vue'
 import LoadingBlock from '@/components/ui/LoadingBlock.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import FilterTabs from '@/components/ui/FilterTabs.vue'
+import DetailPanel from '@/components/DetailPanel.vue'
 
 export {
     Comment,
@@ -17,5 +18,6 @@ export {
     UserAvatar,
     LoadingBlock,
     EmptyState,
-    FilterTabs
+    FilterTabs,
+    DetailPanel
 }

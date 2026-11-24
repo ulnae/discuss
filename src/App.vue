@@ -2,6 +2,7 @@
 import { useUserStore } from '@/store/modules/user'
 import { CallDialog } from '@/components'
 import ToastHost from '@/components/ui/toast/ToastHost.vue'
+import ConfirmHost from '@/components/ui/confirm/ConfirmHost.vue'
 import { useTheme } from '@/hooks/theme'
 useTheme()
 
@@ -19,6 +20,8 @@ userStore.init()
   <CallDialog />
   <!-- 全局轻提示：右上角小窗，3 秒后自动消失 -->
   <ToastHost />
+  <!-- 全局确认弹窗：替代各页面的 window.confirm -->
+  <ConfirmHost />
 </template>
 
 <style scoped></style>

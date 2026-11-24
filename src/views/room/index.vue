@@ -9,26 +9,14 @@
       <div id="messageContainer" ref="containerRef" class="chat-body">
         <div class="msg-list">
           <!-- 房间信息 / 成员（overview）在途：展示 loading；本地已有消息缓存则不打扰 -->
-          <div v-if="roomStore.loading && !getHistory.length" class="list-loading">
-            <span class="loading-spinner"></span>
-            正在加载…
-          </div>
-          <div v-else-if="!getHistory.length" class="empty">
-            <span class="empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M20.25 8.5c.9.3 1.5 1.1 1.5 2.1v4.3c0 1.1-.8 2.1-2 2.2l-1 .1v3l-3-3c-1.4 0-2.7-.1-4-.2" />
-                <path d="M16.5 6.6c0-1.6-1.2-3-2.8-3.2A48 48 0 0 0 5 3.4C3.4 3.6 2.2 5 2.2 6.6v6.2c0 1.6 1.2 3 2.8 3.2L7 16.2V21l4.2-4.2" />
-              </svg>
-            </span>
-            群里还很安静，说点什么吧
-          </div>
+          <LoadingBlock v-if="roomStore.loading && !getHistory.length" text="正在加载…" />
+          <EmptyState v-else-if="!getHistory.length" icon="room" text="群里还很安静，说点什么吧" />
 
           <div v-for="message in visibleMessages" :key="message.id" class="msg"
             :class="{ 'is-me': message.from === userStore.userInfo.id }">
             <div class="msg-meta">
               <span>{{ message.from === userStore.userInfo.id ? userStore.userInfo.username : getUserInfo(message.from) }}</span>
-              <span>{{ dayjs(message.timestamp).fromNow() }}</span>
+              <span>{{ formatRelative(message.timestamp) }}</span>
               <span v-if="message.type">{{ formatFileSize(message.size || 0) }}</span>
             </div>
             <div class="bubble">
@@ -41,32 +29,18 @@
       <MessageComposer v-model.trim="story" @send="handleSend" @image="handleSendImage" @file="handleSendFile" />
     </div>
 
-    <div v-show="infoVisiable" class="members-mask" @click="infoVisiable = false"></div>
+    <DetailPanel :open="infoVisiable" title="群成员" :width="240" :loading="memberLoading"
+      loading-text="正在加载群成员…" @close="infoVisiable = false">
+      <template #title>
+        群成员
+        <span class="chip">{{ memberLoading ? '…' : getMember.length }}</span>
+      </template>
 
-    <aside v-show="infoVisiable" class="members">
-      <section class="members-block">
-        <header class="members-head">
-          <span>
-            群成员
-            <span class="chip">{{ memberLoading ? '…' : getMember.length }}</span>
-          </span>
-          <button type="button" class="icon-btn members-close" title="关闭" @click="infoVisiable = false">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
-              stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </header>
-        <div class="member-list">
-          <!-- 成员名单随房间信息一起加载：在途时用 loading 占位，避免先闪出 0 人空列表 -->
-          <div v-if="memberLoading" class="list-loading panel-loading">
-            <span class="loading-spinner"></span>
-            正在加载群成员…
-          </div>
-          <TransitionGroup v-else name="member" tag="div" class="member-rows" :key="String(route.params.id)">
+      <div class="member-list">
+        <TransitionGroup name="member" tag="div" class="member-rows" :key="String(route.params.id)">
           <div v-for="member in sortedMember" :key="member.user_id" class="member-row"
             :class="{ 'is-me': member.user_id === userStore.userInfo.id, 'is-online': getMemberOnline.has(member.user_id) }">
-            <span class="avatar">{{ (member.user_info.username || '?').charAt(0).toUpperCase() }}</span>
+            <UserAvatar :name="member.user_info.username" class="member-avatar" />
             <span class="row-main">
               <span class="row-name">{{ member.user_info.username }}</span>
             </span>
@@ -85,14 +59,15 @@
               </svg>
             </button>
           </div>
-          </TransitionGroup>
-        </div>
-      </section>
+        </TransitionGroup>
+      </div>
 
-      <button v-if="!memberLoading" type="button" class="btn btn-ghost btn-block btn-sm danger-btn leave-room-btn" @click="handleLeaveRoom">
-        {{ isOwner ? '解散房间' : '退出房间' }}
-      </button>
-    </aside>
+      <template #footer>
+        <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleLeaveRoom">
+          {{ isOwner ? '解散房间' : '退出房间' }}
+        </button>
+      </template>
+    </DetailPanel>
 
     <input class="hidden" id="chooseImage" type="file" accept="image/*">
     <input class="hidden" id="chooseFile" type="file" accept="*">
@@ -103,17 +78,25 @@
 import { useSocketStore } from "@/store/modules/socket";
 import { useUserStore } from "@/store/modules/user";
 import { useRoomStore } from "@/store/modules/room";
-import { computed, ref, watchEffect } from "vue";
+import { computed, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import serverApi from "@/api";
-import dayjs from "@/plugin/dayjs";
 import { formatFileSize } from "@/utils";
+import { formatRelative } from "@/utils/format";
+import { NAV, useGoBack } from "@/utils/nav";
 import { useChatSession } from "@/hooks/useChatSession";
-import { Comment } from '@/components'
+import {
+  Comment,
+  UserAvatar,
+  LoadingBlock,
+  EmptyState,
+  DetailPanel
+} from '@/components'
 import MessageComposer from "@/components/MessageComposer.vue";
 import ChatHeader from "@/components/ChatHeader.vue";
 import { toast } from '@/components/ui/toast'
+import { showConfirm } from '@/components/ui/confirm'
 
 const socketStore = useSocketStore();
 const userStore = useUserStore();
@@ -180,25 +163,26 @@ const getRoomInfo = computed(() => {
 // 房间列表已加载但找不到该房间（被踢 / 被解散）时回房间列表，而不是甩一个 404
 watchEffect(() => {
   if (!roomStore.rooms.length) return
-  if (!getRoomInfo.value.id) router.replace('/room/dashboard')
+  if (!getRoomInfo.value.id) router.replace(NAV.roomList)
 })
-
-const goBack = () => router.push('/room/dashboard')
 
 // 群主：可解散房间、移出成员；其他人只能自己退出
 const isOwner = computed(() => !!getRoomInfo.value.creator && getRoomInfo.value.creator === userStore.userInfo.id)
 
 async function handleLeaveRoom() {
-  const roomId = route.params.id as string
+  const roomId = currentId()
   const name = getRoomInfo.value.name || '房间'
 
   if (isOwner.value) {
-    if (!window.confirm(`解散后所有成员都会被移出，确定解散「${name}」吗？`)) return
+    if (!(await showConfirm(`解散后所有成员都会被移出，确定解散「${name}」吗？`, {
+      title: '解散房间',
+      danger: true
+    }))) return
     const res: any = await serverApi.DeleteRoom(roomId)
     if (res.code === 200) {
       roomStore.removeRoom(roomId)
       toast.success('房间已解散')
-      router.replace('/room/dashboard')
+      router.replace(NAV.roomList)
     }
     return
   }
@@ -206,104 +190,35 @@ async function handleLeaveRoom() {
   const self = getMember.value.find((item: any) => item.user_id === userStore.userInfo.id)
   if (!self) {
     toast.warning('你已不在该房间')
-    router.replace('/room/dashboard')
+    router.replace(NAV.roomList)
     return
   }
-  if (!window.confirm(`确定退出「${name}」吗？`)) return
+  if (!(await showConfirm(`确定退出「${name}」吗？`, { title: '退出房间', danger: true }))) return
 
   const res: any = await serverApi.RemoveMember(self.id)
   if (res.code === 200) {
     roomStore.removeRoom(roomId)
     // 提示交给服务端回推的 ROOM_LEFT（含房间名、多标签页同步），避免本地重复弹
-    router.replace('/room/dashboard')
+    router.replace(NAV.roomList)
   }
 }
 
-function handleRemoveMember(id: string) {
-  if (!window.confirm('确定把该成员移出房间吗？对方会立刻收到通知')) return
-  serverApi.RemoveMember(id).then((res: any) => {
-    if (res.code === 200) {
-      roomStore.getRoomMember(route.params.id as string);
-      toast.success('已移出成员')
-    }
-  });
+async function handleRemoveMember(id: string) {
+  if (!(await showConfirm('确定把该成员移出房间吗？对方会立刻收到通知', {
+    title: '移出成员',
+    danger: true
+  }))) return
+  const res: any = await serverApi.RemoveMember(id)
+  if (res.code === 200) {
+    roomStore.getRoomMember(currentId());
+    toast.success('已移出成员')
+  }
 }
+
+const goBack = useGoBack(NAV.roomList)
 </script>
 
 <style lang="scss" scoped>
-/* 顶部群标题区与左侧搜索区（.side-head）整体同高：
-   padding 节奏一致（0.7rem / 0.6rem），标题 + 群描述压进一行内容高度内 */
-.chat-head {
-    padding-top: 0.7rem;
-    padding-bottom: 0.6rem;
-}
-
-.chat-title {
-    line-height: 1.15;
-}
-
-/* 群描述作为标题副行，单行展示，超长省略 */
-.chat-sub {
-    display: block;
-    line-height: 1.2;
-    /* loading 时副行为空字符串，锁住一行高度，避免加载完成瞬间标题整体跳动 */
-    min-height: 1.2em;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.members {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    gap: 1rem;
-    width: 240px;
-    padding: 0.9rem;
-    border-left: 1px solid var(--border);
-    overflow-y: auto;
-}
-
-.members-block {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-/* 退出 / 解散按钮贴在侧边栏底部，样式同好友资料里的删除好友 */
-.leave-room-btn {
-    margin-top: auto;
-}
-
-.members-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.4rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-2);
-}
-
-/* 抽屉关闭按钮：窄屏抽屉形态下必须可见，否则关不掉 */
-.members-close {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-
-    svg {
-        width: 14px;
-        height: 14px;
-    }
-}
-
-/* 群成员面板内的 loading 占位：比通用列表更紧凑 */
-.panel-loading {
-    padding: 2rem 0.5rem;
-}
-
 .member-list {
     display: flex;
     flex-direction: column;
@@ -317,7 +232,6 @@ function handleRemoveMember(id: string) {
 
 /* 尊重系统「减少动态效果」偏好 */
 @media (prefers-reduced-motion: reduce) {
-
     .member-row,
     .member-move {
         transition: none;
@@ -347,7 +261,7 @@ function handleRemoveMember(id: string) {
     }
 }
 
-.member-row .avatar {
+.member-avatar {
     width: 26px;
     height: 26px;
     border-radius: 8px;
@@ -392,39 +306,8 @@ function handleRemoveMember(id: string) {
     }
 }
 
-/* 移动端：群成员面板改成右侧抽屉 */
-.members-mask {
-    display: none;
-}
-
+/* 触摸设备没有 hover，踢人按钮常显 */
 @media (max-width: 900px) {
-    .chat-shell {
-        position: relative;
-    }
-
-    .members {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 30;
-        width: min(86%, 320px);
-        border-left: 1px solid var(--border);
-        background: var(--surface-solid);
-        box-shadow: var(--drawer-shadow);
-    }
-
-    .members-mask {
-        /* 基础样式是 display:none，这里必须恢复显示，否则遮罩永远不出现、抽屉关不掉 */
-        display: block;
-        position: absolute;
-        inset: 0;
-        z-index: 25;
-        background: var(--mask-bg);
-        backdrop-filter: blur(1px);
-    }
-
-    /* 触摸设备没有 hover，踢人按钮常显 */
     .kick {
         opacity: 0.7;
     }

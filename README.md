@@ -86,11 +86,13 @@ Discuss/
 │   │   ├── index.ts          # 组件导出入口
 │   │   ├── ui/               # 基础 UI：AppIcon / UserAvatar / LoadingBlock / EmptyState 等
 │   │   │   ├── alert/        # 系统广播展示
+│   │   │   ├── confirm/      # 全局确认弹窗（含 ConfirmHost）
 │   │   │   └── toast/        # 轻提示
 │   │   ├── ApplyCard.vue     # 申请卡片
 │   │   ├── CallDialog.vue    # 通话弹窗
 │   │   ├── ChatHeader.vue    # 聊天头部
 │   │   ├── Comment.vue       # 消息气泡
+│   │   ├── DetailPanel.vue   # 好友资料 / 群成员共用右侧面板
 │   │   ├── MessageComposer.vue # 消息输入框
 │   │   ├── SearchPage.vue    # 搜索页骨架
 │   │   └── SidePanel.vue     # 会话侧栏
@@ -117,6 +119,7 @@ Discuss/
 │   │   └── modules/          # Pinia 模块
 │   │       ├── alert.ts      # 系统广播
 │   │       ├── apply.ts      # 申请状态
+│   │       ├── call.ts       # 语音通话状态与信令
 │   │       ├── friend.ts     # 好友状态
 │   │       ├── menu.ts       # 菜单状态
 │   │       ├── room.ts       # 房间状态
@@ -125,7 +128,8 @@ Discuss/
 │   ├── utils/                # 工具函数
 │   │   ├── messageCache.ts   # 聊天记录本地存储（唯一入口，按账号隔离）
 │   │   ├── messageMerge.ts   # 消息去重与排序
-│   │   ├── format.ts         # 展示格式化
+│   │   ├── format.ts         # 头像首字、时间等展示格式化
+│   │   ├── nav.ts            # 返回目标与返回处理函数
 │   │   ├── image.ts          # 图片处理
 │   │   ├── dailyCountdown.ts # 倒计时
 │   │   └── index.ts          # 通用工具

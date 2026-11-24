@@ -23,8 +23,8 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import { useRouter } from "vue-router";
 import ServerApi from "@/api";
+import { NAV, useGoBack } from "@/utils/nav";
 import type { User } from "@/store/modules/user";
 import { useFriendStore } from "@/store/modules/friend";
 import { useUserStore } from "@/store/modules/user";
@@ -32,10 +32,8 @@ import { toast } from "@/components/ui/toast";
 import SearchPage from "@/components/SearchPage.vue";
 import UserAvatar from "@/components/ui/UserAvatar.vue";
 
-const router = useRouter()
-
 /** 移动端搜索页是独立一屏，提供返回列表的入口 */
-const goBack = () => router.push('/friend/dashboard')
+const goBack = useGoBack(NAV.friendList)
 
 
 const username = ref('')

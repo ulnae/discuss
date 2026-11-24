@@ -21,7 +21,7 @@
                     class="notice-row">
                     <span class="notice-sender">{{ item.senderName }}</span>
                     <span class="notice-text">{{ item.message }}</span>
-                    <span class="notice-time">{{ dayjs(item.timestamp).format('MM/DD HH:mm') }}</span>
+                    <span class="notice-time">{{ formatShortTime(item.timestamp) }}</span>
                     <button type="button" class="icon-btn notice-del" title="删除这条通知"
                         @click="alertStore.removeAlert(idx)">
                         <AppIcon name="close" :size="15" />
@@ -36,7 +36,7 @@
 import { useAlertStore } from '@/store/modules/alert'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-import dayjs from 'dayjs';
+import { formatShortTime } from '@/utils/format'
 
 const alertStore = useAlertStore()
 </script>

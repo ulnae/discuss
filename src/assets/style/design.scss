@@ -687,6 +687,13 @@ body {
     min-height: 0;
 }
 
+/* 右侧详情面板在窄屏切成抽屉，定位基准是聊天区本身 */
+@media (max-width: 900px) {
+    .chat-shell {
+        position: relative;
+    }
+}
+
 .chat-main {
     flex: 1;
     min-width: 0;
@@ -701,7 +708,8 @@ body {
     /* 与 .side-head 共用固定高度，两侧标题栏 / 搜索栏底边严格齐平 */
     height: var(--head-h);
     box-sizing: border-box;
-    padding: 0 0.9rem;
+    /* 与 .side-head 的 padding 节奏一致：标题 + 副行压进一行内容高度 */
+    padding: 0.7rem 0.9rem 0.6rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -717,17 +725,22 @@ body {
     font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.01em;
+    line-height: 1.15;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .chat-sub {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
+    /* 标题副行（邮箱 / 群描述 / 在线状态）恒占一行：loading 时为空也不跳动 */
+    display: block;
+    line-height: 1.2;
+    min-height: 1.2em;
     font-size: 0.7rem;
     color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .chat-head-actions {
@@ -1072,7 +1085,7 @@ body {
     }
 
     .chat-head {
-        padding: 0 0.6rem;
+        padding: 0.7rem 0.6rem 0.6rem;
     }
 
     .chat-body {

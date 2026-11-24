@@ -39,17 +39,16 @@
 
 <script lang="ts" setup>
 import { reactive } from "vue";
-import { useRouter } from "vue-router";
 import ServerApi from "@/api";
 import { useRoomStore } from "@/store/modules/room";
+import { NAV, useGoBack } from "@/utils/nav";
 import { toast } from "@/components/ui/toast";
 import AppIcon from "@/components/ui/AppIcon.vue";
 import BackButton from "@/components/ui/BackButton.vue";
-const router = useRouter()
 const roomStore = useRoomStore()
 
 /** 移动端创建页是独立一屏，提供返回列表的入口 */
-const goBack = () => router.push('/room/dashboard')
+const goBack = useGoBack(NAV.roomList)
 const room = reactive({
     name: '',
     description: ''

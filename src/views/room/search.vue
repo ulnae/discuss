@@ -25,18 +25,16 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import { useRouter } from "vue-router";
 import { useRoomStore } from "@/store/modules/room";
+import { NAV, useGoBack } from "@/utils/nav";
 import ServerApi from "@/api";
 import type { Room } from "@/store/modules/room";
 import { toast } from "@/components/ui/toast";
 import SearchPage from "@/components/SearchPage.vue";
 import UserAvatar from "@/components/ui/UserAvatar.vue";
 
-const router = useRouter()
-
 /** 移动端搜索页是独立一屏，提供返回列表的入口 */
-const goBack = () => router.push('/room/dashboard')
+const goBack = useGoBack(NAV.roomList)
 const roomName = ref("");
 
 const result = ref<Room[]>([]);

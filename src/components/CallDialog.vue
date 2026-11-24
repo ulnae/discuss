@@ -15,9 +15,8 @@
       <!-- 头像与振铃动画 -->
       <div class="call-avatar-wrap">
         <span v-if="ringing" class="call-pulse" aria-hidden="true"></span>
-        <div class="call-avatar" :class="{ 'is-active': callStore.status === 'active' }">
-          {{ avatarText }}
-        </div>
+        <UserAvatar :name="callStore.peerName" class="call-avatar"
+          :class="{ 'is-active': callStore.status === 'active' }" />
       </div>
 
       <!-- 对端信息 -->
@@ -80,6 +79,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useCallStore } from '@/store/modules/call'
+import UserAvatar from '@/components/ui/UserAvatar.vue'
 
 const callStore = useCallStore()
 const audioRef = ref<HTMLAudioElement | null>(null)
@@ -88,8 +88,6 @@ const showCall = computed(() =>
   callStore.status === 'calling' || callStore.status === 'incoming' || callStore.status === 'active',
 )
 const ringing = computed(() => callStore.status === 'calling' || callStore.status === 'incoming')
-const avatarText = computed(() => callStore.peerName.charAt(0).toUpperCase() || '?')
-
 const statusText = computed(() => {
   switch (callStore.status) {
     case 'incoming':
