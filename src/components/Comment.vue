@@ -20,7 +20,7 @@
             <span>{{ message.originalname || '下载文件' }}</span>
         </a>
     </template>
-    <span v-else class="cm-text">{{ message.content }}</span>
+    <div v-else class="cm-md" v-html="renderedHtml"></div>
     <!-- 发送状态：绝对定位成气泡角标，脱离文档流 —— 状态切换不再改变消息高度 -->
     <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" title="发送中…">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
@@ -39,14 +39,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { isUrlEndWith } from "@/utils/index";
+import { renderMarkdown } from "@/utils/markdown";
 
-defineProps({
+const props = defineProps({
     message: {
         type: Object,
         required: true
     }
 });
+
+const renderedHtml = computed(() => renderMarkdown(String(props.message.content ?? '')));
 
 defineEmits(['resend']);
 
@@ -100,10 +104,6 @@ const handlePreviewImage = (url: string) => {
         height: 15px;
         opacity: 0.75;
     }
-}
-
-.cm-text {
-    white-space: pre-wrap;
 }
 
 /* 发送状态做成气泡右下角的圆形角标：absolute 脱离文档流，

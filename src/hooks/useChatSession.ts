@@ -51,13 +51,21 @@ export function useChatSession(options: UseChatSessionOptions) {
 
   const handleResend = (message: ChatMessage) => options.resend(message)
 
+  /** 把上传结果以 Markdown 片段插入输入框正文（不再"上传即发送"，可与其他内容混排） */
+  const insertIntoStory = (snippet: string) => {
+    story.value = story.value ? `${story.value}\n${snippet}` : snippet
+  }
+
+  /** Windows 下 multer 返回的 path 含反斜杠（public\1001\x.png），统一归一为正斜杠 */
+  const normalizePath = (raw: unknown) => String(raw ?? '').replace(/\\/g, '/')
+
   const uploadImage = async (file: Blob) => {
     const blob = await compressImage(file)
     const formData = new FormData()
     formData.append('file', blob, imageFilename(blob))
     serverApi.UploadUser(formData).then((res: any) => {
       if (res.code === 200) {
-        options.send(`/${res.data.path}`, { type: 'image', size: res.data.size })
+        insertIntoStory(`![](/${normalizePath(res.data.path)})`)
       }
     }).catch(() => { /* 失败提示由 axios 拦截器统一弹出 */ })
   }
@@ -67,11 +75,8 @@ export function useChatSession(options: UseChatSessionOptions) {
     formData.append('file', file)
     serverApi.UploadUser(formData).then((res: any) => {
       if (res.code === 200) {
-        options.send(`/${res.data.path}`, {
-          type: 'file',
-          size: res.data.size,
-          originalname: res.data.originalname
-        })
+        const name = res.data.originalname || '文件'
+        insertIntoStory(`[${name}](/${normalizePath(res.data.path)})`)
       }
     }).catch(() => { /* 失败提示由 axios 拦截器统一弹出 */ })
   }

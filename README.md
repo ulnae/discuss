@@ -22,6 +22,12 @@
 - 房间成员在线状态显示
 - 消息历史记录本地持久化
 
+### 消息与富文本
+- 输入框支持 Markdown：工具栏（粗体 / 斜体 / 行内代码 / 代码块 / 链接 / 引用）+ 编辑与预览切换
+- 历史消息按 Markdown 渲染（标题、列表、引用、代码块、表格、链接均有样式，明暗气泡各自适配）
+- 图片压缩后上传、文件上传、粘贴上传：上传结果以 Markdown 片段插入正文，可与文字图文混排
+- 消息正文渲染统一经 DOMPurify 消毒，杜绝 XSS
+
 ### 申请管理
 - 好友申请处理（接受/拒绝）
 - 房间邀请管理
@@ -55,6 +61,8 @@
 - **Lodash-es 4.17.21** - JavaScript 实用工具库，ES Module 版本
 - **js-cookie 3.0.5** - Cookie 操作库
 - **NProgress 0.2.0** - 页面加载进度条
+- **marked 18.3.0** - Markdown 解析（消息正文与输入框预览）
+- **DOMPurify** - 渲染前 HTML 消毒，防止消息注入 XSS
 
 ## 📁 项目结构
 
@@ -93,7 +101,7 @@ Discuss/
 │   │   ├── ChatHeader.vue    # 聊天头部
 │   │   ├── Comment.vue       # 消息气泡
 │   │   ├── DetailPanel.vue   # 好友资料 / 群成员共用右侧面板
-│   │   ├── MessageComposer.vue # 消息输入框
+│   │   ├── MessageComposer.vue # 消息输入区（Markdown 工具栏 + 预览）
 │   │   ├── SearchPage.vue    # 搜索页骨架
 │   │   └── SidePanel.vue     # 会话侧栏
 │   ├── constants/            # 常量定义
@@ -130,6 +138,7 @@ Discuss/
 │   │   ├── messageMerge.ts   # 消息去重与排序
 │   │   ├── format.ts         # 头像首字、时间等展示格式化
 │   │   ├── nav.ts            # 返回目标与返回处理函数
+│   │   ├── markdown.ts       # Markdown 渲染唯一入口（解析 + 消毒 + LRU 缓存）
 │   │   ├── image.ts          # 图片处理
 │   │   ├── dailyCountdown.ts # 倒计时
 │   │   └── index.ts          # 通用工具
@@ -307,6 +316,16 @@ npm run preview
 
 完整的事件名、payload 与命名约定见 **[docs/realtime-contract.md](docs/realtime-contract.md)**（唯一事实来源）。
 事件名集中定义在 `src/constants/events.ts`，不要再在业务代码里写字符串字面量。
+
+### 消息 Markdown 与附件
+
+消息 `content` 始终是不透明字符串，服务端只做中继（消息历史存本地 IndexedDB），因此 **Markdown 只涉及前端**：
+
+- `src/utils/markdown.ts` 是唯一渲染入口：`marked`（`gfm + breaks`）解析 → `DOMPurify` 消毒 → 按原文 LRU 缓存（300 条），气泡与输入框预览共用。
+- 消毒钩子统一处理附件路径：正文里的 `/upload/...` 相对路径补全为 `VITE_APP_API_BASE_URL` 前缀，图片懒加载，链接强制新窗口 + `noopener`。
+- 历史消息同样按 Markdown 渲染（旧纯文本里的 `#`、`*`、`1.` 会被识别为格式，这是渲染语义的一部分）。
+- 附件不再"上传即发送"：`useChatSession` 的 `uploadImage / uploadFile` 在上传成功后往正文插入 `![](/path)` 或 `[文件名](/path)`，与文字混排后由用户统一点击发送；旧的 `type: 'image' | 'file'` 独立消息仍按原分支渲染（向后兼容）。
+- 样式统一在 `design.scss` 的 `.cm-md` 作用域，深色（自己发出的）气泡有单独覆盖保证代码与列表可读。
 
 ### 本地存储策略
 
