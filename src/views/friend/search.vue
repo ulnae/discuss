@@ -29,8 +29,10 @@ import type { User } from "@/store/modules/user";
 import { useFriendStore } from "@/store/modules/friend";
 import { useUserStore } from "@/store/modules/user";
 import { toast } from "@/components/ui/toast";
-import SearchPage from "@/components/SearchPage.vue";
-import UserAvatar from "@/components/ui/UserAvatar.vue";
+import { SearchPage } from '@/components'
+
+import { UserAvatar } from '@/components/ui'
+
 
 /** 移动端搜索页是独立一屏，提供返回列表的入口 */
 const goBack = useGoBack(NAV.friendList)

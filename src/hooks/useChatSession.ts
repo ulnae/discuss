@@ -2,11 +2,11 @@ import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import type { ChatMessage, MentionRef } from '@/constants/events'
 import { useAutoScroll } from '@/hooks/useAutoScroll'
-import { usePaste } from '@/hooks/paste'
+import { usePaste } from '@/hooks/usePaste'
 import { useFilePicker } from '@/hooks/useFilePicker'
 import serverApi from '@/api'
 import { compressImage, imageFilename } from '@/utils/image'
-import { useMdPreference } from '@/hooks/mdPreference'
+import { useMdPreference } from '@/hooks/useMdPreference'
 
 export interface ChatMessageMeta {
   type?: string

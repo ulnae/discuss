@@ -26,9 +26,9 @@
 </template>
 
 <script setup lang="ts">
-import AppIcon from '@/components/ui/AppIcon.vue'
-import BackButton from '@/components/ui/BackButton.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
+import { AppIcon, BackButton, EmptyState } from '@/components/ui'
+
+
 
 type ResultIcon = 'search' | 'users' | 'room' | 'house' | 'chat' | 'bell' | 'list' | 'plus' | 'group'
 

@@ -30,8 +30,10 @@ import { NAV, useGoBack } from "@/utils/nav";
 import ServerApi from "@/api";
 import type { Room } from "@/store/modules/room";
 import { toast } from "@/components/ui/toast";
-import SearchPage from "@/components/SearchPage.vue";
-import UserAvatar from "@/components/ui/UserAvatar.vue";
+import { SearchPage } from '@/components'
+
+import { UserAvatar } from '@/components/ui'
+
 
 /** 移动端搜索页是独立一屏，提供返回列表的入口 */
 const goBack = useGoBack(NAV.roomList)

@@ -63,11 +63,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
-import AppIcon from '@/components/ui/AppIcon.vue'
-import { useResizable } from '@/hooks/resizable'
-import { useMdPreference } from '@/hooks/mdPreference'
+import { AppIcon, UserAvatar } from '@/components/ui'
+
+import { useResizable } from '@/hooks/useResizable'
+import { useMdPreference } from '@/hooks/useMdPreference'
 import { renderChatContent } from '@/utils/markdown'
-import UserAvatar from '@/components/ui/UserAvatar.vue'
+
 import { useMention, type MentionMember } from '@/hooks/useMention'
 import type { MentionRef } from '@/constants/events'
 import { useUserStore } from '@/store/modules/user'

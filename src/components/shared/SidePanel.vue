@@ -31,10 +31,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import AppIcon from '@/components/ui/AppIcon.vue'
-import LoadingBlock from '@/components/ui/LoadingBlock.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
-import { useResizable } from '@/hooks/resizable'
+import { AppIcon, LoadingBlock, EmptyState } from '@/components/ui'
+
+
+
+import { useResizable } from '@/hooks/useResizable'
 
 type PanelIcon = 'search' | 'users' | 'room' | 'house' | 'chat' | 'bell' | 'list' | 'plus' | 'group'
 

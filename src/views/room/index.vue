@@ -20,7 +20,7 @@
               <span v-if="message.type">{{ formatFileSize(message.size || 0) }}</span>
             </div>
             <div class="bubble">
-              <Comment :message="message" @resend="handleResend(message)" />
+              <MessageBubble :message="message" @resend="handleResend(message)" />
             </div>
           </div>
         </div>
@@ -87,15 +87,7 @@ import { formatFileSize } from "@/utils";
 import { formatRelative } from "@/utils/format";
 import { NAV, useGoBack } from "@/utils/nav";
 import { useChatSession } from "@/hooks/useChatSession";
-import {
-  Comment,
-  UserAvatar,
-  LoadingBlock,
-  EmptyState,
-  DetailPanel
-} from '@/components'
-import MessageComposer from "@/components/MessageComposer.vue";
-import ChatHeader from "@/components/ChatHeader.vue";
+import { MessageBubble, UserAvatar, LoadingBlock, EmptyState, DetailPanel, MessageComposer, ChatHeader } from '@/components'
 import { toast } from '@/components/ui/toast'
 import { showConfirm } from '@/components/ui/confirm'
 

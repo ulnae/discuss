@@ -43,8 +43,9 @@ import ServerApi from "@/api";
 import { useRoomStore } from "@/store/modules/room";
 import { NAV, useGoBack } from "@/utils/nav";
 import { toast } from "@/components/ui/toast";
-import AppIcon from "@/components/ui/AppIcon.vue";
-import BackButton from "@/components/ui/BackButton.vue";
+import { AppIcon, BackButton } from '@/components/ui'
+
+
 const roomStore = useRoomStore()
 
 /** 移动端创建页是独立一屏，提供返回列表的入口 */

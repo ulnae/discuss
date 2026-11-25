@@ -15,8 +15,8 @@
 </template>
 
 <script setup lang="ts">
-import AppIcon from '@/components/ui/AppIcon.vue'
-import BackButton from '@/components/ui/BackButton.vue'
+import { AppIcon, BackButton } from '@/components/ui'
+
 
 withDefaults(defineProps<{
   title: string

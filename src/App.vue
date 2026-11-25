@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useUserStore } from '@/store/modules/user'
 import { CallDialog } from '@/components'
-import ToastHost from '@/components/ui/toast/ToastHost.vue'
-import ConfirmHost from '@/components/ui/confirm/ConfirmHost.vue'
-import { useTheme } from '@/hooks/theme'
-import { useMdPreference } from '@/hooks/mdPreference'
+import { ToastHost, ConfirmHost } from '@/components/ui'
+
+
+import { useTheme } from '@/hooks/useTheme'
+import { useMdPreference } from '@/hooks/useMdPreference'
 useTheme()
 // 启动即注入消息渲染主题样式（气泡渲染依赖，避免首帧无主题样式）
 useMdPreference()

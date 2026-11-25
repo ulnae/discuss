@@ -26,9 +26,11 @@ import { useFriendStore } from "@/store/modules/friend";
 import router from "@/router";
 import { useRoute } from "vue-router";
 import { ref, computed, watchEffect } from "vue";
-import AppIcon from "@/components/ui/AppIcon.vue";
-import UserAvatar from "@/components/ui/UserAvatar.vue";
-import SidePanel from "@/components/SidePanel.vue";
+import { AppIcon, UserAvatar } from '@/components/ui'
+
+
+import { SidePanel } from '@/components'
+
 
 const friendStore = useFriendStore();
 const username = ref('')

@@ -35,9 +35,11 @@ import { useSocketStore } from "@/store/modules/socket";
 import router from "@/router";
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
-import AppIcon from "@/components/ui/AppIcon.vue";
-import UserAvatar from "@/components/ui/UserAvatar.vue";
-import SidePanel from "@/components/SidePanel.vue";
+import { AppIcon, UserAvatar } from '@/components/ui'
+
+
+import { SidePanel } from '@/components'
+
 
 const roomStore = useRoomStore();
 const socketStore = useSocketStore();

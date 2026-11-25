@@ -818,7 +818,7 @@ body {
 /* 消息 Markdown 正文：视觉完全由渲染主题接管（mdPreference.ts 运行时注入
    .md-themed 作用域的主题 CSS，掘金 / GitHub 等），这里只保留排版基底，
    不再使用任何项目设计变量 —— 消息内容的格式与项目主题/设计风格解耦。
-   主题 CSS 以 .markdown-body 为容器，Comment.vue 的正文容器同时挂
+   主题 CSS 以 .markdown-body 为容器，MessageBubble.vue 的正文容器同时挂
    cm-md / markdown-body / md-themed 三个类。 */
 .cm-md {
     word-break: break-word;

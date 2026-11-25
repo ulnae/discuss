@@ -24,8 +24,8 @@
 </template>
 
 <script setup lang="ts">
-import AppIcon from '@/components/ui/AppIcon.vue'
-import LoadingBlock from '@/components/ui/LoadingBlock.vue'
+import { AppIcon, LoadingBlock } from '@/components/ui'
+
 
 withDefaults(defineProps<{
   open: boolean

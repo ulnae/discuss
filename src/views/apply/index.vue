@@ -69,10 +69,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useApplyStore, type Apply } from "@/store/modules/apply";
-import ApplyCard from "@/components/ApplyCard.vue";
-import FilterTabs from "@/components/ui/FilterTabs.vue";
-import LoadingBlock from "@/components/ui/LoadingBlock.vue";
-import EmptyState from "@/components/ui/EmptyState.vue";
+import { ApplyCard } from '@/components'
+
+import { FilterTabs, LoadingBlock, EmptyState } from '@/components/ui'
+
+
+
 
 const applyStore = useApplyStore();
 // 两栏数据已纳入 userStore.getInfo() 全局启动链路（刷新 / 登录都会拉取），

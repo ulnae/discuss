@@ -34,8 +34,9 @@
 
 <script setup lang="ts">
 import { useAlertStore } from '@/store/modules/alert'
-import AppIcon from '@/components/ui/AppIcon.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
+import { AppIcon, EmptyState } from '@/components/ui'
+
+
 import { formatShortTime } from '@/utils/format'
 
 const alertStore = useAlertStore()

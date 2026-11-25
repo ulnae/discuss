@@ -1,23 +1,5 @@
-import Comment from '@/components/Comment.vue'
-import CallDialog from '@/components/CallDialog.vue'
-import ApplyCard from '@/components/ApplyCard.vue'
-import AppIcon from '@/components/ui/AppIcon.vue'
-import BackButton from '@/components/ui/BackButton.vue'
-import UserAvatar from '@/components/ui/UserAvatar.vue'
-import LoadingBlock from '@/components/ui/LoadingBlock.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
-import FilterTabs from '@/components/ui/FilterTabs.vue'
-import DetailPanel from '@/components/DetailPanel.vue'
-
-export {
-    Comment,
-    CallDialog,
-    ApplyCard,
-    AppIcon,
-    BackButton,
-    UserAvatar,
-    LoadingBlock,
-    EmptyState,
-    FilterTabs,
-    DetailPanel
-}
+// 组件统一出口：业务组件在 shared/，基础组件在 ui/。
+// view 层一律从 '@/components' 导入；组件内部引用基础件走 '@/components/ui' 避免循环。
+// toast / confirm 是命令式 API（非组件），继续从 '@/components/ui/toast'、'@/components/ui/confirm' 导入。
+export * from './ui'
+export * from './shared'

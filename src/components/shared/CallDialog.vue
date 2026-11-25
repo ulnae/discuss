@@ -79,7 +79,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useCallStore } from '@/store/modules/call'
-import UserAvatar from '@/components/ui/UserAvatar.vue'
+import { UserAvatar } from '@/components/ui'
 
 const callStore = useCallStore()
 const audioRef = ref<HTMLAudioElement | null>(null)
