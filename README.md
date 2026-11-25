@@ -23,8 +23,10 @@
 - 消息历史记录本地持久化
 
 ### 消息与富文本
-- 历史消息按 Markdown 渲染（标题、列表、引用、代码块、表格、链接均有样式，明暗气泡各自适配）——输入区无任何 UI，直接手写 Markdown 语法即可，属隐藏彩蛋
-- 图片压缩后上传、文件上传、粘贴上传：上传成功即直接发送（`type: 'image' | 'file'` 独立消息）
+- 历史消息按 Markdown 渲染（标题、列表、引用、代码块、表格、链接均有样式）——不开启编辑模式时也可手写 Markdown 语法，属隐藏彩蛋
+- 设置页可开启「Markdown 编辑模式」（默认关闭）：开启后输入区显示格式工具栏与预览，图片/文件上传以 Markdown 片段插入正文混排；关闭时输入区保持纯净，上传成功即直接发送（`type: 'image' | 'file'` 独立消息）
+- 设置页可切换消息渲染主题（下拉框，内置 30 种 mdnice 主题，默认 GitHub），与编辑模式开关相互独立，切换即时生效并自动适配日间/夜间
+- 图片压缩后上传、文件上传、粘贴上传
 - 消息正文渲染统一经 DOMPurify 消毒，杜绝 XSS
 
 ### 申请管理
@@ -62,6 +64,7 @@
 - **NProgress 0.2.0** - 页面加载进度条
 - **marked 18.3.0** - Markdown 解析（消息气泡正文渲染）
 - **DOMPurify** - 渲染前 HTML 消毒，防止消息注入 XSS
+- **juejin-markdown-themes** - 消息渲染主题 CSS 来源（已拷贝到 `src/assets/md-themes/`，不随构建引入运行时依赖）
 
 ## 📁 项目结构
 
@@ -85,6 +88,7 @@ Discuss/
 │   │   └── user/             # 用户相关接口
 │   ├── assets/               # 资源文件
 │   │   ├── font/             # 字体资源
+│   │   ├── md-themes/        # 消息渲染主题 CSS（30 种，默认主题静态内置，其余按需加载）
 │   │   └── style/            # 全局样式
 │   │       ├── design.scss   # 设计变量与公共组件样式
 │   │       ├── index.scss    # 主样式文件
@@ -108,6 +112,7 @@ Discuss/
 │   ├── directives/           # 自定义指令
 │   │   └── vEnter.ts         # 回车事件指令
 │   ├── hooks/                # 组合式函数（聊天会话、文件选择、自动滚动、主题等）
+│   │   ├── mdPreference.ts   # Markdown 偏好：编辑模式开关 + 渲染主题（持久化 / 动态注入）
 │   ├── layout/               # 布局组件
 │   │   └── index.vue         # 主布局
 │   ├── plugin/               # 插件配置
@@ -318,13 +323,21 @@ npm run preview
 
 ### 消息 Markdown 与附件
 
-消息 `content` 始终是不透明字符串，服务端只做中继（消息历史存本地 IndexedDB），因此 **Markdown 只涉及前端**：
+消息 `content` 始终是不透明字符串，服务端只做中继（消息历史存本地 IndexedDB），因此 **Markdown 只涉及前端**。
+设置页提供两项独立配置（`src/hooks/mdPreference.ts`，localStorage 按用户 ID 隔离持久化）：
 
-- `src/utils/markdown.ts` 是唯一渲染入口：`marked`（`gfm + breaks`）解析 → `DOMPurify` 消毒 → 按原文 LRU 缓存（300 条），供气泡正文渲染。输入区无 Markdown UI，用户手写语法即可（隐藏彩蛋）。
+| 设置 | 默认 | 行为 |
+|------|------|------|
+| **Markdown 编辑模式** | 关闭 | 开启：输入区显示格式工具栏（粗体/斜体/行内代码/代码块/链接/引用）与预览切换，图片/文件上传后以 `![](/path)`、`[文件名](/path)` 片段插入输入框，可与文字混排后统一发送；关闭：输入区保持纯净，上传成功即直接发送 `type: 'image' \| 'file'` 独立消息 |
+| **渲染主题** | GitHub | 只影响消息正文视觉，与上面的开关无关；下拉框共 30 种主题，切换即时生效 |
+
+- `src/utils/markdown.ts` 是唯一渲染入口：`marked`（`gfm + breaks`）解析 → `DOMPurify` 消毒 → 按原文 LRU 缓存（300 条），供气泡正文与编辑模式预览共用。
 - 消毒钩子统一处理附件路径：正文里的 `/upload/...` 相对路径补全为 `VITE_APP_API_BASE_URL` 前缀，图片懒加载，链接强制新窗口 + `noopener`。
-- 历史消息同样按 Markdown 渲染（旧纯文本里的 `#`、`*`、`1.` 会被识别为格式，这是渲染语义的一部分）。
-- 附件保持"上传即发送"：`useChatSession` 的 `uploadImage / uploadFile` 在上传成功后直接以 `type: 'image' | 'file'` 独立消息发出；正文里的 Markdown 图片/文件语法（如 `![](/path)`）同样可渲染（向后兼容）。
-- 样式统一在 `design.scss` 的 `.cm-md` 作用域，深色（自己发出的）气泡有单独覆盖保证代码与列表可读。
+- 历史消息同样按 Markdown 渲染（旧纯文本里的 `#`、`*`、`1.` 会被识别为格式，这是渲染语义的一部分）；即使不开启编辑模式，手写 Markdown 语法也能渲染（隐藏彩蛋）。
+- **渲染主题**来自 `juejin-markdown-themes` 的 30 种主题，CSS 已拷到 `src/assets/md-themes/`。默认的 GitHub 静态内置（首屏即有样式），其余通过 `import.meta.glob({ query: '?raw' })` 拆成独立 chunk 按需加载，选中哪个才拉哪个；运行时把主题 CSS 改写成 `.md-themed` 作用域后注入 `<style>`，避免污染全局。
+- **消息内容样式与项目设计解耦**：`design.scss` 的 `.cm-md` 只保留排版基底（不断行、首尾间距压平、列表符号恢复），元素视觉完全由主题 CSS 接管，不引用任何项目设计变量。
+- **日间/夜间适配**：主题 CSS 均为浅色底设计。收发双方气泡配色统一（同一套底色/文字色，仅靠位置与尖角区分方向），日间气泡为浅色底、主题按原样渲染；夜间气泡为深色底，对所有 `.md-themed` 统一用 `invert(1) hue-rotate(180deg)` 反色（图片/视频再反回去）。不再出现「一边黑一边白、一边反色一边原色」的不一致。
+- **配置按用户隔离**：`mdInputEnabled:<userId>` / `mdTheme:<userId>` 存 localStorage，换账号自动加载该账号自己的配置，登出后为 guest；旧版全局 key 首次读取时一次性迁移到当前用户。
 
 ### 本地存储策略
 

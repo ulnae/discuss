@@ -20,7 +20,9 @@
             <span>{{ message.originalname || '下载文件' }}</span>
         </a>
     </template>
-    <div v-else class="cm-md" v-html="renderedHtml"></div>
+    <!-- 正文渲染：视觉由 mdPreference 注入的渲染主题接管（.md-themed 作用域），
+         深色语境（夜间模式 / 自己的深色气泡）的反色适配见 design.scss -->
+    <div v-else class="cm-md markdown-body md-themed" v-html="renderedHtml"></div>
     <!-- 发送状态：绝对定位成气泡角标，脱离文档流 —— 状态切换不再改变消息高度 -->
     <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" title="发送中…">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"

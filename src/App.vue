@@ -4,7 +4,10 @@ import { CallDialog } from '@/components'
 import ToastHost from '@/components/ui/toast/ToastHost.vue'
 import ConfirmHost from '@/components/ui/confirm/ConfirmHost.vue'
 import { useTheme } from '@/hooks/theme'
+import { useMdPreference } from '@/hooks/mdPreference'
 useTheme()
+// 启动即注入消息渲染主题样式（气泡渲染依赖，避免首帧无主题样式）
+useMdPreference()
 
 const userStore = useUserStore()
 userStore.init()

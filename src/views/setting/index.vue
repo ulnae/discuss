@@ -89,6 +89,34 @@
             </div>
         </section>
 
+        <section class="settings-card">
+            <header class="card-head">消息 Markdown</header>
+            <!-- Markdown 编辑模式开关：只影响输入区 UI 与上传行为，不影响消息渲染 -->
+            <div class="md-setting-row">
+                <div class="md-setting-info">
+                    <span class="md-setting-label">编辑模式</span>
+                    <span class="md-setting-desc">开启后输入区显示格式工具栏，上传的图片 / 文件以 Markdown 片段插入输入框。</span>
+                </div>
+                <button type="button" class="md-switch" :class="{ on: mdInputEnabled }" role="switch"
+                    :aria-checked="mdInputEnabled" :title="mdInputEnabled ? '关闭 Markdown 编辑模式' : '开启 Markdown 编辑模式'"
+                    @click="setMdInputEnabled(!mdInputEnabled)">
+                    <span class="md-switch-thumb"></span>
+                </button>
+            </div>
+            <!-- 渲染主题：独立于上面的开关，只管消息正文的视觉样式 -->
+            <div class="md-setting-row">
+                <div class="md-setting-info">
+                    <span class="md-setting-label">渲染主题</span>
+                    <span class="md-setting-desc">消息正文的 Markdown 样式，自动适配日间 / 夜间模式。</span>
+                </div>
+                <div class="md-theme-select-wrap">
+                    <select class="md-theme-select" :value="mdTheme" @change="onThemeChange">
+                        <option v-for="t in MD_THEMES" :key="t.id" :value="t.id">{{ t.label }}</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
         <section class="settings-card settings-account">
             <header class="card-head">外观与账号</header>
             <div class="card-actions account-actions">
@@ -129,6 +157,7 @@ import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
 import { computed, reactive, ref } from 'vue'
 import { useTheme } from '@/hooks/theme'
+import { useMdPreference, MD_THEMES } from '@/hooks/mdPreference'
 import { useFilePicker } from '@/hooks/useFilePicker'
 import { mergeAlerts, mergeChatMessages } from '@/utils/messageMerge'
 const userStore = useUserStore()
@@ -137,6 +166,12 @@ const socketStore = useSocketStore()
 // 主题切换与退出登录统一收敛在设置页（导航栏仅保留设置入口）
 const { theme, toggleTheme } = useTheme()
 const handleLogout = () => userStore.logout()
+
+// 消息 Markdown 偏好：编辑模式开关 + 渲染主题
+const { mdInputEnabled, mdTheme, setMdInputEnabled, setMdTheme } = useMdPreference()
+
+/** 模板里不写 TS 断言（模板表达式按 JS 解析），select 的取值转换收敛到这里 */
+const onThemeChange = (e: Event) => setMdTheme((e.target as HTMLSelectElement).value)
 
 /** 账号信息展示：隐藏令牌类字段，常见字段换成中文标签 */
 const LABELS: Record<string, string> = {
@@ -420,6 +455,131 @@ useFilePicker('chooseHistoryFile', async (file) => {
     font-size: 0.74rem;
     line-height: 1.6;
     color: var(--text-2);
+}
+
+/* ---------- 消息 Markdown 设置（左描述右配置） ---------- */
+.md-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+
+    &+.md-setting-row {
+        border-top: 1px solid var(--border);
+    }
+}
+
+.md-setting-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.md-setting-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.md-setting-desc {
+    font-size: 0.72rem;
+    line-height: 1.6;
+    color: var(--text-3);
+}
+
+/* 窄屏：描述与控件改为上下排列 */
+@media (max-width: 480px) {
+    .md-setting-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .md-theme-select-wrap {
+        width: 100%;
+    }
+}
+
+/* 开关 */
+.md-switch {
+    flex-shrink: 0;
+    width: 2.4rem;
+    height: 1.35rem;
+    padding: 2px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+
+    &.on {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+}
+
+.md-switch-thumb {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--surface-solid, #fff);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+
+    .md-switch.on & {
+        transform: translateX(1.05rem);
+    }
+}
+
+/* 渲染主题下拉框：appearance 去掉原生外观，自绘右侧箭头 */
+.md-theme-select-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 200px;
+
+    &::after {
+        content: '';
+        position: absolute;
+        right: 0.85rem;
+        top: 50%;
+        width: 0.45rem;
+        height: 0.45rem;
+        border-right: 1.5px solid var(--text-3);
+        border-bottom: 1.5px solid var(--text-3);
+        transform: translateY(-70%) rotate(45deg);
+        pointer-events: none;
+    }
+}
+
+.md-theme-select {
+    width: 100%;
+    padding: 0.45rem 2.2rem 0.45rem 0.8rem;
+    font-size: 0.78rem;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover,
+    &:focus {
+        border-color: var(--border-strong);
+        background: var(--surface-solid);
+    }
+
+    option {
+        color: initial;
+        background: initial;
+    }
 }
 
 /* 账号信息编辑表单：沿用登录页字段视觉语言 */
