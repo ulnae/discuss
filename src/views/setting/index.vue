@@ -115,6 +115,18 @@
                     </select>
                 </div>
             </div>
+            <!-- 渲染字号：等比缩放主题全部字号（正文/标题/代码块） -->
+            <div class="md-setting-row">
+                <div class="md-setting-info">
+                    <span class="md-setting-label">字号</span>
+                    <span class="md-setting-desc">Markdown 消息的渲染字号，标准为各主题默认大小。</span>
+                </div>
+                <div class="md-theme-select-wrap">
+                    <select class="md-theme-select" :value="mdFontScale" @change="onFontScaleChange">
+                        <option v-for="f in MD_FONT_SCALES" :key="f.value" :value="f.value">{{ f.label }}</option>
+                    </select>
+                </div>
+            </div>
         </section>
 
         <section class="settings-card settings-account">
@@ -157,7 +169,7 @@ import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
 import { computed, reactive, ref } from 'vue'
 import { useTheme } from '@/hooks/theme'
-import { useMdPreference, MD_THEMES } from '@/hooks/mdPreference'
+import { useMdPreference, MD_THEMES, MD_FONT_SCALES } from '@/hooks/mdPreference'
 import { useFilePicker } from '@/hooks/useFilePicker'
 import { mergeAlerts, mergeChatMessages } from '@/utils/messageMerge'
 const userStore = useUserStore()
@@ -167,11 +179,12 @@ const socketStore = useSocketStore()
 const { theme, toggleTheme } = useTheme()
 const handleLogout = () => userStore.logout()
 
-// 消息 Markdown 偏好：编辑模式开关 + 渲染主题
-const { mdInputEnabled, mdTheme, setMdInputEnabled, setMdTheme } = useMdPreference()
+// 消息 Markdown 偏好：编辑模式开关 + 渲染主题 + 渲染字号
+const { mdInputEnabled, mdTheme, mdFontScale, setMdInputEnabled, setMdTheme, setMdFontScale } = useMdPreference()
 
 /** 模板里不写 TS 断言（模板表达式按 JS 解析），select 的取值转换收敛到这里 */
 const onThemeChange = (e: Event) => setMdTheme((e.target as HTMLSelectElement).value)
+const onFontScaleChange = (e: Event) => setMdFontScale(Number((e.target as HTMLSelectElement).value))
 
 /** 账号信息展示：隐藏令牌类字段，常见字段换成中文标签 */
 const LABELS: Record<string, string> = {

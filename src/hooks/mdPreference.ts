@@ -66,6 +66,21 @@ const THEME_LABELS: Record<string, string> = {
 /** 下拉框里靠前的常用主题，其余按 id 字母序追加 */
 const THEME_ORDER = ['github', 'juejin', 'cyanosis', 'awesome-green']
 
+/** 渲染字号档位（倍率，基准 1 = 主题写死的原始 px 字号）；
+ *  「标准」定在 0.875（整体比主题默认小一档），保持 0.125 步长四档，
+ *  上限 1.125 防止标题/表格撑破气泡 */
+export const DEFAULT_MD_FONT_SCALE = 0.875
+
+export const MD_FONT_SCALES: ReadonlyArray<{ value: number; label: string }> = [
+    { value: 0.75, label: '小' },
+    { value: 0.875, label: '标准' },
+    { value: 1, label: '大' },
+    { value: 1.125, label: '特大' },
+]
+
+const isValidFontScale = (v: unknown): v is number =>
+    typeof v === 'number' && MD_FONT_SCALES.some((f) => f.value === v)
+
 export type MdThemeId = string
 
 /** 默认渲染主题（静态内置，首屏即有样式） */
@@ -165,8 +180,32 @@ function applyMdTheme(id: MdThemeId) {
     void loadThemeCss(id).then((css) => {
         // 加载期间用户又切了别的主题：丢弃过期结果
         if (token !== applyToken || css === null) return
-        style!.textContent = `/* markdown 渲染主题：${id}（mdPreference.ts 注入） */\n` + scopeCss(css, '.md-themed')
+        style!.textContent = `/* markdown 渲染主题：${id}（mdPreference.ts 注入） */\n`
+            + scopeCss(scaleFontSizes(css), '.md-themed')
     })
+}
+
+/**
+ * 渲染字号适配：主题 CSS 的字号全部是写死的 px（正文 15/16px、标题 12~32px），
+ * 改容器 font-size 或根字号都影响不到。注入前统一改写成 px 基准 * 倍率变量：
+ *   font-size: 16px → font-size: calc(16px * var(--md-font-scale,1))
+ * 注意必须是「16px * 倍率」——calc 里数字 * 数字 = 纯数字，font-size 需要
+ * length，写成 16 * var(...) 声明会被浏览器整体丢弃。
+ * 倍率变量挂在 html 上（applyFontScale），设置页选档即时生效。
+ * 只改 font-size 属性，margin/line-height 等 px 不动；em 字号相对正文自动跟随。
+ * cssCache 缓存的是原始文本，改写发生在注入前，换主题/缓存命中都会重走这步。
+ */
+function scaleFontSizes(css: string): string {
+    return css.replace(
+        /font-size:\s*([0-9.]+)px/g,
+        (_, n: string) => `font-size:calc(${n}px * var(--md-font-scale,1))`
+    )
+}
+
+/** 字号倍率写入根元素 CSS 变量，所有 .md-themed 容器（气泡 + 预览）即时生效 */
+function applyFontScale(scale: number) {
+    if (typeof document === 'undefined') return
+    document.documentElement.style.setProperty('--md-font-scale', String(scale))
 }
 
 /** 主题 CSS 按需加载（默认主题静态内置，其余走 glob 动态 chunk），带缓存 */
@@ -200,6 +239,7 @@ function isValidTheme(v: unknown): v is MdThemeId {
 // 全局单例状态，多个组件共享
 const mdInputEnabled = ref(false)
 const mdThemeId = ref<MdThemeId>(DEFAULT_MD_THEME)
+const mdFontScale = ref(DEFAULT_MD_FONT_SCALE)
 let initialized = false
 
 export function useMdPreference() {
@@ -211,6 +251,7 @@ export function useMdPreference() {
         const loadUserPrefs = () => {
             const ik = prefKey('mdInputEnabled')
             const tk = prefKey('mdTheme')
+            const fk = prefKey('mdFontSize')
 
             let input = localStorage.getItem(ik)
             if (input === null) {
@@ -233,6 +274,10 @@ export function useMdPreference() {
             // 没有保存过（或保存的是已下线的主题，如 fancy）就回落到默认主题，
             // 不能沿用上一个账号内存里的值
             mdThemeId.value = isValidTheme(theme) ? theme : DEFAULT_MD_THEME
+
+            // 字号倍率：无有效保存值回落默认档「标准」（0.875），同样防跨账号泄漏
+            const raw = Number(localStorage.getItem(fk))
+            mdFontScale.value = isValidFontScale(raw) ? raw : DEFAULT_MD_FONT_SCALE
         }
 
         // 登录 / 登出 / 换账号时按用户重载配置（未登录时落在 guest 上）
@@ -245,6 +290,9 @@ export function useMdPreference() {
                     mdInputEnabled.value = e.newValue === '1'
                 } else if (e.key === prefKey('mdTheme') && isValidTheme(e.newValue)) {
                     mdThemeId.value = e.newValue
+                } else if (e.key === prefKey('mdFontSize')) {
+                    const v = Number(e.newValue)
+                    mdFontScale.value = isValidFontScale(v) ? v : DEFAULT_MD_FONT_SCALE
                 }
             })
         }
@@ -254,6 +302,14 @@ export function useMdPreference() {
             applyMdTheme(id)
             if (typeof window !== 'undefined') {
                 localStorage.setItem(prefKey('mdTheme'), id)
+            }
+        }, { immediate: true })
+
+        // 字号变化即时生效（写根元素变量）并持久化到当前用户
+        watch(mdFontScale, (v) => {
+            applyFontScale(v)
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(prefKey('mdFontSize'), String(v))
             }
         }, { immediate: true })
 
@@ -270,7 +326,10 @@ export function useMdPreference() {
         mdInputEnabled: readonly(mdInputEnabled),
         /** 当前渲染主题（只读） */
         mdTheme: readonly(mdThemeId),
+        /** 当前渲染字号倍率（只读，1 = 主题默认大小） */
+        mdFontScale: readonly(mdFontScale),
         setMdInputEnabled: (v: boolean) => { mdInputEnabled.value = v },
         setMdTheme: (id: MdThemeId) => { mdThemeId.value = id },
+        setMdFontScale: (v: number) => { mdFontScale.value = v },
     }
 }
