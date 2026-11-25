@@ -15,7 +15,7 @@
           <div v-for="message in visibleMessages" :key="message.id" class="msg"
             :class="{ 'is-me': message.from === userStore.userInfo.id }">
             <div class="msg-meta">
-              <span>{{ message.from === userStore.userInfo.id ? userStore.userInfo.username : getUserInfo(message.from) }}</span>
+              <span :class="{ 'sender-left': isLeftMember(message.from) }">{{ getSenderName(message.from) }}</span>
               <span>{{ formatRelative(message.timestamp) }}</span>
               <span v-if="message.type">{{ formatFileSize(message.size || 0) }}</span>
             </div>
@@ -26,7 +26,8 @@
         </div>
       </div>
 
-      <MessageComposer v-model.trim="story" @send="handleSend" @image="handleSendImage" @file="handleSendFile" />
+      <MessageComposer v-model.trim="story" :mention-members="mentionMembers"
+        @send="handleSend" @image="handleSendImage" @file="handleSendFile" />
     </div>
 
     <DetailPanel :open="infoVisiable" title="群成员" :width="240" :loading="memberLoading"
@@ -151,10 +152,23 @@ const sortedMember = computed(() => {
     .sort((a: any, b: any) => rank(a.m) - rank(b.m) || a.i - b.i)
     .map((x: any) => x.m);
 });
-// 获取用户信息
-const getUserInfo = (user_id: string) => {
+// @ 候选成员：复用群主→在线→离线的排序，补上在线标记（仅群聊传给输入框）
+const mentionMembers = computed(() => sortedMember.value.map((m: any) => ({
+  ...m,
+  online: getMemberOnline.value.has(m.user_id),
+})));
+// 群成员名字兜底文案：成员已退出/被移出（不在当前成员列表）时统一显示
+const LEFT_MEMBER_LABEL = '已退出成员';
+// 发送者是否已退出（自己发的消息不算）
+const isLeftMember = (user_id: string) => {
+  if (user_id === userStore.userInfo.id) return false;
+  return !getMember.value.some((item: any) => item.user_id === user_id);
+};
+// 获取发送者名称：本人→本人用户名；在群成员→其用户名；已退出→兜底文案
+const getSenderName = (user_id: string) => {
+  if (user_id === userStore.userInfo.id) return userStore.userInfo.username;
   return getMember.value.find((item: any) => item.user_id === user_id)
-    ?.user_info?.username;
+    ?.user_info?.username || LEFT_MEMBER_LABEL;
 };
 // 获取房间信息
 const getRoomInfo = computed(() => {
@@ -219,6 +233,11 @@ const goBack = useGoBack(NAV.roomList)
 </script>
 
 <style lang="scss" scoped>
+/* 历史消息发送者：成员已退出时用次要色弱化显示，与在群成员区分 */
+.msg-meta .sender-left {
+  color: var(--text-3);
+}
+
 .member-list {
     display: flex;
     flex-direction: column;

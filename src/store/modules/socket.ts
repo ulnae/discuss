@@ -11,7 +11,7 @@ import { updateTitle } from '@/utils'
 import { mergeChatMessages } from '@/utils/messageMerge'
 import { MessageCache } from '@/utils/messageCache'
 import { toast } from '@/components/ui/toast'
-import { Event } from '@/constants/events'
+import { Event, type MentionRef } from '@/constants/events'
 
 const setTitle = updateTitle()
 
@@ -38,7 +38,7 @@ function upsertMessage(list: any[], data: any) {
 }
 
 /** 图片 / 文件消息的附加字段（与文字消息共用一条发送链路） */
-type MessageMeta = { type?: string; size?: number; originalname?: string }
+type MessageMeta = { type?: string; size?: number; originalname?: string; mentions?: MentionRef[] }
 
 /** 当前 hash 路径（项目用 hash 路由，避免和 window.location.pathname 混淆） */
 const hashPath = () => (typeof location === 'undefined' ? '' : location.hash.replace(/^#/, ''))
@@ -454,6 +454,8 @@ export const useSocketStore = defineStore('socket', {
                 type: message.type,
                 size: message.size,
                 originalname: message.originalname,
+                // 失败重发也要带上 @ 元数据，否则本地缓存的消息会丢高亮
+                mentions: message.mentions,
             }
             if (message.roomId) {
                 this.socket.emit(Event.SEND_ROOM, { roomId: message.roomId, content: message.content, clientId: message.clientId, ...meta })

@@ -43,7 +43,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { isUrlEndWith } from "@/utils/index";
-import { renderMarkdown } from "@/utils/markdown";
+import { renderChatContent } from "@/utils/markdown";
+import { useUserStore } from "@/store/modules/user";
 
 const props = defineProps({
     message: {
@@ -52,7 +53,13 @@ const props = defineProps({
     }
 });
 
-const renderedHtml = computed(() => renderMarkdown(String(props.message.content ?? '')));
+const userStore = useUserStore();
+/** 群聊 @ 高亮与输入区预览共用同一渲染函数；历史消息无 mentions 时走原 Markdown 渲染 */
+const renderedHtml = computed(() => renderChatContent(
+    String(props.message.content ?? ''),
+    props.message.mentions || [],
+    userStore.userInfo.id
+));
 
 defineEmits(['resend']);
 

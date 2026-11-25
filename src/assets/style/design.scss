@@ -823,6 +823,29 @@ body {
 .cm-md {
     word-break: break-word;
 
+    /* @ 高亮：沿用项目 chip 的中性墨灰胶囊语言，与气泡底色同源
+       （夜间 filter 反色后自动协调），不用跳脱的蓝；颜色继承主题文字，
+       字号不写死 px，跟随渲染主题与字号档位 */
+    .mention {
+        padding: 0.05em 0.32em;
+        border-radius: 5px;
+        background: rgba(15, 23, 42, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+        color: inherit;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    /* @ 了我：实心墨底 + 白字徽章，与普通 @ 的浅灰描边形成明暗反差，
+       一眼可辨。用固定色值（非 var(--accent)）：夜间整块 filter 反色后
+       自动变成浅底黑字，依然醒目；黑白灰 hue-rotate 不影响。 */
+    .mention.is-me {
+        background: rgba(15, 23, 42, 0.85);
+        color: #fff;
+        box-shadow: none;
+        font-weight: 600;
+    }
+
     /* Tailwind preflight 清空了列表样式，主题 CSS 不写 list-style，这里显式恢复 */
     &.md-themed {
         ul {
@@ -901,6 +924,66 @@ html.dark .md-themed {
         &::placeholder {
             color: var(--text-3);
         }
+    }
+}
+
+/* @ 群成员候选浮层：挂在 composer-box 上方，不占输入区高度 */
+.mention-popup {
+    position: absolute;
+    left: 0.55rem;
+    bottom: calc(100% + 6px);
+    z-index: 20;
+    min-width: 180px;
+    max-width: min(260px, calc(100vw - 2rem));
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-card);
+}
+
+.mention-option {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.32rem 0.4rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+
+    &:hover,
+    &.is-active {
+        background: var(--surface-2);
+    }
+}
+
+.mention-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    font-size: 0.64rem;
+}
+
+.mention-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    color: var(--text);
+}
+
+.mention-online {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+
+    &.is-online {
+        background: #22c55e;
     }
 }
 

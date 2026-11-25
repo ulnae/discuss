@@ -68,6 +68,12 @@ export const Event = {
     CALL_ERROR: 'call:error',
 } as const
 
+/** 群聊 @ 的结构化元数据：userId 是权威，name 是发送时的显示快照（历史消息也能回显高亮） */
+export interface MentionRef {
+  id: string
+  name: string
+}
+
 /** 一条聊天消息（服务端下发的统一形状） */
 export interface ChatMessage {
     id?: string
@@ -83,6 +89,8 @@ export interface ChatMessage {
     type?: string
     size?: number
     originalname?: string
+    /** 群聊 @ 的成员列表（随 meta 透传，服务端无需改） */
+    mentions?: MentionRef[]
     /** 仅本地乐观消息使用：sending / failed */
     status?: 'sending' | 'failed'
 }

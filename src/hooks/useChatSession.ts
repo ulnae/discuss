@@ -1,6 +1,6 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
-import type { ChatMessage } from '@/constants/events'
+import type { ChatMessage, MentionRef } from '@/constants/events'
 import { useAutoScroll } from '@/hooks/useAutoScroll'
 import { usePaste } from '@/hooks/paste'
 import { useFilePicker } from '@/hooks/useFilePicker'
@@ -12,6 +12,8 @@ export interface ChatMessageMeta {
   type?: string
   size?: number
   originalname?: string
+  /** 群聊 @ 成员（私聊不传），随 meta 透传并落本地缓存 */
+  mentions?: MentionRef[]
 }
 
 interface UseChatSessionOptions {
@@ -45,9 +47,9 @@ export function useChatSession(options: UseChatSessionOptions) {
     loadEarlier: () => { visibleCount.value += 50 }
   })
 
-  const handleSend = () => {
+  const handleSend = (mentions: MentionRef[] = []) => {
     if (!story.value) return
-    options.send(story.value)
+    options.send(story.value, mentions.length ? { mentions } : undefined)
     story.value = ''
   }
 
