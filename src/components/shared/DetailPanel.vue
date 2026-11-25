@@ -65,7 +65,7 @@ const emit = defineEmits<{ close: [] }>()
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--text-2);
+    color: var(--text);
 }
 
 /* 抽屉关闭按钮：窄屏抽屉形态下必须可见，否则关不掉 */

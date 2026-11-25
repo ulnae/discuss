@@ -15,7 +15,7 @@
                 <button v-if="canAdd(item)" type="button" class="btn btn-primary btn-sm" @click="handleJoin(item.id)">
                     加好友
                 </button>
-                <span v-else-if="item.id !== userStore.userInfo.id" class="chip">已添加</span>
+                <span v-else-if="item.id !== userStore.userInfo.id" class="chip chip-success">已添加</span>
             </div>
         </template>
     </SearchPage>

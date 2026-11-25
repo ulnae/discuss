@@ -227,7 +227,7 @@
                         <span class="logout-desc">退出当前账号，下次进入需重新登录。</span>
                     </div>
                 </div>
-                <button type="button" class="logout-btn" @click="handleLogout">退出</button>
+                <button type="button" class="btn btn-danger btn-sm logout-btn" @click="handleLogout">退出</button>
             </div>
         </section>
             </div>
@@ -689,27 +689,9 @@ useFilePicker('chooseHistoryFile', async (file) => {
     color: var(--text-3);
 }
 
+/* 复用全局 .btn.btn-danger.btn-sm（与确认弹窗同一套危险按钮），这里只保留 flex 布局约束 */
 .logout-btn {
     flex-shrink: 0;
-    height: 2.2rem;
-    padding: 0 0.95rem;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--danger);
-    background: transparent;
-    border: 1px solid var(--danger);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
-
-    &:hover {
-        color: var(--danger-fg);
-        background: var(--danger);
-    }
-
-    &:active {
-        transform: scale(0.97);
-    }
 }
 
 /* 窄屏：信息区与按钮上下排列，按钮撑满更易点击 */
@@ -844,7 +826,7 @@ useFilePicker('chooseHistoryFile', async (file) => {
 .md-setting-desc {
     font-size: 0.72rem;
     line-height: 1.6;
-    color: var(--text-3);
+    color: var(--text-2);
 }
 
 /* 窄屏：描述与控件改为上下排列 */
@@ -955,7 +937,7 @@ useFilePicker('chooseHistoryFile', async (file) => {
 
 .form-label {
     font-size: 0.74rem;
-    color: var(--text-3);
+    color: var(--text-2);
 
     em {
         font-style: normal;

@@ -70,9 +70,9 @@ const alertStore = useAlertStore()
     height: 46px;
     margin-bottom: 0.7rem;
     border-radius: 15px;
-    color: var(--accent-fg);
-    background: var(--accent);
-    box-shadow: var(--shadow-accent);
+    color: var(--brand-fg);
+    background: var(--brand-bg);
+    box-shadow: var(--brand-shadow);
 }
 
 .welcome-title {
