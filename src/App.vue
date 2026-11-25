@@ -6,9 +6,12 @@ import { ToastHost, ConfirmHost } from '@/components/ui'
 
 import { useTheme } from '@/hooks/useTheme'
 import { useMdPreference } from '@/hooks/useMdPreference'
+import { useUiScheme } from '@/hooks/useUiScheme'
 useTheme()
 // 启动即注入消息渲染主题样式（气泡渲染依赖，避免首帧无主题样式）
 useMdPreference()
+// 启动即注入自定义 UI 配色覆盖（:root / html.dark，晚于 design.scss 生效）
+useUiScheme()
 
 const userStore = useUserStore()
 userStore.init()

@@ -140,6 +140,64 @@
             </div>
         </section>
 
+                <!-- 界面外观：自定义配色方案（颜色，日夜各一套） -->
+                <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'appearance' }">
+            <header class="card-head">界面外观</header>
+            <p class="card-desc">自定义界面配色，即时生效；日间 / 夜间各自独立保存。Markdown 主题与字号请在「消息 Markdown」中设置。</p>
+
+            <!-- 编辑模式切换：日间 / 夜间 -->
+            <div class="scheme-mode-bar">
+                <button type="button" class="scheme-mode-btn" :class="{ on: schemeEditMode === 'light' }"
+                    @click="schemeEditMode = 'light'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+                    日间
+                </button>
+                <button type="button" class="scheme-mode-btn" :class="{ on: schemeEditMode === 'dark' }"
+                    @click="schemeEditMode = 'dark'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>
+                    夜间
+                </button>
+                <span class="scheme-mode-hint">正在编辑：{{ schemeEditMode === 'light' ? '日间' : '夜间' }}配色</span>
+            </div>
+
+            <!-- 按分组列出颜色 token -->
+            <div v-for="group in [...new Set(schemeTokens.map((t) => t.group))]" :key="group" class="scheme-group">
+                <div class="scheme-group-title">{{ group }}</div>
+                <div v-for="t in schemeTokens.filter((x) => x.group === group)" :key="t.key" class="scheme-color-row">
+                    <span class="scheme-color-label">{{ t.label }}</span>
+                    <span class="scheme-color-var">{{ t.key }}</span>
+                    <button type="button" class="scheme-color-reset"
+                        :class="{ 'is-placeholder': !colorModified(t.key) }"
+                        :aria-hidden="!colorModified(t.key)" :tabindex="colorModified(t.key) ? 0 : -1"
+                        title="恢复默认" @click="onResetOneColor(t.key)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+                            stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+                    </button>
+                    <span class="scheme-color-swatch" :style="{ background: schemeValue(schemeEditMode, t.key) }"></span>
+                    <input type="color" class="scheme-color-input" :value="colorPickerValue(t.key)"
+                        :aria-label="`设置${t.label}`" @input="onSchemeColorInput(t.key, $event)" />
+                </div>
+            </div>
+
+            <!-- 方案操作：导出 / 导入 / 恢复默认 -->
+            <div class="card-actions scheme-actions">
+                <button type="button" class="btn btn-ghost btn-sm" @click="handleSchemeExport">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+                    导出方案
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" @click="handleSchemeImport">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round"><path d="M12 15V3m0 0 4 4m-4-4-4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+                    导入方案
+                </button>
+                <button v-if="schemeCustomized" type="button" class="btn btn-ghost btn-sm danger-text"
+                    @click="handleSchemeReset">恢复默认</button>
+            </div>
+        </section>
+
                 <section class="settings-card settings-panel settings-account"
                 :class="{ 'is-active': activeTab === 'general' }">
             <header class="card-head">外观与账号</header>
@@ -176,6 +234,7 @@
         </div>
 
         <input class="hidden" id="chooseHistoryFile" type="file" accept="*.json">
+        <input class="hidden" id="chooseSchemeFile" type="file" accept="*.json">
     </div>
 </template>
 
@@ -190,6 +249,7 @@ import { toast } from '@/components/ui/toast'
 import { computed, reactive, ref } from 'vue'
 import { useTheme } from '@/hooks/useTheme'
 import { useMdPreference, MD_THEMES, MD_FONT_SCALES } from '@/hooks/useMdPreference'
+import { useUiScheme, cssColorToHex, type ThemeMode } from '@/hooks/useUiScheme'
 import { useFilePicker } from '@/hooks/useFilePicker'
 import { mergeAlerts, mergeChatMessages } from '@/utils/messageMerge'
 const userStore = useUserStore()
@@ -200,6 +260,7 @@ const SETTING_TABS = [
     { id: 'account', label: '账号信息' },
     { id: 'records', label: '本地聊天记录' },
     { id: 'markdown', label: '消息 Markdown' },
+    { id: 'appearance', label: '界面外观' },
     { id: 'general', label: '通用' },
 ] as const
 /** 默认展示账号信息 */
@@ -215,6 +276,66 @@ const { mdInputEnabled, mdTheme, mdFontScale, setMdInputEnabled, setMdTheme, set
 /** 模板里不写 TS 断言（模板表达式按 JS 解析），select 的取值转换收敛到这里 */
 const onThemeChange = (e: Event) => setMdTheme((e.target as HTMLSelectElement).value)
 const onFontScaleChange = (e: Event) => setMdFontScale(Number((e.target as HTMLSelectElement).value))
+
+/* ---------- 界面外观：自定义配色方案（日间 / 夜间各一套） ---------- */
+const {
+  tokens: schemeTokens,
+  isCustomized: schemeCustomized,
+  effectiveValue: schemeValue,
+  isModified: schemeIsModified,
+  setColor: setSchemeColor,
+  resetColor: resetSchemeColor,
+  resetAll: resetSchemeAll,
+  exportScheme,
+  importScheme,
+} = useUiScheme()
+
+/** 当前正在编辑的外观模式（日间 / 夜间），与全局深色模式开关独立 */
+const schemeEditMode = ref<ThemeMode>('light')
+
+/** 供 <input type="color"> 绑定：把任意 CSS 颜色转成可编辑的 #rrggbb */
+const colorPickerValue = (key: string) => cssColorToHex(schemeValue(schemeEditMode.value, key))
+
+/** 某一项在当前编辑模式下是否被改动 */
+const colorModified = (key: string) => schemeIsModified(schemeEditMode.value, key)
+
+/** 色块改动即时生效 */
+const onSchemeColorInput = (key: string, e: Event) => {
+  setSchemeColor(schemeEditMode.value, key, (e.target as HTMLInputElement).value)
+}
+
+/** 重置单个颜色（恢复 design.scss 默认值） */
+const onResetOneColor = (key: string) => resetSchemeColor(schemeEditMode.value, key)
+
+/** 导出配色方案 JSON */
+const handleSchemeExport = () => {
+  const data = exportScheme()
+  const date = new Date().toISOString().slice(0, 10)
+  downloadJSON(data, `discuss-ui-scheme-${date}.json`)
+  toast.success('配色方案已导出')
+}
+
+/** 导入配色方案：走隐藏 file input */
+const handleSchemeImport = () => document.getElementById('chooseSchemeFile')?.click()
+
+useFilePicker('chooseSchemeFile', async (file) => {
+  try {
+    const parsed = JSON.parse(await file.text())
+    if (!importScheme(parsed)) {
+      toast.error('方案文件格式不正确或版本不兼容')
+      return
+    }
+    toast.success('配色方案已导入并应用')
+  } catch {
+    toast.error('导入失败：无法解析方案文件')
+  }
+})
+
+/** 一键恢复默认配色（带确认由按钮自身二次点击简化，这里直接恢复 + 提示） */
+const handleSchemeReset = () => {
+  resetSchemeAll()
+  toast.success('已恢复默认配色')
+}
 
 /** 账号信息展示：隐藏令牌类字段，常见字段换成中文标签 */
 const LABELS: Record<string, string> = {
@@ -908,5 +1029,148 @@ useFilePicker('chooseHistoryFile', async (file) => {
     word-wrap: break-word;
     word-break: break-word;
     white-space: break-spaces;
+}
+
+/* ---------- 界面外观：自定义配色方案 ---------- */
+.scheme-mode-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem 0.2rem;
+}
+
+.scheme-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 400;
+    color: var(--text-2);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    &.on {
+        color: var(--accent-fg);
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+}
+
+.scheme-mode-hint {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--text-3);
+}
+
+.scheme-group {
+    padding: 0.6rem 1rem 0;
+}
+
+.scheme-group-title {
+    padding-bottom: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+}
+
+.scheme-color-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.4rem 0;
+
+    & + & {
+        border-top: 1px solid var(--border);
+    }
+}
+
+.scheme-color-label {
+    flex: 0 0 88px;
+    font-size: 0.76rem;
+    color: var(--text);
+}
+
+.scheme-color-var {
+    flex: 1;
+    min-width: 0;
+    font-family: JetBrainsMono, monospace;
+    font-size: 0.66rem;
+    color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.scheme-color-swatch {
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-strong);
+}
+
+.scheme-color-input {
+    flex-shrink: 0;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+
+    &::-webkit-color-swatch-wrapper { padding: 0; }
+    &::-webkit-color-swatch { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+}
+
+.scheme-color-reset {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    color: var(--text-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color 0.16s ease, background-color 0.16s ease;
+
+    svg { width: 14px; height: 14px; }
+
+    &:hover {
+        color: var(--danger);
+        background: var(--danger-soft);
+    }
+
+    /* 未改动时保留占位、仅隐藏视觉，避免改动颜色后出现/消失导致整行抖动 */
+    &.is-placeholder {
+        visibility: hidden;
+        pointer-events: none;
+    }
+}
+
+.scheme-actions {
+    margin-top: 0.6rem;
+}
+
+.danger-text {
+    color: var(--danger) !important;
+}
+
+@media (max-width: 480px) {
+    /* 与 PC 保持同一结构：左介绍、右颜色，仅隐藏编辑模式提示文字 */
+    .scheme-mode-hint { display: none; }
 }
 </style>
