@@ -74,32 +74,32 @@
     --textarea-outline: #e8e8e8;
     --img-alt-fg: #666;
 
-    /* 品牌块（导航 Logo / 登录 Logo / 主按钮底座） */
+    /* 品牌块（导航 Logo / 登录 Logo / 主按钮底座）：跟随主色，改 --accent 即联动 */
     --brand-fg: #fff;
-    --brand-bg: #111;
+    --brand-bg: var(--accent);
     --brand-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.6);
 
-    /* 按钮危险态 */
+    /* 按钮危险态：背景跟随 --danger，hover / 阴影保留独立取值 */
     --btn-danger-fg: #fff;
-    --btn-danger-bg: #e11d48;
+    --btn-danger-bg: var(--danger);
     --btn-danger-hover-bg: #be123c;
     --btn-danger-shadow: 0 8px 20px -10px rgba(225, 29, 72, 0.7);
 
     /* 在线点光晕 */
     --online-ring: rgba(16, 185, 129, 0.16);
 
-    /* 状态标签 soft 底 */
-    --success-soft: rgba(16, 185, 129, 0.12);
-    --danger-soft: rgba(225, 29, 72, 0.1);
+    /* 状态标签 soft 底：由对应状态色按透明度派生，改状态色自动联动 */
+    --success-soft: color-mix(in srgb, var(--success) 12%, transparent);
+    --danger-soft: color-mix(in srgb, var(--danger) 10%, transparent);
     --warning-fg: #b45309;
-    --warning-soft: rgba(245, 158, 11, 0.14);
+    --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
 
-    /* Toast 状态色：主色复用全局状态色，这里只保留独有的 soft 底（error 主色全局无对应，独立保留） */
-    --toast-success-soft: rgba(16, 185, 129, 0.14);
-    --toast-error: #f43f5e;
-    --toast-error-soft: rgba(244, 63, 94, 0.13);
-    --toast-warning-soft: rgba(245, 158, 11, 0.16);
-    --toast-info-soft: rgba(14, 165, 233, 0.13);
+    /* Toast 状态色：主色复用全局状态色，soft 底同样派生 */
+    --toast-success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+    --toast-error: var(--danger);
+    --toast-error-soft: color-mix(in srgb, var(--toast-error) 13%, transparent);
+    --toast-warning-soft: color-mix(in srgb, var(--warning) 16%, transparent);
+    --toast-info-soft: color-mix(in srgb, var(--info) 13%, transparent);
 
     /* ===== 登录页专用（值同原硬编码，视觉不变） =====
        画布背景 / 卡片背景 / 卡片阴影 / 输入框底 分别复用全局
@@ -150,9 +150,13 @@ html.dark {
     --accent-hover: #ffffff;
     --accent-fg: #111111;
 
+    /* 状态色：夜间显式定义，保证与 :root 覆盖层级一致，避免自定义时漏项 */
+    --success: #10b981;
     --success-fg: #34d399;
+    --warning: #f59e0b;
     --danger: #fb7185;
     --danger-fg: #111111;
+    --info: #0ea5e9;
 
     --bubble-in-bg: rgba(255, 255, 255, 0.1);
 
@@ -163,17 +167,30 @@ html.dark {
     /* 进度条：夜间用略亮的中灰，深色背景上可见但不刺眼 */
     --progress-bg: rgba(255, 255, 255, 0.32);
 
-    /* 品牌块（夜间反色） */
+    /* 品牌块（夜间反色）：跟随夜间 --accent */
     --brand-fg: #111;
-    --brand-bg: #fafafa;
+    --brand-bg: var(--accent);
     --brand-shadow: 0 8px 20px -8px rgba(255, 255, 255, 0.35);
+
+    /* 按钮危险态（夜间显式定义，避免漏回退日间值） */
+    --btn-danger-fg: #fff;
+    --btn-danger-bg: var(--danger);
+    --btn-danger-hover-bg: #be123c;
+    --btn-danger-shadow: 0 8px 20px -10px rgba(225, 29, 72, 0.7);
 
     /* 在线点光晕 / 状态 soft（夜间）：危险操作 hover 底复用 --danger-soft */
     --online-ring: rgba(52, 211, 153, 0.2);
-    --success-soft: rgba(52, 211, 153, 0.14);
-    --danger-soft: rgba(251, 113, 133, 0.14);
+    --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+    --danger-soft: color-mix(in srgb, var(--danger) 14%, transparent);
     --warning-fg: #fbbf24;
-    --warning-soft: rgba(245, 158, 11, 0.16);
+    --warning-soft: color-mix(in srgb, var(--warning) 16%, transparent);
+
+    /* Toast 状态色（夜间）：与日间同样由状态色派生 */
+    --toast-success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+    --toast-error: var(--danger);
+    --toast-error-soft: color-mix(in srgb, var(--toast-error) 13%, transparent);
+    --toast-warning-soft: color-mix(in srgb, var(--warning) 16%, transparent);
+    --toast-info-soft: color-mix(in srgb, var(--info) 13%, transparent);
 
     /* ===== 登录页专用（画布/卡片/阴影/输入框底复用全局 --app-bg/--surface/--shadow-card/--surface-2） ===== */
     --login-blob-a: rgba(63, 63, 70, 0.55);

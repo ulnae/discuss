@@ -68,8 +68,16 @@ const schemeKey = () => `uiScheme:${useUserStore().userInfo.id || 'guest'}`
 /** CSS 颜色值安全校验：只接受常见颜色函数/十六进制/关键字，杜绝 ; } 等注入 */
 const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|transparent|rgba?\([\d.\s,%/]+\)|hsla?\([\d.\s,%/]+\)|oklch\([\d.\s,%/]+\))$/
 
+/**
+ * design.scss 里 soft 底色由 color-mix(in srgb, var(--状态色) N%, transparent) 派生，
+ * 自定义属性的 computed 值会保留该函数字符串，因此校验白名单也要放行这一严格形式。
+ */
+const SAFE_SOFT = /^color-mix\(\s*in\s+srgb\s*,\s*(#[0-9a-fA-F]{3,8}|rgba?\([\d.\s,%/]+\)|hsla?\([\d.\s,%/]+\)|oklch\([\d.\s,%/]+\))\s+[\d.]+%\s*,\s*transparent\s*\)$/
+
 function isSafeColor(v: unknown): v is string {
-    return typeof v === 'string' && SAFE_COLOR.test(v.trim())
+    if (typeof v !== 'string') return false
+    const value = v.trim()
+    return SAFE_COLOR.test(value) || SAFE_SOFT.test(value)
 }
 
 function ensureStyle(): HTMLStyleElement {
@@ -101,7 +109,8 @@ function readModeDefaults(mode: ThemeMode): SchemeColors {
 
 /**
  * 把任意 CSS 颜色转成 #rrggbb，供 <input type="color"> 回填。
- * 借助浏览器 computed 值（oklch/rgba 都会被解析成 rgb），失败回落黑。
+ * 借助浏览器 computed 值解析；color-mix() 会返回 color(srgb 0.88 0.11 0.28 / 0.12)，
+ * 通道是 0~1 的浮点，需要换算成 0~255，否则会误判成近黑色。失败回落黑。
  */
 export function cssColorToHex(value: string): string {
     if (!value) return '#000000'
@@ -111,10 +120,13 @@ export function cssColorToHex(value: string): string {
     document.body.appendChild(probe)
     const computed = getComputedStyle(probe).color
     probe.remove()
-    const parts = computed.match(/[\d.]+/g)
-    if (!parts || parts.length < 3) return '#000000'
-    return '#' + parts.slice(0, 3)
-        .map((n) => Math.max(0, Math.min(255, Math.round(Number(n)))).toString(16).padStart(2, '0'))
+    const srgb = computed.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/)
+    const channels = srgb
+        ? [Number(srgb[1]) * 255, Number(srgb[2]) * 255, Number(srgb[3]) * 255]
+        : (computed.match(/[\d.]+/g) || []).map(Number)
+    if (channels.length < 3) return '#000000'
+    return '#' + channels.slice(0, 3)
+        .map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0'))
         .join('')
 }
 
