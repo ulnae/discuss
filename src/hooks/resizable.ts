@@ -17,6 +17,9 @@ interface UseResizableOptions {
   initialSize?: number
 }
 
+/** 与 design.scss 移动端断点保持一致 */
+const MOBILE_QUERY = '(max-width: 768px)'
+
 /**
  * 为目标容器自动插入拖拽手柄，支持上下/左右拖拽调节尺寸
  * @param targetRef 目标容器的 ref
@@ -40,6 +43,7 @@ export const useResizable = (
   let startPos = 0
   let startSize = 0
   let handleEl: HTMLDivElement | null = null
+  let installed = false
 
   const onMove = (e: MouseEvent) => {
     if (!dragging || !targetRef.value) return
@@ -71,12 +75,15 @@ export const useResizable = (
     e.preventDefault()
   }
 
-  onMounted(() => {
+  /**
+   * PC 端安装：写初始尺寸、注入手柄、绑定鼠标监听。
+   * 移动端没有鼠标拖拽这回事：不注入手柄，也不写死固定尺寸，
+   * 交给 CSS 按屏幕自适应（否则窄屏上 inline px 尺寸会把布局撑坏）。
+   */
+  const install = () => {
     const el = targetRef.value
-    if (!el) return
-    /* 移动端没有鼠标拖拽这回事：不注入手柄，也不写死固定尺寸，
-       交给 CSS 按屏幕自适应（否则窄屏上 inline px 宽度会把布局撑坏） */
-    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches) return
+    if (!el || installed) return
+    installed = true
 
     el.style[sizeProp] = initialSize + 'px'
     el.style.position = 'relative'
@@ -97,13 +104,42 @@ export const useResizable = (
 
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  })
+  }
 
-  onUnmounted(() => {
+  /** 卸载：清掉内联尺寸与手柄，交还 CSS 自适应（移动端模式） */
+  const uninstall = () => {
+    if (!installed) return
+    installed = false
+
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
     handleEl?.removeEventListener('mousedown', onDown)
     handleEl?.remove()
     handleEl = null
+
+    const el = targetRef.value
+    if (!el) return
+    el.style.removeProperty(sizeProp)
+    el.style.removeProperty('position')
+  }
+
+  /**
+   * 断点切换（含 DevTools 设备模拟）：跨过 768px 时拆装一次，
+   * 让内联拖拽尺寸只在 PC 生效、移动端始终交给 CSS。
+   */
+  const mql = window.matchMedia(MOBILE_QUERY)
+  const onBreakpointChange = (e: MediaQueryListEvent) => {
+    if (e.matches) uninstall()
+    else install()
+  }
+
+  onMounted(() => {
+    if (!mql.matches) install()
+    mql.addEventListener('change', onBreakpointChange)
+  })
+
+  onUnmounted(() => {
+    mql.removeEventListener('change', onBreakpointChange)
+    uninstall()
   })
 }
