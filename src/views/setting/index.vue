@@ -5,8 +5,19 @@
             <p class="settings-sub">账号信息与本地聊天记录</p>
         </header>
 
-        <!-- 账号信息：查看 / 编辑两种模式切换 -->
-        <section class="settings-card">
+        <div class="settings-body">
+            <!-- PC 侧边分组导航：移动端隐藏，四组面板全部展开 -->
+            <nav class="settings-nav" aria-label="设置分组">
+                <button v-for="t in SETTING_TABS" :key="t.id" type="button" class="settings-nav-item"
+                    :class="{ 'is-active': activeTab === t.id }"
+                    :aria-current="activeTab === t.id ? 'true' : undefined" @click="activeTab = t.id">
+                    <span class="nav-bar"></span>{{ t.label }}
+                </button>
+            </nav>
+
+            <div class="settings-panels">
+                <!-- 账号信息：查看 / 编辑两种模式切换 -->
+                <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'account' }">
             <header class="card-head card-head-action">
                 <span>账号信息</span>
                 <!-- 查看模式：编辑按钮；编辑模式：取消 / 保存，二者都放在标题行右侧 -->
@@ -66,7 +77,7 @@
             </form>
         </section>
 
-        <section class="settings-card">
+                <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'records' }">
             <header class="card-head">本地聊天记录</header>
             <p class="card-desc">聊天记录只保存在这台设备的浏览器里。清理缓存或更换设备前，建议先导出备份。</p>
             <div class="card-actions">
@@ -89,7 +100,7 @@
             </div>
         </section>
 
-        <section class="settings-card">
+                <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'markdown' }">
             <header class="card-head">消息 Markdown</header>
             <!-- Markdown 编辑模式开关：只影响输入区 UI 与上传行为，不影响消息渲染 -->
             <div class="md-setting-row">
@@ -129,31 +140,40 @@
             </div>
         </section>
 
-        <section class="settings-card settings-account">
+                <section class="settings-card settings-panel settings-account"
+                :class="{ 'is-active': activeTab === 'general' }">
             <header class="card-head">外观与账号</header>
-            <div class="card-actions account-actions">
-                <button type="button" class="btn btn-ghost account-btn" @click="toggleTheme">
-                    <svg v-if="theme === 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-                    </svg>
-                    {{ theme === 'light' ? '切换到深色' : '切换到浅色' }}
-                </button>
-                <button type="button" class="btn btn-ghost account-btn danger-btn" @click="handleLogout">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                    </svg>
-                    退出登录
+            <!-- 深色模式：左描述右开关，与 Markdown 编辑模式开关同一套视觉 -->
+            <div class="md-setting-row">
+                <div class="md-setting-info">
+                    <span class="md-setting-label">深色模式</span>
+                    <span class="md-setting-desc">切换日间 / 夜间外观。</span>
+                </div>
+                <button type="button" class="md-switch" :class="{ on: isDark }" role="switch"
+                    :aria-checked="isDark" :title="isDark ? '关闭深色模式' : '开启深色模式'"
+                    @click="toggleTheme">
+                    <span class="md-switch-thumb"></span>
                 </button>
             </div>
+            <!-- 退出登录：自定义危险操作区，图标 + 文案 + 描边按钮 -->
+            <div class="logout-row">
+                <div class="logout-main">
+                    <span class="logout-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6"
+                            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                        </svg>
+                    </span>
+                    <div class="logout-info">
+                        <span class="logout-title">退出登录</span>
+                        <span class="logout-desc">退出当前账号，下次进入需重新登录。</span>
+                    </div>
+                </div>
+                <button type="button" class="logout-btn" @click="handleLogout">退出</button>
+            </div>
         </section>
+            </div>
+        </div>
 
         <input class="hidden" id="chooseHistoryFile" type="file" accept="*.json">
     </div>
@@ -175,8 +195,18 @@ import { mergeAlerts, mergeChatMessages } from '@/utils/messageMerge'
 const userStore = useUserStore()
 const socketStore = useSocketStore()
 
+/** 侧边分组导航：id 与每个面板的 is-active 判断一一对应 */
+const SETTING_TABS = [
+    { id: 'account', label: '账号信息' },
+    { id: 'records', label: '本地聊天记录' },
+    { id: 'markdown', label: '消息 Markdown' },
+    { id: 'general', label: '通用' },
+] as const
+/** 默认展示账号信息 */
+const activeTab = ref<string>(SETTING_TABS[0].id)
+
 // 主题切换与退出登录统一收敛在设置页（导航栏仅保留设置入口）
-const { theme, toggleTheme } = useTheme()
+const { isDark, toggleTheme } = useTheme()
 const handleLogout = () => userStore.logout()
 
 // 消息 Markdown 偏好：编辑模式开关 + 渲染主题 + 渲染字号
@@ -344,25 +374,138 @@ useFilePicker('chooseHistoryFile', async (file) => {
 </script>
 
 <style lang="scss" scoped>
+/* PC：左侧固定宽度分组导航 + 右侧单一内容面板。一次只显示一组，
+   消除宽屏留白与卡片高度参差；高度保留 height:100% + overflow-y:auto 兜底。 */
 .settings {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    width: min(720px, 100%);
-    /* 全局没有 box-sizing:border-box，height:100% + 上下 padding 会撑出
-       父容器（app-main overflow:hidden），内容过高时底部被裁剪且滚不到 */
+    gap: 1rem;
+    width: 100%;
     box-sizing: border-box;
     height: 100%;
-    margin: 0 auto;
-    padding: 1.6rem 1.25rem 2rem;
+    padding: 1.6rem 1.75rem 2rem;
     overflow-y: auto;
 
-    /* 关键：flex column 容器高度固定，空间不足时子项默认 flex-shrink:1 会被
-       压缩；而 .settings-card 带 overflow:hidden，被压扁后内部内容（更新时间、
-       退出登录按钮等）会被直接裁掉，且因没有真正溢出导致 overflow-y:auto 不滚动。
-       锁死子项不收缩，让内容自然撑开并正常滚动，小屏也能滚到底看到完整内容。 */
     >* {
+        min-width: 0;
         flex-shrink: 0;
+    }
+
+    /* 隐藏的文件输入脱离视觉流，避免占位 */
+    > input.hidden {
+        display: none;
+    }
+}
+
+.settings-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+    flex: 1;
+    min-height: 0;
+}
+
+/* 侧边导航容器 */
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 170px;
+    flex-shrink: 0;
+    padding: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+}
+
+.settings-nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--text-2);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: color 0.16s ease, background-color 0.16s ease;
+
+    &:hover {
+        color: var(--text);
+        background: var(--surface-3);
+    }
+
+    /* 左侧强调竖条，默认透明，选中时显现 */
+    .nav-bar {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 2px;
+        height: 1.1rem;
+        border-radius: 2px;
+        background: var(--accent);
+        transform: translateY(-50%) scaleY(0);
+        transition: transform 0.16s ease;
+    }
+
+    &.is-active {
+        color: var(--accent);
+        font-weight: 500;
+        background: var(--surface-3);
+
+        .nav-bar {
+            transform: translateY(-50%) scaleY(1);
+        }
+    }
+}
+
+/* 右侧面板区：PC 下一次只显示当前分组 */
+.settings-panels {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-panel {
+    display: none;
+
+    &.is-active {
+        display: block;
+    }
+}
+
+/* 窄屏 / 移动端：隐藏侧栏，四组面板全部展开，回退到单列流布局 */
+@media (max-width: 860px) {
+    .settings {
+        width: min(720px, 100%);
+        margin: 0 auto;
+        padding: 1.6rem 1.25rem 2rem;
+    }
+
+    .settings-body {
+        display: block;
+        flex: none;
+    }
+
+    .settings-nav {
+        display: none;
+    }
+
+    /* 媒体查询里显式覆盖 class 切换，让四组全部展开 */
+    .settings-panel,
+    .settings-panel.is-active {
+        display: block;
+    }
+
+    .settings-panels .settings-panel {
+        margin-bottom: 12px;
+    }
+
+    .settings-panels .settings-panel:last-child {
+        margin-bottom: 0;
     }
 }
 
@@ -372,13 +515,93 @@ useFilePicker('chooseHistoryFile', async (file) => {
     }
 }
 
-.account-actions {
+/* ---------- 外观与账号：退出登录操作区 ---------- */
+.logout-row {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border-top: 1px solid var(--border);
 }
 
-.account-btn {
-    justify-content: flex-start;
+.logout-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.logout-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    flex-shrink: 0;
+    color: var(--danger);
+    background: var(--danger-soft);
+    border-radius: var(--radius-md);
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.logout-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.logout-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.logout-desc {
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+.logout-btn {
+    flex-shrink: 0;
+    height: 2.2rem;
+    padding: 0 0.95rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--danger);
+    background: transparent;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
+
+    &:hover {
+        color: var(--danger-fg);
+        background: var(--danger);
+    }
+
+    &:active {
+        transform: scale(0.97);
+    }
+}
+
+/* 窄屏：信息区与按钮上下排列，按钮撑满更易点击 */
+@media (max-width: 480px) {
+    .logout-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.85rem;
+    }
+
+    .logout-btn {
+        width: 100%;
+    }
 }
 
 .settings-head {
