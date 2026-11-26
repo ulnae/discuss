@@ -37,10 +37,9 @@
     <DetailPanel :open="infoVisiable" title="好友资料" :loading="infoLoading" loading-text="正在加载好友资料…"
       @close="infoVisiable = false">
       <div class="info-card">
-        <UserAvatar :name="getFriendInfo.username" size="xl" />
+        <UserAvatar :name="getFriendInfo.username" size="xl" :online="isFriendOnline" />
         <div class="info-name">{{ getFriendInfo.username }}</div>
         <div class="chat-sub">
-          <span class="dot" :class="{ 'dot-online': isFriendOnline }"></span>
           {{ isFriendOnline ? '在线' : '离线' }}
         </div>
       </div>

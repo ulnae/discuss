@@ -9,11 +9,10 @@
       </router-link>
     </template>
     <template #row="{ item }">
-      <UserAvatar :name="item.friend_info.username" />
+      <UserAvatar :name="item.friend_info.username" :online="isOnline(item.friend_info.id)" />
       <span class="row-main">
         <span class="row-name">{{ item.friend_info.username }}</span>
       </span>
-      <span class="dot" :class="{ 'dot-online': isOnline(item.friend_info.id) }"></span>
     </template>
     <template #body>
       <router-view></router-view>

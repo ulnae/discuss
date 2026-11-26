@@ -40,8 +40,9 @@
       <div class="member-list">
         <TransitionGroup name="member" tag="div" class="member-rows" :key="String(route.params.id)">
           <div v-for="member in sortedMember" :key="member.user_id" class="member-row"
-            :class="{ 'is-me': member.user_id === userStore.userInfo.id, 'is-online': getMemberOnline.has(member.user_id) }">
-            <UserAvatar :name="member.user_info.username" class="member-avatar" />
+            :class="{ 'is-me': member.user_id === userStore.userInfo.id }">
+            <UserAvatar :name="member.user_info.username" class="member-avatar"
+              :online="getMemberOnline.has(member.user_id)" />
             <span class="row-main">
               <span class="row-name">{{ member.user_info.username }}</span>
             </span>
@@ -51,7 +52,6 @@
               </svg>
               群主
             </span>
-            <span class="dot" :class="{ 'dot-online': getMemberOnline.has(member.user_id) }"></span>
             <button v-if="getRoomInfo.creator !== member.user_id && roomStore.isOwnerOf(currentId())"
               type="button" class="icon-btn kick" title="移出群聊" @click="handleRemoveMember(member.id)">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
@@ -277,6 +277,8 @@ const goBack = useGoBack(NAV.roomList)
     height: 26px;
     border-radius: 8px;
     font-size: 0.68rem;
+    --presence-size: 8px;
+    --presence-ring: 1.5px;
 }
 
 /* 群主身份徽章：项目主色墨黑 + 皇冠图标，与申请页徽章/头像同一色板，凸显身份 */

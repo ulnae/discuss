@@ -5,9 +5,8 @@
       <div v-if="mentionActive && mentionCandidates.length" class="mention-popup">
         <div v-for="(m, i) in mentionCandidates" :key="m.user_id" class="mention-option"
           :class="{ 'is-active': i === mentionIndex }" @mousedown.prevent @click="selectMention(i)">
-          <UserAvatar :name="m.user_info?.username || '?'" class="mention-avatar" />
+          <UserAvatar :name="m.user_info?.username || '?'" class="mention-avatar" :online="m.online" />
           <span class="mention-name">{{ m.user_info?.username }}</span>
-          <span class="mention-online" :class="{ 'is-online': m.online }"></span>
         </div>
       </div>
 

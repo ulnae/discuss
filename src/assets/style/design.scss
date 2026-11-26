@@ -458,6 +458,11 @@ body {
 /* ---------------- 头像 / 状态点 / 徽标 ---------------- */
 
 .avatar {
+    /* 在线点相对头像定位；尺寸变量供各级头像覆盖，描边环取头像自身底色，
+       在任何列表行背景（transparent / hover / active）上都像从头像挖出的缺口 */
+    position: relative;
+    --presence-size: 10px;
+    --presence-ring: 2px;
     display: grid;
     place-items: center;
     flex-shrink: 0;
@@ -477,6 +482,7 @@ body {
     height: 40px;
     border-radius: 13px;
     font-size: 0.9rem;
+    --presence-size: 11px;
 }
 
 .avatar-xl {
@@ -484,20 +490,27 @@ body {
     height: 60px;
     border-radius: 19px;
     font-size: 1.25rem;
+    --presence-size: 15px;
+    --presence-ring: 3px;
 }
 
-.dot {
-    flex-shrink: 0;
-    width: 7px;
-    height: 7px;
+/* 右下角在线状态点：圆点 + 与头像同色的描边环，圆角方形头像下形成自然咬边 */
+.presence-dot {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    width: var(--presence-size);
+    height: var(--presence-size);
     border-radius: 50%;
     background: var(--text-3);
+    box-shadow: 0 0 0 var(--presence-ring) var(--surface-3);
+    pointer-events: none;
     transition: background-color 0.2s ease;
-}
 
-.dot-online {
-    background: var(--success);
-    box-shadow: 0 0 0 3px var(--online-ring);
+    &.is-online {
+        background: var(--success);
+    }
 }
 
 .chip {
@@ -980,6 +993,8 @@ html.dark .md-themed {
     height: 24px;
     border-radius: 7px;
     font-size: 0.64rem;
+    --presence-size: 8px;
+    --presence-ring: 1.5px;
 }
 
 .mention-name {
@@ -990,18 +1005,6 @@ html.dark .md-themed {
     white-space: nowrap;
     font-size: 0.78rem;
     color: var(--text);
-}
-
-.mention-online {
-    flex-shrink: 0;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--text-3);
-
-    &.is-online {
-        background: #22c55e;
-    }
 }
 
 /* Markdown 工具栏（设置里开启 Markdown 编辑模式时显示） */
