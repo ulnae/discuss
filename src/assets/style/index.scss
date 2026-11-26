@@ -95,3 +95,16 @@ body {
     user-select: none;
     // font-family: Arial, sans-serif;
 }
+
+/* 内容区恢复可选中：消息正文 / 预览 / 提示文案 / 输入框可复制，按钮、头像等 UI 文字仍不可误选 */
+.bubble,
+.cm-md,
+.composer-preview,
+.toast-text,
+input,
+textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
