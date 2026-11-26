@@ -92,7 +92,8 @@ export function useChatSession(options: UseChatSessionOptions) {
           options.send(path, {
             type: 'file',
             size: res.data.size,
-            originalname: res.data.originalname
+            // 后端未回传 originalname 时用本地 File.name 兜底，保证文件名能回显
+            originalname: res.data.originalname || (file as File).name
           })
         }
       }

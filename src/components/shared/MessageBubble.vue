@@ -17,7 +17,7 @@
                 <path d="M14 3v4a1 1 0 0 0 1 1h4" />
                 <path d="M5 3h9l5 5v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
             </svg>
-            <span>{{ message.originalname || '下载文件' }}</span>
+            <span>{{ fileDisplayName }}</span>
         </a>
     </template>
     <!-- 正文渲染：视觉由 mdPreference 注入的渲染主题接管（.md-themed 作用域），
@@ -60,6 +60,20 @@ const renderedHtml = computed(() => renderChatContent(
     props.message.mentions || [],
     userStore.userInfo.id
 ));
+
+/** 文件名兜底：优先后端回传的原始名，缺失时从 URL 末段解析（去 query/hash、解码） */
+const fileDisplayName = computed(() => {
+    const name = props.message.originalname;
+    if (name) return name;
+    const path = String(props.message.content ?? '').split(/[?#]/)[0];
+    const last = path.split('/').pop();
+    if (!last) return '下载文件';
+    try {
+        return decodeURIComponent(last) || '下载文件';
+    } catch {
+        return last;
+    }
+});
 
 defineEmits(['resend']);
 

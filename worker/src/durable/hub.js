@@ -331,12 +331,15 @@ export class DiscussHub {
             .all();
         if (!results || !results.length) return;
 
-        /* 只挑白名单字段，避免把客户端额外塞进 data 的字段透传给收信人 */
+        /* 只挑白名单字段，避免把客户端额外塞进 data 的字段透传给收信人
+           originalname（文件名）与 mentions（@ 成员）属于业务字段，契约要求随消息回显 */
         const payload = {
             content: data && data.content,
             clientId: data && data.clientId,
             type: data && data.type,
             size: data && data.size,
+            originalname: data && data.originalname,
+            mentions: data && data.mentions,
             from: me.userId,
             to,
             timestamp: now()

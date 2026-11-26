@@ -28,9 +28,25 @@ function pushCapped(list: any[], message: any) {
     return list
 }
 
-/** 把一条收到的消息并入会话列表：带 clientId 的回执原地替换乐观消息，否则追加 */
+/**
+ * 把一条收到的消息并入会话列表：带 clientId 的回执原地替换乐观消息，否则追加。
+ *
+ * 回执对账时做字段级补回：后端白名单若漏传 originalname（文件名）/ mentions（@ 成员），
+ * 用本地乐观消息里的旧值补齐，避免整对象替换把这些字段抹掉（文件名退化成"下载文件"）。
+ * status 是本地乐观态，回执到达即代表发送完成，始终丢弃。
+ */
 function upsertMessage(list: any[], data: any) {
     const { status: _drop, ...message } = data
+    const optimistic = data?.clientId
+        ? list.find((m: any) => m.clientId === data.clientId)
+        : undefined
+    if (optimistic) {
+        for (const key of ['originalname', 'mentions'] as const) {
+            if (message[key] === undefined && optimistic[key] !== undefined) {
+                message[key] = optimistic[key]
+            }
+        }
+    }
     const merged = mergeChatMessages(list, [message])
     list.splice(0, list.length, ...merged)
     if (list.length > MAX_IN_MEMORY) list.splice(0, list.length - MAX_IN_MEMORY)
