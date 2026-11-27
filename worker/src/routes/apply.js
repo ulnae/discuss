@@ -45,26 +45,26 @@ async function create(request, env, ctx) {
     const body = (await readJson(request)) || {};
     const roomId = body.room_id ? String(body.room_id) : null;
     const applyUserId = body.apply_user_id ? String(body.apply_user_id) : null;
-    if (!roomId && !applyUserId) throw new ApiError('缺少 room_id 或 apply_user_id', 400);
+    if (!roomId && !applyUserId) throw new ApiError('缺少 room_id 或 apply_user_id', 400, 'error.apply.requireParams');
 
     const duplicated = roomId
         ? await first(env, 'SELECT id FROM apply WHERE user_id = ? AND room_id = ? AND isDeleted = 0 AND handle_status = 0', me.id, roomId)
         : await first(env, 'SELECT id FROM apply WHERE user_id = ? AND apply_user_id = ? AND isDeleted = 0 AND handle_status = 0', me.id, applyUserId);
-    if (duplicated) throw new ApiError('已存在相同申请', 409);
+    if (duplicated) throw new ApiError('已存在相同申请', 409, 'error.apply.duplicate');
 
     /* 申请前先确认目标有效，避免给不存在的房间/用户产生一条永远处理不掉的待办 */
     if (roomId) {
         const room = await first(env, 'SELECT id FROM room WHERE id = ? AND isDeleted = 0', roomId);
-        if (!room) throw new ApiError('房间不存在', 404);
+        if (!room) throw new ApiError('房间不存在', 404, 'error.apply.roomNotFound');
         const already = await first(env, 'SELECT id FROM member WHERE room_id = ? AND user_id = ? AND isDeleted = 0', roomId, me.id);
-        if (already) throw new ApiError('你已经是该房间成员', 409);
+        if (already) throw new ApiError('你已经是该房间成员', 409, 'error.apply.alreadyMember');
     }
     if (applyUserId) {
-        if (applyUserId === me.id) throw new ApiError('不能添加自己为好友', 400);
+        if (applyUserId === me.id) throw new ApiError('不能添加自己为好友', 400, 'error.friend.cannotAddSelf');
         const target = await first(env, 'SELECT id FROM user WHERE id = ? AND isDeleted = 0', applyUserId);
-        if (!target) throw new ApiError('该用户不存在', 404);
+        if (!target) throw new ApiError('该用户不存在', 404, 'error.user.notFound');
         const befriended = await first(env, 'SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0', me.id, applyUserId);
-        if (befriended) throw new ApiError('你们已经是好友了', 409);
+        if (befriended) throw new ApiError('你们已经是好友了', 409, 'error.friend.alreadyFriends');
     }
 
     const id = uuid();
@@ -122,16 +122,16 @@ async function update(request, env, ctx, id) {
     const accepted = !!body.status;
 
     const row = await first(env, `${APPLY_SELECT} WHERE a.id = ? AND a.isDeleted = 0`, id);
-    if (!row) throw new ApiError('申请不存在', 404);
-    if (row.handle_status) throw new ApiError('已处理，不能再操作', 409);
+    if (!row) throw new ApiError('申请不存在', 404, 'error.apply.notFound');
+    if (row.handle_status) throw new ApiError('已处理，不能再操作', 409, 'error.apply.alreadyHandled');
 
     const apply = applyView(row);
-    if (apply.apply_user_id && apply.apply_user_id !== me.id) throw new ApiError('不是被申请人，不能操作', 403);
+    if (apply.apply_user_id && apply.apply_user_id !== me.id) throw new ApiError('不是被申请人，不能操作', 403, 'error.apply.notReceiver');
 
     let room = null;
     if (apply.room_id) {
         room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', apply.room_id);
-        if (!room || room.creator !== me.id) throw new ApiError('不是房间创建人，不能操作', 403);
+        if (!room || room.creator !== me.id) throw new ApiError('不是房间创建人，不能操作', 403, 'error.apply.notRoomOwner');
     }
 
     /* H-3：条件更新抢占 —— 只有 handle_status=0 的请求能置位成功。
@@ -143,7 +143,7 @@ async function update(request, env, ctx, id) {
         'UPDATE apply SET status = ?, handle_status = 1, updatedAt = ? WHERE id = ? AND handle_status = 0 AND isDeleted = 0',
         accepted ? 1 : 0, now(), id
     );
-    if (!claim.changes) throw new ApiError('已处理，不能再操作', 409);
+    if (!claim.changes) throw new ApiError('已处理，不能再操作', 409, 'error.apply.alreadyHandled');
 
     /* 抢占成功后才写入关系；INSERT OR IGNORE + 部分唯一索引保证幂等 */
     if (apply.apply_user_id && accepted) {
@@ -194,10 +194,10 @@ async function update(request, env, ctx, id) {
 async function remove(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const row = await first(env, `${APPLY_SELECT} WHERE a.id = ? AND a.isDeleted = 0`, id);
-    if (!row) throw new ApiError('申请不存在', 404);
-    if (row.handle_status) throw new ApiError('已处理，不能再操作', 409);
+    if (!row) throw new ApiError('申请不存在', 404, 'error.apply.notFound');
+    if (row.handle_status) throw new ApiError('已处理，不能再操作', 409, 'error.apply.alreadyHandled');
     const apply = applyView(row);
-    if (apply.user_id !== me.id) throw new ApiError('只能撤回自己发起的申请', 403);
+    if (apply.user_id !== me.id) throw new ApiError('只能撤回自己发起的申请', 403, 'error.apply.onlySelfRevoke');
 
     await run(env, 'UPDATE apply SET isDeleted = 1, updatedAt = ? WHERE id = ?', now(), id);
 

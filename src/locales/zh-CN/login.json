@@ -1,0 +1,33 @@
+{
+    "login": {
+        "titleRegister": "创建账号",
+        "titleLogin": "欢迎回来",
+        "subRegister": "注册后即可加入房间、添加好友",
+        "subLogin": "登录后继续你的对话",
+        "tabLogin": "登录",
+        "tabRegister": "注册",
+        "username": "用户名",
+        "password": "密码",
+        "email": "邮箱",
+        "captcha": "验证码",
+        "usernamePh": "请输入用户名",
+        "passwordPh": "请输入密码",
+        "emailPh": "用于找回账号（可选）",
+        "captchaPh": "请输入验证码",
+        "captchaRefresh": "看不清？点击刷新",
+        "submittingRegister": "注册中…",
+        "submittingLogin": "登录中…",
+        "submitRegister": "注册并登录",
+        "submitLogin": "登录",
+        "hasAccount": "已有账号？",
+        "noAccount": "还没有账号？",
+        "goLogin": "去登录",
+        "goRegister": "立即注册",
+        "warnUserPass": "请输入用户名和密码",
+        "warnEmail": "请输入邮箱",
+        "warnCaptcha": "请输入验证码",
+        "registerOk": "注册成功，请使用刚才的账号登录",
+        "loginOk": "登录成功，欢迎回来",
+        "captchaFail": "验证码加载失败，请点击重试"
+    }
+}

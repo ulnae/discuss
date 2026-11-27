@@ -1,0 +1,93 @@
+{
+    "error": {
+        "common": {
+            "retryLater": "Operation failed, please try again later"
+        },
+        "auth": {
+            "notLoggedIn": "Not authorized, please log in",
+            "tokenExpired": "Session expired, please log in again",
+            "invalidToken": "Invalid token",
+            "verifyFailed": "Token verification failed",
+            "accountInvalid": "Account is no longer valid, please log in again",
+            "accountGone": "Account does not exist, please log in again",
+            "accountDeleted": "Account has been deleted, please log in again",
+            "wsTokenMissing": "WebSocket connection is missing a token",
+            "notWebSocket": "Please connect over WebSocket",
+            "jwtMissing": "JWT_SECRET is not configured on the server: run `wrangler secret put JWT_SECRET` and retry"
+        },
+        "ws": {
+            "rateLimited": "Sending too fast, please slow down",
+            "handleFailed": "Failed to process the message, please retry"
+        },
+        "alert": {
+            "disabled": "System broadcast is disabled: configure ALERT_SECRET first",
+            "forbidden": "No permission to send system broadcasts",
+            "missingMessage": "Missing message"
+        },
+        "user": {
+            "requireUserPass": "Username and password are required",
+            "userOrPassWrong": "Incorrect username or password",
+            "usernameTaken": "Username already taken",
+            "emailTaken": "Email already registered",
+            "notFound": "This user does not exist",
+            "notFoundId": "User {id} does not exist",
+            "noUpdatePermission": "You don't have permission to update this user",
+            "noDeletePermission": "You don't have permission to delete this user",
+            "oldPassWrong": "Current password is incorrect",
+            "passLenInvalid": "Password must be 6-32 characters"
+        },
+        "upload": {
+            "noFile": "No file selected",
+            "typeUnsupported": "This file type is not supported",
+            "emptyFile": "File is empty",
+            "tooLarge": "File exceeds the {limit} limit",
+            "storageFull": "Storage is full; uploads are temporarily unavailable. Text messages are not affected",
+            "imageStorageFull": "Image storage is full; sending images is temporarily unavailable. Text messages are not affected",
+            "dailyCountLimit": "Daily upload limit reached ({count} uploads). Try again tomorrow",
+            "dailyBytesLimit": "Daily upload quota reached ({limit}). Try again tomorrow",
+            "globalCountLimit": "Global daily upload limit reached, try again tomorrow. Text messages are not affected",
+            "userStorageFull": "Your storage is full ({limit}); old files will be cleaned up automatically",
+            "storageUnavailable": "Storage service temporarily unavailable, please try again later",
+            "notFound": "File not found",
+            "failed": "File upload failed"
+        },
+        "room": {
+            "nameRequired": "Room name cannot be empty",
+            "nameTaken": "Room name is already taken, try another one",
+            "nameTakenWithDeleted": "Room name is already taken (including disbanded rooms), try another one",
+            "notFoundId": "Room {id} does not exist",
+            "notMember": "You are not a member of this room",
+            "onlyOwnerUpdate": "Only the room owner can edit room info",
+            "onlyOwnerDelete": "Only the room owner can disband the room",
+            "onlineListFail": "Failed to fetch the online list, please try again later"
+        },
+        "member": {
+            "requireUserRoom": "user_id or room_id is required",
+            "requireRoomId": "room_id is required",
+            "notFound": "This member does not exist",
+            "onlyOwnerAdd": "Only the room owner can add members",
+            "onlyOwnerRemove": "Only the room owner can remove members",
+            "ownerCannotLeave": "The owner cannot leave the room directly; disband it instead",
+            "onlySelfQuery": "You can only query your own membership"
+        },
+        "friend": {
+            "requireFriendId": "friend_id is required",
+            "cannotAddSelf": "You cannot add yourself as a friend",
+            "targetNotFound": "This user does not exist",
+            "alreadyFriends": "You are already friends",
+            "relationExists": "Friendship already exists",
+            "relationNotFound": "Friendship does not exist"
+        },
+        "apply": {
+            "requireParams": "room_id or apply_user_id is required",
+            "duplicate": "A duplicate request already exists",
+            "roomNotFound": "This room does not exist",
+            "alreadyMember": "You are already a member of this room",
+            "notFound": "Request not found",
+            "alreadyHandled": "This request has already been handled",
+            "notReceiver": "You are not the recipient of this request",
+            "notRoomOwner": "You are not the room creator",
+            "onlySelfRevoke": "You can only revoke your own requests"
+        }
+    }
+}

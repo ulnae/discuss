@@ -10,7 +10,7 @@
             >
                 <span class="toast-icon" v-html="ICONS[item.type]"></span>
                 <span class="toast-text">{{ item.message }}</span>
-                <button type="button" class="toast-close" aria-label="关闭提示" @click="dismissToast(item.id)">
+                <button type="button" class="toast-close" :aria-label="t('common.close')" @click="dismissToast(item.id)">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
                         stroke-width="2.4" stroke-linecap="round">
                         <path d="M18 6 6 18M6 6l12 12" />
@@ -22,7 +22,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { toastState, dismissToast, type ToastType } from './index'
+
+const { t } = useI18n()
 
 const ICONS: Record<ToastType, string> = {
     success: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.3 4.3L19 7.2"/></svg>`,

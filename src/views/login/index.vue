@@ -15,21 +15,21 @@
                         <path d="M8.5 11.5h7M8.5 8.5h4" />
                     </svg>
                 </div>
-                <h1 class="login-title">{{ activeTab ? '创建账号' : '欢迎回来' }}</h1>
-                <p class="login-sub">{{ activeTab ? '注册后即可加入房间、添加好友' : '登录后继续你的对话' }}</p>
+                <h1 class="login-title">{{ activeTab ? t('login.titleRegister') : t('login.titleLogin') }}</h1>
+                <p class="login-sub">{{ activeTab ? t('login.subRegister') : t('login.subLogin') }}</p>
             </header>
 
-            <div class="login-tabs" role="tablist" aria-label="登录或注册">
+            <div class="login-tabs" role="tablist" :aria-label="t('login.titleLogin')">
                 <span class="login-tab-thumb" :class="{ 'is-right': activeTab }"></span>
                 <button type="button" role="tab" :aria-selected="!activeTab" :class="{ 'is-active': !activeTab }"
-                    @click="switchTab(false)">登录</button>
+                    @click="switchTab(false)">{{ t('login.tabLogin') }}</button>
                 <button type="button" role="tab" :aria-selected="activeTab" :class="{ 'is-active': activeTab }"
-                    @click="switchTab(true)">注册</button>
+                    @click="switchTab(true)">{{ t('login.tabRegister') }}</button>
             </div>
 
             <form class="login-form" novalidate @submit.prevent="handleLogin">
                 <label class="field">
-                    <span class="field-label">用户名</span>
+                    <span class="field-label">{{ t('login.username') }}</span>
                     <div class="field-box">
                         <svg class="field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
                             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -37,12 +37,12 @@
                             <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
                         </svg>
                         <input v-model.trim="loginForm.username" type="text" name="username" autocomplete="username"
-                            placeholder="请输入用户名" />
+                            :placeholder="t('login.usernamePh')" />
                     </div>
                 </label>
 
                 <label class="field">
-                    <span class="field-label">密码</span>
+                    <span class="field-label">{{ t('login.password') }}</span>
                     <div class="field-box">
                         <svg class="field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
                             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -50,12 +50,13 @@
                             <path d="M8 10V7.5a4 4 0 0 1 8 0V10" />
                         </svg>
                         <input v-model.trim="loginForm.password" type="password" name="password"
-                            :autocomplete="activeTab ? 'new-password' : 'current-password'" placeholder="请输入密码" />
+                            :autocomplete="activeTab ? 'new-password' : 'current-password'"
+                            :placeholder="t('login.passwordPh')" />
                     </div>
                 </label>
 
                 <label v-if="activeTab" class="field">
-                    <span class="field-label">邮箱</span>
+                    <span class="field-label">{{ t('login.email') }}</span>
                     <div class="field-box">
                         <svg class="field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
                             stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -63,12 +64,12 @@
                             <path d="m3.8 6.8 7.1 5.2a2 2 0 0 0 2.2 0l7.1-5.2" />
                         </svg>
                         <input v-model.trim="loginForm.email" type="email" name="email" autocomplete="email"
-                            placeholder="用于找回账号（可选）" />
+                            :placeholder="t('login.emailPh')" />
                     </div>
                 </label>
 
                 <label class="field">
-                    <span class="field-label">验证码</span>
+                    <span class="field-label">{{ t('login.captcha') }}</span>
                     <div class="field-row">
                         <div class="field-box">
                             <svg class="field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
@@ -77,9 +78,9 @@
                                 <path d="m9.2 12 2 2 3.6-3.8" />
                             </svg>
                             <input v-model.trim="loginForm.captcha" type="text" name="captcha" maxlength="6"
-                                autocomplete="off" placeholder="请输入验证码" />
+                                autocomplete="off" :placeholder="t('login.captchaPh')" />
                         </div>
-                        <button type="button" class="captcha-box" title="看不清？点击刷新" :disabled="captchaLoading"
+                        <button type="button" class="captcha-box" :title="t('login.captchaRefresh')" :disabled="captchaLoading"
                             @click="handleGetCaptcha">
                             <span v-if="captchaLoading" class="captcha-loading">···</span>
                             <span v-else v-html="captchaImg"></span>
@@ -89,24 +90,32 @@
 
                 <button type="submit" class="submit" :disabled="submitting">
                     <span v-if="submitting" class="spinner" aria-hidden="true"></span>
-                    <span>{{ submitting ? (activeTab ? '注册中…' : '登录中…') : (activeTab ? '注册并登录' : '登录') }}</span>
+                    <span>{{ submitting ? (activeTab ? t('login.submittingRegister') : t('login.submittingLogin')) : (activeTab ? t('login.submitRegister') : t('login.submitLogin')) }}</span>
                 </button>
             </form>
 
             <p class="login-foot">
-                {{ activeTab ? '已有账号？' : '还没有账号？' }}
-                <button type="button" @click="switchTab(!activeTab)">{{ activeTab ? '去登录' : '立即注册' }}</button>
+                {{ activeTab ? t('login.hasAccount') : t('login.noAccount') }}
+                <button type="button" @click="switchTab(!activeTab)">{{ activeTab ? t('login.goLogin') : t('login.goRegister') }}</button>
             </p>
+
+            <div class="login-lang">
+                <LanguageSwitch />
+            </div>
         </div>
     </div>
 </template>
 
 <script lang="ts" setup>
 import { reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/store/modules/user'
 import router from '@/router'
 import serverApi from '@/api'
 import { toast } from '@/components/ui/toast'
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue'
+
+const { t } = useI18n()
 
 const activeTab = ref(false)
 const submitting = ref(false)
@@ -132,15 +141,15 @@ async function handleLogin() {
     if (submitting.value) return
 
     if (!loginForm.username || !loginForm.password) {
-        toast.warning('请输入用户名和密码')
+        toast.warning(t('login.warnUserPass'))
         return
     }
     if (activeTab.value && !loginForm.email) {
-        toast.warning('请输入邮箱')
+        toast.warning(t('login.warnEmail'))
         return
     }
     if (!loginForm.captcha) {
-        toast.warning('请输入验证码')
+        toast.warning(t('login.warnCaptcha'))
         return
     }
 
@@ -150,7 +159,7 @@ async function handleLogin() {
         const res: any = await serverApi[isRegister ? 'Register' : 'Login'](loginForm)
 
         if (isRegister) {
-            toast.success('注册成功，请使用刚才的账号登录')
+            toast.success(t('login.registerOk'))
             activeTab.value = false
             loginForm.captcha = ''
             loginForm.password = ''
@@ -159,7 +168,7 @@ async function handleLogin() {
         }
 
         await userStore.login(res.data)
-        toast.success('登录成功，欢迎回来')
+        toast.success(t('login.loginOk'))
         router.push('/')
     } catch {
         /* 错误提示已由 axios 拦截器统一弹出，这里只需要刷新验证码 */
@@ -177,7 +186,7 @@ function handleGetCaptcha() {
         captchaImg.value = res
     }).catch(() => {
         captchaImg.value = ''
-        toast.error('验证码加载失败，请点击重试')
+        toast.error(t('login.captchaFail'))
     }).finally(() => {
         captchaLoading.value = false
     })
@@ -514,6 +523,12 @@ handleGetCaptcha()
             text-decoration-color: var(--login-title);
         }
     }
+}
+
+.login-lang {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.1rem;
 }
 
 /* 颜色全部走设计系统变量（含 --login-* / --brand-*），深浅模式随 html.dark 自动适配 */

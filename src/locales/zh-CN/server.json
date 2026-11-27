@@ -1,0 +1,93 @@
+{
+    "error": {
+        "common": {
+            "retryLater": "操作失败，请稍后重试"
+        },
+        "auth": {
+            "notLoggedIn": "未授权，请登录",
+            "tokenExpired": "登录已过期，请重新登录",
+            "invalidToken": "无效的令牌",
+            "verifyFailed": "令牌验证失败",
+            "accountInvalid": "账号已失效，请重新登录",
+            "accountGone": "账号不存在，请重新登录",
+            "accountDeleted": "账号已注销，请重新登录",
+            "wsTokenMissing": "WebSocket 连接缺少 Token",
+            "notWebSocket": "请使用 WebSocket 连接",
+            "jwtMissing": "服务端未配置 JWT_SECRET：请执行 wrangler secret put JWT_SECRET 后重试"
+        },
+        "ws": {
+            "rateLimited": "发送太快了，请稍后再试",
+            "handleFailed": "消息处理失败，请重试"
+        },
+        "alert": {
+            "disabled": "系统广播未启用：请先配置 ALERT_SECRET",
+            "forbidden": "无权发送系统广播",
+            "missingMessage": "缺少 message"
+        },
+        "user": {
+            "requireUserPass": "用户名和密码不能为空",
+            "userOrPassWrong": "用户名或密码错误",
+            "usernameTaken": "用户名已存在",
+            "emailTaken": "邮箱已被注册",
+            "notFound": "该用户不存在",
+            "notFoundId": "id为{id}的用户不存在",
+            "noUpdatePermission": "您没有权限更新该用户",
+            "noDeletePermission": "您没有权限删除该用户",
+            "oldPassWrong": "原密码错误",
+            "passLenInvalid": "密码长度需为 6-32 位"
+        },
+        "upload": {
+            "noFile": "未选择文件",
+            "typeUnsupported": "不支持该文件类型",
+            "emptyFile": "文件内容为空",
+            "tooLarge": "文件不能超过 {limit}",
+            "storageFull": "存储空间已满，暂时无法上传，文字消息不受影响",
+            "imageStorageFull": "图片存储空间已满，暂时无法发送图片，文字消息不受影响",
+            "dailyCountLimit": "今日上传次数已达上限（{count} 次），请明天再试",
+            "dailyBytesLimit": "今日上传流量已达上限（{limit}），请明天再试",
+            "globalCountLimit": "今日全站上传次数已达上限，请明天再试，文字消息不受影响",
+            "userStorageFull": "个人存储空间已满（{limit}），旧文件会自动清理",
+            "storageUnavailable": "存储服务暂时不可用，请稍后重试",
+            "notFound": "文件不存在",
+            "failed": "文件上传失败"
+        },
+        "room": {
+            "nameRequired": "房间名称不能为空",
+            "nameTaken": "房间名称已被使用，换一个名字吧",
+            "nameTakenWithDeleted": "房间名称已被使用（含已解散的房间），换一个名字吧",
+            "notFoundId": "id为{id}的房间不存在",
+            "notMember": "你不是该房间成员",
+            "onlyOwnerUpdate": "只有群主可以修改房间信息",
+            "onlyOwnerDelete": "只有群主可以解散房间",
+            "onlineListFail": "在线名单查询失败，请稍后重试"
+        },
+        "member": {
+            "requireUserRoom": "缺少 user_id 或 room_id",
+            "requireRoomId": "缺少 room_id",
+            "notFound": "该成员不存在",
+            "onlyOwnerAdd": "只有群主可以添加成员",
+            "onlyOwnerRemove": "只有群主可以移出成员",
+            "ownerCannotLeave": "群主不能直接退出房间，请先解散房间",
+            "onlySelfQuery": "只能查询自己的成员关系"
+        },
+        "friend": {
+            "requireFriendId": "缺少 friend_id",
+            "cannotAddSelf": "不能添加自己为好友",
+            "targetNotFound": "该用户不存在",
+            "alreadyFriends": "你们已经是好友了",
+            "relationExists": "好友关系已存在",
+            "relationNotFound": "好友关系不存在"
+        },
+        "apply": {
+            "requireParams": "缺少 room_id 或 apply_user_id",
+            "duplicate": "已存在相同申请",
+            "roomNotFound": "房间不存在",
+            "alreadyMember": "你已经是该房间成员",
+            "notFound": "申请不存在",
+            "alreadyHandled": "已处理，不能再操作",
+            "notReceiver": "不是被申请人，不能操作",
+            "notRoomOwner": "不是房间创建人，不能操作",
+            "onlySelfRevoke": "只能撤回自己发起的申请"
+        }
+    }
+}

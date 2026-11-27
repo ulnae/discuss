@@ -1,12 +1,12 @@
 <template>
   <header class="chat-head">
-    <BackButton :title="backTitle" @click="emit('back')" />
+    <BackButton :title="backTitle ?? t('common.back')" @click="emit('back')" />
     <div class="chat-head-main">
       <div class="chat-title">{{ title }}</div>
       <div class="chat-sub" :title="subtitle">{{ subtitle }}</div>
     </div>
     <div class="chat-head-actions">
-      <button type="button" class="icon-btn" :class="{ 'is-active': infoActive }" :title="infoTitle"
+      <button type="button" class="icon-btn" :class="{ 'is-active': infoActive }" :title="infoTitle ?? t('chat.details')"
         @click="emit('toggle-info')">
         <AppIcon name="dots" :size="18" :stroke-width="1.6" />
       </button>
@@ -15,8 +15,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { AppIcon, BackButton } from '@/components/ui'
 
+const { t } = useI18n()
 
 withDefaults(defineProps<{
   title: string
@@ -26,8 +28,6 @@ withDefaults(defineProps<{
   infoActive?: boolean
 }>(), {
   subtitle: '',
-  backTitle: '返回',
-  infoTitle: '详情',
   infoActive: false
 })
 

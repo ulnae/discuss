@@ -1,13 +1,13 @@
 <template>
   <SidePanel v-model="roomName" :items="getRooms" :item-key="(item: any) => item.room_id" :active-id="paramsID"
-    :has-detail="hasDetail" :loading="roomStore.loading && !roomStore.rooms.length" loading-text="正在加载房间…"
-    :empty="getRooms.length === 0" empty-icon="chat" empty-text="还没有加入任何房间" search-placeholder="搜索房间"
+    :has-detail="hasDetail" :loading="roomStore.loading && !roomStore.rooms.length" :loading-text="t('room.loadingRooms')"
+    :empty="getRooms.length === 0" empty-icon="chat" :empty-text="t('room.emptyRooms')" :search-placeholder="t('room.searchRooms')"
     @select="handleRoomClick">
     <template #head-actions>
-      <router-link to="/room/search" class="icon-btn" title="搜索并加入房间">
+      <router-link to="/room/search" class="icon-btn" :title="t('room.searchAndJoin')">
         <AppIcon name="room" :size="17" :stroke-width="1.6" />
       </router-link>
-      <router-link to="/room/create" class="icon-btn" title="创建房间">
+      <router-link to="/room/create" class="icon-btn" :title="t('room.createRoom')">
         <AppIcon name="plus" :size="17" :stroke-width="1.6" />
       </router-link>
     </template>
@@ -35,6 +35,7 @@ import { useSocketStore } from "@/store/modules/socket";
 import router from "@/router";
 import { ref, computed, watchEffect } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import { AppIcon, UserAvatar } from '@/components/ui'
 
 
@@ -43,6 +44,7 @@ import { SidePanel } from '@/components'
 
 const roomStore = useRoomStore();
 const socketStore = useSocketStore();
+const { t } = useI18n();
 
 const roomName = ref('')
 const getRooms = computed(() => {

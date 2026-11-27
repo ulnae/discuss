@@ -12,6 +12,9 @@ import { mergeChatMessages } from '@/utils/messageMerge'
 import { MessageCache } from '@/utils/messageCache'
 import { toast } from '@/components/ui/toast'
 import { Event, type MentionRef } from '@/constants/events'
+import { i18n } from '@/locales'
+
+const t = i18n.global.t
 
 const setTitle = updateTitle()
 
@@ -189,7 +192,11 @@ export const useSocketStore = defineStore('socket', {
                 // 服务端处理某条消息失败时的回执（两个后端都发 exception，不再直接登出）
                 this.socket.on(Event.EXCEPTION, (data) => {
                     console.warn('socket exception', data)
-                    toast.error((data && data.message) || '操作失败，请稍后重试')
+                    const key = data && data.i18nKey
+                    const fallback = key && i18n.global.te(key)
+                        ? t(key, (data && data.i18nParams) || {})
+                        : (data && data.message)
+                    toast.error(fallback || t('common.failedRetry'))
                 })
 
 
@@ -227,7 +234,7 @@ export const useSocketStore = defineStore('socket', {
                 // 接收好友状态更新（规范事件名 status:friend，历史拼写 status:firend 已移除）
                 this.socket.on(Event.STATUS_FRIEND, (data: any) => {
                     useFriendStore().setFriendStatus(data.userId, data.status)
-                    setTitle(`[${useFriendStore().getFriendMap[data.userId]?.friend_info?.username}] ${data.status ? '上线' : '离线'}`)
+                    setTitle(`[${useFriendStore().getFriendMap[data.userId]?.friend_info?.username}] ${data.status ? t('common.online') : t('common.offline')}`)
                 })
 
                 // 初始化获取所有在线好友
@@ -261,26 +268,26 @@ export const useSocketStore = defineStore('socket', {
                     const apply = data && data.apply
                     if (!apply) return
                     useApplyStore().addPending(apply)
-                    const name = apply.user_info?.username || '有人'
-                    const tip = `好友申请：${name} 申请加你为好友`
+                    const name = apply.user_info?.username || t('ws.someone')
+                    const tip = t('ws.friendRequest', { name })
                     toast.info(tip)
                     setTitle(tip)
                 })
 
                 // 我发起的申请被同意：双方好友列表都要出现对方
                 this.socket.on(Event.FRIEND_ACCEPTED, (data) => {
-                    const name = (data && data.username) || '对方'
+                    const name = (data && data.username) || t('ws.peer')
                     useFriendStore().getFriends()
                     useApplyStore().getApplies(true)
                     useApplyStore().removePending(data && data.applyId)
-                    toast.success(`${name} 通过了你的好友申请`)
+                    toast.success(t('ws.friendAccepted', { name }))
                 })
 
                 // 我发起的申请被拒绝
                 this.socket.on(Event.FRIEND_REJECTED, (data) => {
-                    const name = (data && data.username) || '对方'
+                    const name = (data && data.username) || t('ws.peer')
                     useApplyStore().getApplies(true)
-                    toast.warning(`${name} 拒绝了你的好友申请`)
+                    toast.warning(t('ws.friendRejected', { name }))
                 })
 
                 // 对方直接把我加为好友（不走申请）
@@ -293,7 +300,7 @@ export const useSocketStore = defineStore('socket', {
                     const id = data && data.userId
                     if (!id) return
                     useFriendStore().removeFriend(id)
-                    toast.warning(`${(data && data.username) || '对方'} 已将你删除好友`)
+                    toast.warning(t('ws.friendRemoved', { name: (data && data.username) || t('ws.peer') }))
                     leaveIf(`/friend/${id}`, '/friend/dashboard')
                 })
 
@@ -306,21 +313,21 @@ export const useSocketStore = defineStore('socket', {
                 this.socket.on(Event.ROOM_APPLY, (data) => {
                     const apply = data && data.apply
                     if (apply) useApplyStore().addPending(apply)
-                    const name = (apply && apply.user_info && apply.user_info.username) || '有人'
-                    const roomName = (data && data.roomName) || '房间'
-                    const tip = `入群申请：${name} 申请加入「${roomName}」`
+                    const name = (apply && apply.user_info && apply.user_info.username) || t('ws.someone')
+                    const roomName = (data && data.roomName) || t('ws.unknownRoom')
+                    const tip = t('ws.roomApply', { name, roomName })
                     toast.info(tip)
                     setTitle(tip)
                 })
 
                 // 我的入群申请有结果
                 this.socket.on(Event.ROOM_APPLY_RESULT, (data) => {
-                    const name = (data && data.roomName) || '房间'
+                    const name = (data && data.roomName) || t('ws.unknownRoom')
                     if (data && data.status) {
                         useRoomStore().getRooms()
-                        toast.success(`已加入「${name}」`)
+                        toast.success(t('ws.roomApplyAccepted', { name }))
                     } else {
-                        toast.warning(`加入「${name}」的申请被拒绝`)
+                        toast.warning(t('ws.roomApplyRejected', { name }))
                     }
                 })
 
@@ -328,7 +335,7 @@ export const useSocketStore = defineStore('socket', {
                 this.socket.on(Event.ROOM_JOINED, (data) => {
                     useRoomStore().getRooms()
                     const name = data && data.roomName
-                    if (name) toast.success(`你已加入「${name}」`)
+                    if (name) toast.success(t('ws.roomJoined', { name }))
                 })
 
                 // 房间改名等元信息变化
@@ -341,7 +348,7 @@ export const useSocketStore = defineStore('socket', {
                     if (!data || !data.roomId) return
                     useRoomStore().getRoomMember(data.roomId)
                     if (hashPath().startsWith(`/room/${data.roomId}`)) {
-                        toast.info(`${data.username || '新成员'} 加入了房间`)
+                        toast.info(t('ws.memberJoined', { name: data.username || t('ws.newMember') }))
                     }
                 })
 
@@ -355,10 +362,10 @@ export const useSocketStore = defineStore('socket', {
                     if (data.byUserId && data.byUserId === currentUid()) return
                     if (hashPath().startsWith(`/room/${data.roomId}`)) {
                         // 区分「主动退出」与「被移出」：后端 reason 为 left / kicked
-                        const who = data.byUsername || '成员'
+                        const who = data.byUsername || t('ws.member')
                         toast.info(data.reason === 'left'
-                            ? `${who} 退出了房间`
-                            : `${who} 移出了一名成员`)
+                            ? t('ws.memberLeft', { name: who })
+                            : t('ws.memberKicked', { name: who }))
                     }
                 })
 
@@ -367,8 +374,10 @@ export const useSocketStore = defineStore('socket', {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
-                    const who = (data && data.byUsername) ? `${data.byUsername} ` : ''
-                    toast.warning(`你已被${who}移出「${(data && data.roomName) || '房间'}」`)
+                    toast.warning(t('ws.roomKicked', {
+                        name: (data && data.byUsername) || t('ws.owner'),
+                        roomName: (data && data.roomName) || t('ws.unknownRoom'),
+                    }))
                     leaveIf(`/room/${roomId}`, '/room/dashboard')
                 })
 
@@ -377,7 +386,7 @@ export const useSocketStore = defineStore('socket', {
                     const roomId = data && data.roomId
                     if (!roomId) return
                     useRoomStore().removeRoom(roomId)
-                    toast.info(`你已退出「${(data && data.roomName) || '房间'}」`)
+                    toast.info(t('ws.roomLeft', { roomName: (data && data.roomName) || t('ws.unknownRoom') }))
                     leaveIf(`/room/${roomId}`, '/room/dashboard')
                 })
 
@@ -389,8 +398,10 @@ export const useSocketStore = defineStore('socket', {
                     leaveIf(`/room/${roomId}`, '/room/dashboard')
                     // 群主自己解散时本地流程已有 toast，跳过 WS 回弹
                     if (data.byUserId && data.byUserId === currentUid()) return
-                    const who = (data && data.byUsername) ? ` ${data.byUsername} ` : '群主'
-                    toast.warning(`「${(data && data.roomName) || '房间'}」已被${who}解散`)
+                    toast.warning(t('ws.roomDeleted', {
+                        name: (data && data.byUsername) || t('ws.owner'),
+                        roomName: (data && data.roomName) || t('ws.unknownRoom'),
+                    }))
                 })
                 }).catch(error => {
                     console.error('socket connect failed', error)

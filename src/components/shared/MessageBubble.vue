@@ -1,5 +1,5 @@
 <template>
-    <img v-if="message.type === 'image'" :src="`${VITE_APP_API_BASE_URL}${message.content}`" alt="图片已失效"
+    <img v-if="message.type === 'image'" :src="`${VITE_APP_API_BASE_URL}${message.content}`" :alt="t('chat.imgBroken')"
         class="cm-image" @click="handlePreviewImage(message.content)" />
     <template v-else-if="message.type === 'file'">
         <video class="cm-media" controls v-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['mp4', 'webm'])">
@@ -9,7 +9,7 @@
             <source :src="`${VITE_APP_API_BASE_URL}${message.content}`">
         </audio>
         <img v-else-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['svg', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'])"
-            :src="`${VITE_APP_API_BASE_URL}${message.content}`" alt="图片已失效" class="cm-image"
+            :src="`${VITE_APP_API_BASE_URL}${message.content}`" :alt="t('chat.imgBroken')" class="cm-image"
             @click="handlePreviewImage(message.content)" />
         <a v-else class="cm-file" :href="`${VITE_APP_API_BASE_URL}${message.content}`" target="_blank">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
@@ -24,14 +24,14 @@
          深色语境（夜间模式 / 自己的深色气泡）的反色适配见 design.scss -->
     <div v-else class="cm-md markdown-body md-themed" v-html="renderedHtml"></div>
     <!-- 发送状态：绝对定位成气泡角标，脱离文档流 —— 状态切换不再改变消息高度 -->
-    <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" title="发送中…">
+    <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" :title="t('chat.statusSending')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
             aria-hidden="true">
             <path d="M12 4a8 8 0 1 0 8 8" />
         </svg>
     </span>
     <button v-else-if="message.status === 'failed'" type="button" class="cm-status cm-status-failed"
-        title="发送失败，点击重试" aria-label="发送失败，点击重试" @click="$emit('resend')">
+        :title="t('chat.statusSendFailed')" :aria-label="t('chat.statusSendFailed')" @click="$emit('resend')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
             stroke-linejoin="round" aria-hidden="true">
             <path d="M12 7.5v5.5" />
@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { isUrlEndWith } from "@/utils/index";
 import { renderChatContent } from "@/utils/markdown";
 import { useUserStore } from "@/store/modules/user";
@@ -54,6 +55,7 @@ const props = defineProps({
 });
 
 const userStore = useUserStore();
+const { t } = useI18n();
 /** 群聊 @ 高亮与输入区预览共用同一渲染函数；历史消息无 mentions 时走原 Markdown 渲染 */
 const renderedHtml = computed(() => renderChatContent(
     String(props.message.content ?? ''),
@@ -67,9 +69,9 @@ const fileDisplayName = computed(() => {
     if (name) return name;
     const path = String(props.message.content ?? '').split(/[?#]/)[0];
     const last = path.split('/').pop();
-    if (!last) return '下载文件';
+    if (!last) return t('chat.fileFallback');
     try {
-        return decodeURIComponent(last) || '下载文件';
+        return decodeURIComponent(last) || t('chat.fileFallback');
     } catch {
         return last;
     }

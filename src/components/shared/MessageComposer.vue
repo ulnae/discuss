@@ -13,27 +13,27 @@
       <!-- Markdown 编辑模式（设置里开启后显示）：左侧格式按钮，右侧预览开关 -->
       <div v-if="mdInputEnabled" class="composer-toolbar">
         <div class="composer-format">
-          <button type="button" class="icon-btn" title="粗体 **" @mousedown.prevent @click="applyFormat('bold')">
+          <button type="button" class="icon-btn" :title="t('chat.mdBold')" @mousedown.prevent @click="applyFormat('bold')">
             <AppIcon name="bold" :size="16" :stroke-width="1.7" />
           </button>
-          <button type="button" class="icon-btn" title="斜体 *" @mousedown.prevent @click="applyFormat('italic')">
+          <button type="button" class="icon-btn" :title="t('chat.mdItalic')" @mousedown.prevent @click="applyFormat('italic')">
             <AppIcon name="italic" :size="16" :stroke-width="1.7" />
           </button>
-          <button type="button" class="icon-btn" title="行内代码 `" @mousedown.prevent @click="applyFormat('code')">
+          <button type="button" class="icon-btn" :title="t('chat.mdInlineCode')" @mousedown.prevent @click="applyFormat('code')">
             <AppIcon name="code" :size="16" :stroke-width="1.7" />
           </button>
-          <button type="button" class="icon-btn" title="代码块 ```" @mousedown.prevent @click="applyFormat('codeblock')">
+          <button type="button" class="icon-btn" :title="t('chat.mdCodeBlock')" @mousedown.prevent @click="applyFormat('codeblock')">
             <AppIcon name="codeblock" :size="16" :stroke-width="1.7" />
           </button>
-          <button type="button" class="icon-btn" title="链接 [文本](地址)" @mousedown.prevent @click="applyFormat('link')">
+          <button type="button" class="icon-btn" :title="t('chat.mdLink')" @mousedown.prevent @click="applyFormat('link')">
             <AppIcon name="link" :size="16" :stroke-width="1.7" />
           </button>
-          <button type="button" class="icon-btn" title="引用 >" @mousedown.prevent @click="applyFormat('quote')">
+          <button type="button" class="icon-btn" :title="t('chat.mdQuote')" @mousedown.prevent @click="applyFormat('quote')">
             <AppIcon name="quote" :size="16" :stroke-width="1.7" />
           </button>
         </div>
         <button type="button" class="icon-btn" :class="{ 'is-active': preview }"
-          :title="preview ? '返回编辑' : '预览 Markdown'" @click="preview = !preview">
+          :title="preview ? t('chat.previewEdit') : t('chat.previewMd')" @click="preview = !preview">
           <AppIcon name="eye" :size="17" :stroke-width="1.7" />
         </button>
       </div>
@@ -44,15 +44,15 @@
         @compositionstart="mentionComposing = true" @compositionend="onCompositionEnd" @blur="closeMentions"></textarea>
       <div v-else class="composer-preview cm-md markdown-body md-themed">
         <div v-if="previewHtml" v-html="previewHtml"></div>
-        <span v-else class="composer-preview-empty">暂无内容可预览</span>
+        <span v-else class="composer-preview-empty">{{ t('chat.previewEmpty') }}</span>
       </div>
 
       <div class="composer-actions">
         <slot name="actions" />
-        <button type="button" class="icon-btn" title="发送图片" @click="emit('image')">
+        <button type="button" class="icon-btn" :title="t('chat.sendImage')" @click="emit('image')">
           <AppIcon name="image" :size="18" :stroke-width="1.6" />
         </button>
-        <button type="button" class="icon-btn" title="发送文件" @click="emit('file')">
+        <button type="button" class="icon-btn" :title="t('chat.sendFile')" @click="emit('file')">
           <AppIcon name="file" :size="18" :stroke-width="1.6" />
         </button>
       </div>
@@ -62,6 +62,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AppIcon, UserAvatar } from '@/components/ui'
 
 import { useResizable } from '@/hooks/useResizable'
@@ -87,6 +88,7 @@ const emit = defineEmits<{
 }>()
 
 const { mdInputEnabled } = useMdPreference()
+const { t } = useI18n()
 const userStore = useUserStore()
 
 const inputAreaRef = ref<HTMLElement | null>(null)
@@ -122,7 +124,7 @@ const {
   },
 })
 
-const placeholder = '输入消息，回车发送'
+const placeholder = computed(() => t('chat.composerPh'))
 
 /** 输入法组合结束后再检测 @，避免拼音未上屏就弹候选 */
 const onCompositionEnd = () => {
@@ -173,11 +175,11 @@ const applyFormat = (kind: FormatKind) => {
 
   if (kind === 'bold' || kind === 'italic' || kind === 'code') {
     const mark = kind === 'bold' ? '**' : kind === 'italic' ? '*' : '`'
-    const text = selected || (kind === 'bold' ? '粗体' : kind === 'italic' ? '斜体' : '代码')
+    const text = selected || (kind === 'bold' ? t('chat.mdBoldText') : kind === 'italic' ? t('chat.mdItalicText') : t('chat.mdCodeText'))
     next = `${value.slice(0, start)}${mark}${text}${mark}${value.slice(end)}`
     caret = start + mark.length + text.length + mark.length
   } else if (kind === 'link') {
-    const text = selected || '链接文本'
+    const text = selected || t('chat.mdLinkText')
     const url = 'https://'
     next = `${value.slice(0, start)}[${text}](${url})${value.slice(end)}`
     // 光标定位到 url 占位并选中，方便直接输入地址
@@ -192,12 +194,12 @@ const applyFormat = (kind: FormatKind) => {
     // 块级语法：代码块 / 引用，前后补换行
     const padBefore = start > 0 && value.charAt(start - 1) !== '\n' ? '\n' : ''
     if (kind === 'codeblock') {
-      const body = selected || '代码'
+      const body = selected || t('chat.mdCodeText')
       const block = `${padBefore}\`\`\`\n${body}\n\`\`\`\n`
       next = `${value.slice(0, start)}${block}${value.slice(end)}`
       caret = start + block.length
     } else {
-      const body = (selected || '引用内容').split('\n').map((line) => `> ${line}`).join('\n')
+      const body = (selected || t('chat.mdQuoteText')).split('\n').map((line) => `> ${line}`).join('\n')
       const block = `${padBefore}${body}\n`
       next = `${value.slice(0, start)}${block}${value.slice(end)}`
       caret = start + block.length

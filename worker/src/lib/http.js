@@ -17,8 +17,13 @@ export function ok(data, cors = {}) {
     return json({ code: 200, msg: 'success', data }, 200, cors);
 }
 
-export function fail(msg, status = 400, cors = {}) {
-    return json({ code: -1, msg, data: null }, status, cors);
+export function fail(msg, status = 400, cors = {}, i18nKey = null, i18nParams = null) {
+    const body = { code: -1, msg, data: null };
+    if (i18nKey) {
+        body.i18nKey = i18nKey;
+        if (i18nParams) body.i18nParams = i18nParams;
+    }
+    return json(body, status, cors);
 }
 
 /** ALLOW_ORIGIN 支持逗号分隔多个来源 */

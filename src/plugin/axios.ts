@@ -4,44 +4,42 @@ import { APIENUM, API_ENUM_SERVICE } from '@/settings'
 import { useUserStore } from '@/store/modules/user'
 import { pinia } from '@/store'
 import { toast } from '@/components/ui/toast'
+import { i18n } from '@/locales'
 
-/** HTTP 状态码兜底文案：后端没给 msg 时用它，避免把技术细节甩给用户 */
-const HTTP_TIPS: Record<number, string> = {
-    400: '请求参数有误，请检查后重试',
-    401: '登录已过期，请重新登录',
-    403: '没有权限执行该操作',
-    404: '接口不存在或已被移除',
-    408: '请求超时，请稍后重试',
-    413: '内容过大，请压缩后重试',
-    429: '操作太频繁了，请稍后再试',
-    500: '服务器开小差了，请稍后重试',
-    501: '该功能暂未开放',
-    502: '网关异常，请稍后重试',
-    503: '服务暂时不可用，请稍后重试',
-    504: '网关超时，请稍后重试'
+const t = i18n.global.t
+
+/**
+ * 后端返回的 i18nKey（error.*）优先本地翻译；缺失时回退服务端原文（中文），
+ * 保证旧版后端 / 未收录文案不至于显示成 key。
+ */
+function serverText(data: any): string | undefined {
+    if (!data) return undefined
+    const key = data.i18nKey
+    if (typeof key === 'string' && key && i18n.global.te(key)) return t(key, data.i18nParams || {})
+    const msg = data.msg || data.message
+    return typeof msg === 'string' && msg.trim() ? msg.trim() : undefined
 }
 
 /** 把 axios 的原始报错整理成一句用户能看懂的话 */
 function readableMessage(error: any): string {
     const response = error && error.response
-    const data = response && response.data
-    const serverMsg = data && (data.msg || data.message)
-    if (typeof serverMsg === 'string' && serverMsg.trim()) return serverMsg.trim()
+    const fromServer = serverText(response && response.data)
+    if (fromServer) return fromServer
 
     const status = response && response.status
-    if (status && HTTP_TIPS[status]) return HTTP_TIPS[status]
+    if (status && i18n.global.te(`http.${status}`)) return t(`http.${status}`)
 
     const raw = String((error && error.message) || '')
     if (error && (error.code === 'ECONNABORTED' || raw.includes('timeout'))) {
-        return '请求超时，请检查网络后重试'
+        return t('http.timeout')
     }
-    if (raw === 'Network Error') return '网络异常，请检查网络连接'
-    return raw || '操作失败，请稍后重试'
+    if (raw === 'Network Error') return t('http.network')
+    return raw || t('common.failedRetry')
 }
 
 // 创建一个错误
 function errorCreate(msg: any, path: any) {
-    const error = new Error(String(msg || '操作失败，请稍后重试'))
+    const error = new Error(String(msg || t('common.failedRetry')))
     errorLog(error, path)
     throw error
 }
@@ -52,7 +50,7 @@ function errorLog(error: Error, path?: any) {
     if (import.meta.env.MODE === 'development') {
         console.log(error, path || 'Error')
     }
-    toast.error(error.message || '操作失败，请稍后重试')
+    toast.error(error.message || t('common.failedRetry'))
 }
 interface RequestConfig extends AxiosRequestConfig {
     service?: APIENUM
@@ -120,21 +118,21 @@ service.interceptors.response.use(
                     return dataAxios.data
                 case 403:
                     // [ 示例 ] 其它和后台约定的 code
-                    errorCreate(dataAxios.msg, response.config.url)
+                    errorCreate(serverText(dataAxios), response.config.url)
                     break
                 case 204:
                     // [ 示例 ] 其它和后台约定的 code
-                    errorCreate(dataAxios.msg, response.config.url)
+                    errorCreate(serverText(dataAxios), response.config.url)
                     break
                 case 401:
                     /// 需要去退出到登录页
                     // [ 示例 ] 其它和后台约定的 code
                     useUserStore().logout()
-                    errorCreate(dataAxios.msg, response.config.url)
+                    errorCreate(serverText(dataAxios), response.config.url)
                     break
                 default:
                     // 不是正确的 code
-                    errorCreate(dataAxios.msg, response.config.url)
+                    errorCreate(serverText(dataAxios), response.config.url)
                     break
             }
         }

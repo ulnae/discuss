@@ -11,10 +11,10 @@ import { ApiError } from './errors.js';
 export async function currentUser(request, env) {
     const header = request.headers.get('Authorization') || '';
     const token = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
-    if (!token) throw new ApiError('未授权，请登录', 401);
+    if (!token) throw new ApiError('未授权，请登录', 401, 'error.auth.notLoggedIn');
     const payload = await verifyToken(token, env.JWT_SECRET);
     /* 短时效的 WS ticket 不能当 REST token 用 */
-    if (!payload || !payload.id || payload.typ === 'ws-ticket') throw new ApiError('登录已过期，请重新登录', 401);
+    if (!payload || !payload.id || payload.typ === 'ws-ticket') throw new ApiError('登录已过期，请重新登录', 401, 'error.auth.tokenExpired');
 
     let row;
     try {
@@ -23,7 +23,7 @@ export async function currentUser(request, env) {
         /* 表尚未初始化（首次部署）时不做账号校验，让具体接口自己暴露问题 */
         return { id: payload.id, username: payload.username || '' };
     }
-    if (!row) throw new ApiError('账号不存在，请重新登录', 401);
-    if (row.isDeleted) throw new ApiError('账号已注销，请重新登录', 401);
+    if (!row) throw new ApiError('账号不存在，请重新登录', 401, 'error.auth.accountGone');
+    if (row.isDeleted) throw new ApiError('账号已注销，请重新登录', 401, 'error.auth.accountDeleted');
     return { id: row.id, username: row.username || payload.username || '' };
 }

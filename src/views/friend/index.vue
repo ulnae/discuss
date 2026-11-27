@@ -1,15 +1,15 @@
 <template>
   <div class="chat-shell">
     <div class="chat-main">
-      <ChatHeader :title="getFriendInfo.username || (friendStore.loading ? '加载中…' : '未知好友')"
-        :subtitle="getFriendInfo.email || (friendStore.loading ? '' : '—')" back-title="返回好友列表"
-        info-title="好友资料" :info-active="infoVisiable" @back="goBack" @toggle-info="handleSwitchInfo" />
+      <ChatHeader :title="getFriendInfo.username || (friendStore.loading ? t('common.loading') : t('friend.unknownFriend'))"
+        :subtitle="getFriendInfo.email || (friendStore.loading ? '' : '—')" :back-title="t('friend.backToList')"
+        :info-title="t('friend.infoTitle')" :info-active="infoVisiable" @back="goBack" @toggle-info="handleSwitchInfo" />
 
       <div id="messageContainer" ref="containerRef" class="chat-body">
         <div class="msg-list">
           <!-- 好友列表（资料来源）在途：展示 loading；本地已有消息缓存则不打扰 -->
-          <LoadingBlock v-if="friendStore.loading && !getHistory.length" text="正在加载…" />
-          <EmptyState v-else-if="!getHistory.length" icon="chat" text="还没有聊天记录，发条消息打个招呼吧" />
+          <LoadingBlock v-if="friendStore.loading && !getHistory.length" :text="t('common.loading')" />
+          <EmptyState v-else-if="!getHistory.length" icon="chat" :text="t('friend.emptyChat')" />
 
           <div v-for="message in visibleMessages" :key="message.id" class="msg"
             :class="{ 'is-me': message.from !== route.params.id }">
@@ -26,7 +26,7 @@
 
       <MessageComposer v-model.trim="story" @send="handleSend" @image="handleSendImage" @file="handleSendFile">
         <template #actions>
-          <button type="button" class="icon-btn" title="语音通话" :disabled="!isFriendOnline"
+          <button type="button" class="icon-btn" :title="t('friend.voiceCall')" :disabled="!isFriendOnline"
             @click="handleStartCall">
             <AppIcon name="phone" :size="18" :stroke-width="1.6" />
           </button>
@@ -34,34 +34,34 @@
       </MessageComposer>
     </div>
 
-    <DetailPanel :open="infoVisiable" title="好友资料" :loading="infoLoading" loading-text="正在加载好友资料…"
+    <DetailPanel :open="infoVisiable" :title="t('friend.infoTitle')" :loading="infoLoading" :loading-text="t('friend.loadingInfo')"
       @close="infoVisiable = false">
       <div class="info-card">
         <UserAvatar :name="getFriendInfo.username" size="xl" :online="isFriendOnline" />
         <div class="info-name">{{ getFriendInfo.username }}</div>
         <div class="chat-sub">
-          {{ isFriendOnline ? '在线' : '离线' }}
+          {{ isFriendOnline ? t('common.online') : t('common.offline') }}
         </div>
       </div>
 
       <div class="info-list">
         <div class="info-row">
-          <span class="info-k">用户名</span>
+          <span class="info-k">{{ t('friend.fieldUsername') }}</span>
           <span class="info-v">{{ getFriendInfo.username || '—' }}</span>
         </div>
         <div class="info-row">
-          <span class="info-k">邮箱</span>
+          <span class="info-k">{{ t('friend.fieldEmail') }}</span>
           <span class="info-v">{{ getFriendInfo.email || '—' }}</span>
         </div>
         <div class="info-row">
-          <span class="info-k">注册于</span>
+          <span class="info-k">{{ t('friend.fieldJoined') }}</span>
           <span class="info-v">{{ formatDate(getFriendInfo.createdAt) }}</span>
         </div>
       </div>
 
       <template #footer>
         <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleRemoveFriend">
-          删除好友
+          {{ t('friend.deleteFriend') }}
         </button>
       </template>
     </DetailPanel>
@@ -77,6 +77,7 @@ import { useFriendStore } from "@/store/modules/friend";
 import { useCallStore } from "@/store/modules/call";
 import { computed, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 
 import serverApi from "@/api";
 import { formatFileSize } from "@/utils";
@@ -93,6 +94,7 @@ const callStore = useCallStore();
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 
 const getHistory = computed(() => {
   return socketStore.userMessageMap.get(route.params.id as string) || [];
@@ -134,16 +136,16 @@ watchEffect(() => {
 // 删除好友：双向生效，对方会实时收到 friend:removed
 const handleRemoveFriend = async () => {
   const friendId = currentId()
-  const name = getFriendInfo.value.username || '该好友'
-  if (!(await showConfirm(`删除后双方好友列表都会消失，确定删除「${name}」吗？`, {
-    title: '删除好友',
+  const name = getFriendInfo.value.username || t('friend.thisFriend')
+  if (!(await showConfirm(t('friend.confirmDelete', { name }), {
+    title: t('friend.deleteFriend'),
     danger: true
   }))) return
 
   const res: any = await serverApi.RemoveFriend(friendId)
   if (res.code === 200) {
     friendStore.removeFriend(friendId)
-    toast.success('已删除好友')
+    toast.success(t('friend.deleted'))
     router.replace(NAV.friendList)
   }
 }

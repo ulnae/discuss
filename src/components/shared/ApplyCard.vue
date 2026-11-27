@@ -10,38 +10,38 @@
         <div class="identity-line">
           <span class="row-name">{{ title }}</span>
           <span class="chip type-badge" :class="isRoom ? 'badge-room' : 'badge-friend'">
-            {{ isRoom ? '入群申请' : '好友申请' }}
+            {{ isRoom ? t('apply.typeRoom') : t('apply.typeFriend') }}
           </span>
         </div>
         <p class="card-reason">{{ reason }}</p>
       </div>
 
       <span v-if="item.handle_status" class="status-flag" :class="item.status ? 'flag-success' : 'flag-danger'">
-        {{ item.status ? '已同意' : '已拒绝' }}
+        {{ item.status ? t('apply.statusApproved') : t('apply.statusRejected') }}
       </span>
-      <span v-else class="status-flag flag-wait">待处理</span>
+      <span v-else class="status-flag flag-wait">{{ t('apply.statusPending') }}</span>
     </div>
 
     <div class="card-foot">
       <div class="card-times">
         <span class="time-item">
           <AppIcon name="clock" :size="12" :stroke-width="1.8" />
-          <span class="time-label">申请</span>
+          <span class="time-label">{{ t('apply.timeSent') }}</span>
           <time class="time-value" :title="formatFullTime(item.createdAt)">{{ formatShortTime(item.createdAt) }}</time>
         </span>
         <span class="time-item" :class="{ 'is-pending': !item.handle_status }">
           <AppIcon name="clock" :size="12" :stroke-width="1.8" />
-          <span class="time-label">处理</span>
+          <span class="time-label">{{ t('apply.timeHandled') }}</span>
           <time v-if="item.handle_status" class="time-value" :title="formatFullTime(item.updatedAt)">
             {{ formatShortTime(item.updatedAt) }}
           </time>
-          <span v-else class="time-value time-wait">待处理</span>
+          <span v-else class="time-value time-wait">{{ t('apply.statusPending') }}</span>
         </span>
       </div>
 
       <div v-if="mode === 'pending' && !item.handle_status" class="card-actions">
-        <button type="button" class="btn btn-sm reject" @click="emit('reject', item.id)">拒绝</button>
-        <button type="button" class="btn btn-sm approve" @click="emit('approve', item.id)">同意</button>
+        <button type="button" class="btn btn-sm reject" @click="emit('reject', item.id)">{{ t('apply.reject') }}</button>
+        <button type="button" class="btn btn-sm approve" @click="emit('approve', item.id)">{{ t('apply.approve') }}</button>
       </div>
     </div>
   </article>
@@ -49,6 +49,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AppIcon } from '@/components/ui'
 
 import { avatarInitial, formatShortTime, formatFullTime } from '@/utils/format'
@@ -68,6 +69,8 @@ const emit = defineEmits<{
   approve: [id: string]
   reject: [id: string]
 }>()
+
+const { t } = useI18n()
 
 const isRoom = computed(() => !!props.item.room_id)
 </script>

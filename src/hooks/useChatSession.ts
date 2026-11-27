@@ -5,6 +5,7 @@ import { useAutoScroll } from '@/hooks/useAutoScroll'
 import { usePaste } from '@/hooks/usePaste'
 import { useFilePicker } from '@/hooks/useFilePicker'
 import serverApi from '@/api'
+import { i18n } from '@/locales'
 import { compressImage, imageFilename } from '@/utils/image'
 import { useMdPreference } from '@/hooks/useMdPreference'
 
@@ -87,7 +88,7 @@ export function useChatSession(options: UseChatSessionOptions) {
       if (res.code === 200) {
         const path = `/${normalizePath(res.data.path)}`
         if (mdInputEnabled.value) {
-          insertIntoStory(`[${res.data.originalname || '文件'}](${path})`)
+          insertIntoStory(`[${res.data.originalname || i18n.global.t('chat.file')}](${path})`)
         } else {
           options.send(path, {
             type: 'file',

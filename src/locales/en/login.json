@@ -1,0 +1,33 @@
+{
+    "login": {
+        "titleRegister": "Create account",
+        "titleLogin": "Welcome back",
+        "subRegister": "Sign up to join rooms and add friends",
+        "subLogin": "Log in to continue your conversations",
+        "tabLogin": "Log in",
+        "tabRegister": "Sign up",
+        "username": "Username",
+        "password": "Password",
+        "email": "Email",
+        "captcha": "Captcha",
+        "usernamePh": "Enter username",
+        "passwordPh": "Enter password",
+        "emailPh": "For account recovery (optional)",
+        "captchaPh": "Enter captcha",
+        "captchaRefresh": "Hard to read? Click to refresh",
+        "submittingRegister": "Signing up…",
+        "submittingLogin": "Logging in…",
+        "submitRegister": "Sign up & log in",
+        "submitLogin": "Log in",
+        "hasAccount": "Already have an account?",
+        "noAccount": "Don't have an account?",
+        "goLogin": "Log in",
+        "goRegister": "Sign up",
+        "warnUserPass": "Please enter username and password",
+        "warnEmail": "Please enter your email",
+        "warnCaptcha": "Please enter the captcha",
+        "registerOk": "Registration successful. Log in with your new account.",
+        "loginOk": "Logged in. Welcome back!",
+        "captchaFail": "Failed to load captcha. Click to retry."
+    }
+}

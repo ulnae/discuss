@@ -10,16 +10,16 @@
         </svg>
       </div>
 
-      <nav class="rail-nav" aria-label="主导航">
+      <nav class="rail-nav" :aria-label="t('nav.mainNav')">
         <button v-for="page in initRoutes" :key="page.path" type="button" class="rail-btn"
-          :class="{ 'is-active': getPath === page.path }" :title="page.meta.title" @click="handleClick(page)">
+          :class="{ 'is-active': getPath === page.path }" :title="t(page.meta.title)" @click="handleClick(page)">
           <span class="rail-icon" v-html="page.meta.icon"></span>
-          <span class="rail-text">{{ page.meta.title }}</span>
+          <span class="rail-text">{{ t(page.meta.title) }}</span>
         </button>
       </nav>
 
       <div class="rail-foot">
-        <button type="button" class="rail-btn" :class="{ 'is-active': getPath === 'setting' }" title="设置"
+        <button type="button" class="rail-btn" :class="{ 'is-active': getPath === 'setting' }" :title="t('nav.setting')"
           @click="handleSetting">
           <span class="rail-icon">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -29,7 +29,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
           </span>
-          <span class="rail-text">设置</span>
+          <span class="rail-text">{{ t('nav.setting') }}</span>
         </button>
       </div>
     </aside>
@@ -46,6 +46,9 @@ import router from "@/router";
 import { computed, ref, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import { initRoutes } from "@/router/routes";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 function handleClick(page: any) {
   router.push({

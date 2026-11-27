@@ -4,6 +4,7 @@ import type { Socket } from 'socket.io-client'
 import { useSocketStore } from './socket'
 import { Event } from '@/constants/events'
 import ServerApi from '@/api'
+import { i18n } from '@/locales'
 
 // 通话状态：idle-空闲 calling-主叫振铃中 incoming-被叫来电中 active-通话中 failed-通话失败提示
 export type CallStatus = 'idle' | 'calling' | 'incoming' | 'active' | 'failed'
@@ -136,7 +137,7 @@ export const useCallStore = defineStore('call', {
         localStream = stream
       } catch (err) {
         console.error('getUserMedia failed:', err)
-        this.fail('无法访问麦克风，请检查浏览器麦克风权限')
+        this.fail(i18n.global.t('call.micDenied'))
         return
       }
 
@@ -157,7 +158,7 @@ export const useCallStore = defineStore('call', {
       } catch (err) {
         console.error('getUserMedia failed:', err)
         this.emit(Event.CALL_REJECT, { callId: this.callId })
-        this.fail('无法访问麦克风，已拒绝通话')
+        this.fail(i18n.global.t('call.micDeniedRejected'))
         return
       }
 
@@ -216,7 +217,7 @@ export const useCallStore = defineStore('call', {
       this.direction = 'callee'
       this.callId = data.callId as string
       this.peerId = data.from as string
-      this.peerName = data.username || '未知用户'
+      this.peerName = data.username || i18n.global.t('call.unknownUser')
       this.muted = false
       this.duration = 0
       this.remoteStream = null
@@ -240,7 +241,7 @@ export const useCallStore = defineStore('call', {
       } catch (err) {
         console.error('createOffer failed:', err)
         this.emit(Event.CALL_END, { callId: this.callId })
-        this.fail('建立通话连接失败')
+        this.fail(i18n.global.t('call.connectFailed'))
       }
     },
 
@@ -259,7 +260,7 @@ export const useCallStore = defineStore('call', {
       } catch (err) {
         console.error('handleOffer failed:', err)
         this.emit(Event.CALL_END, { callId: this.callId })
-        this.fail('建立通话连接失败')
+        this.fail(i18n.global.t('call.connectFailed'))
       }
     },
 
@@ -293,7 +294,7 @@ export const useCallStore = defineStore('call', {
     },
 
     handleRejected() {
-      this.fail('对方已拒绝通话')
+      this.fail(i18n.global.t('call.rejected'))
     },
 
     handleCanceled(data: CallSignalPayload) {
@@ -302,26 +303,26 @@ export const useCallStore = defineStore('call', {
         this.resetAll()
         return
       }
-      this.fail(data.reason === 'timeout' ? '无人接听，通话已取消' : '对方已取消通话')
+      this.fail(data.reason === 'timeout' ? i18n.global.t('call.noAnswerCanceled') : i18n.global.t('call.canceled'))
     },
 
     handleTimeout() {
-      this.fail('无人接听，请稍后再拨')
+      this.fail(i18n.global.t('call.noAnswer'))
     },
 
     handleEnded(data: CallSignalPayload) {
-      this.fail(data.reason === 'offline' ? '对方已掉线，通话结束' : '对方已挂断，通话结束')
+      this.fail(data.reason === 'offline' ? i18n.global.t('call.peerOfflineEnded') : i18n.global.t('call.peerHungUp'))
     },
 
     handleCallError(data: CallSignalPayload) {
       const reasonMap: Record<string, string> = {
-        offline: '对方不在线',
-        busy: '对方正在通话中',
-        'busy-self': '您当前已有通话进行中',
-        invalid: '通话参数错误',
-        unavailable: '对方暂时无法接听',
+        offline: 'call.reasonOffline',
+        busy: 'call.reasonBusy',
+        'busy-self': 'call.reasonBusySelf',
+        invalid: 'call.reasonInvalid',
+        unavailable: 'call.reasonUnavailable',
       }
-      this.fail(reasonMap[data.reason || ''] || '通话连接失败')
+      this.fail(i18n.global.t(reasonMap[data.reason || ''] || 'call.connectFailed'))
     },
 
     // ===================== WebRTC 内部方法 =====================
@@ -363,7 +364,7 @@ export const useCallStore = defineStore('call', {
         const state = pc?.connectionState
         if (state === 'failed') {
           this.emit(Event.CALL_END, { callId: this.callId })
-          this.fail('网络连接失败，通话已结束')
+          this.fail(i18n.global.t('call.networkFailed'))
         }
       }
     },

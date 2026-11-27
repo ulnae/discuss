@@ -1,0 +1,30 @@
+{
+    "friend": {
+        "addFriend": "添加好友",
+        "loadingFriends": "正在加载好友…",
+        "emptyList": "还没有好友，点右上角 + 搜索添加",
+        "searchPh": "搜索好友",
+        "backToList": "返回好友列表",
+        "unknownFriend": "未知好友",
+        "infoTitle": "好友资料",
+        "loadingInfo": "正在加载好友资料…",
+        "emptyChat": "还没有聊天记录，发条消息打个招呼吧",
+        "voiceCall": "语音通话",
+        "fieldUsername": "用户名",
+        "fieldEmail": "邮箱",
+        "fieldJoined": "注册于",
+        "deleteFriend": "删除好友",
+        "thisFriend": "该好友",
+        "confirmDelete": "删除后双方好友列表都会消失，确定删除「{name}」吗？",
+        "deleted": "已删除好友",
+        "subtitle": "输入用户名后回车，即可搜索并发送好友申请",
+        "usernamePh": "输入用户名",
+        "me": "我",
+        "noEmail": "未设置邮箱",
+        "addBtn": "加好友",
+        "added": "已添加",
+        "inputRequired": "请输入要搜索的用户名",
+        "noMatch": "没有找到匹配的用户",
+        "requestSent": "好友申请已发送"
+    }
+}

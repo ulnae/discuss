@@ -5,12 +5,12 @@
   <aside class="detail-panel" v-show="open" :style="{ '--detail-width': width + 'px' }">
     <header class="detail-head">
       <span><slot name="title">{{ title }}</slot></span>
-      <button type="button" class="icon-btn detail-close" title="关闭" @click="emit('close')">
+      <button type="button" class="icon-btn detail-close" :title="t('common.close')" @click="emit('close')">
         <AppIcon name="close" :size="14" :stroke-width="1.8" />
       </button>
     </header>
 
-    <LoadingBlock v-if="loading" class="detail-loading" :text="loadingText" />
+    <LoadingBlock v-if="loading" class="detail-loading" :text="loadingText ?? t('common.loading')" />
 
     <template v-else>
       <div class="detail-body">
@@ -24,8 +24,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { AppIcon, LoadingBlock } from '@/components/ui'
 
+const { t } = useI18n()
 
 withDefaults(defineProps<{
   open: boolean
@@ -37,7 +39,7 @@ withDefaults(defineProps<{
 }>(), {
   width: 224,
   loading: false,
-  loadingText: '正在加载…'
+  loadingText: undefined as unknown as string
 })
 
 const emit = defineEmits<{ close: [] }>()

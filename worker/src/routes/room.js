@@ -40,12 +40,12 @@ async function create(request, env, ctx) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
     const name = String(body.name || '').trim();
-    if (!name) throw new ApiError('房间名称不能为空', 400);
+    if (!name) throw new ApiError('房间名称不能为空', 400, 'error.room.nameRequired');
 
     /* 表上 name 是 UNIQUE（含已软删的行），所以这里也要算上已解散的房间，
        否则只查 isDeleted = 0 会在 INSERT 时撞 UNIQUE 约束，抛出一个看不懂的 500 */
     const duplicated = await first(env, 'SELECT id, isDeleted FROM room WHERE name = ?', name);
-    if (duplicated) throw new ApiError('房间名称已被使用（含已解散的房间），换一个名字吧', 400);
+    if (duplicated) throw new ApiError('房间名称已被使用（含已解散的房间），换一个名字吧', 400, 'error.room.nameTakenWithDeleted');
 
     const timestamp = now();
     const roomId = uuid();
@@ -58,7 +58,7 @@ async function create(request, env, ctx) {
     } catch (error) {
         /* 并发创建同名房间时仍可能撞唯一索引，转成可读提示而不是 500 */
         if (String(error && error.message || '').includes('UNIQUE')) {
-            throw new ApiError('房间名称已被使用，换一个名字吧', 400);
+            throw new ApiError('房间名称已被使用，换一个名字吧', 400, 'error.room.nameTaken');
         }
         throw error;
     }
@@ -142,7 +142,7 @@ async function overview(request, env, ctx) {
         // 前端会 clear() 后什么都不塞，把自己和所有人刷成"离线"且无事件纠正。
         // 报错后前端按 res.code !== 200 保留现有在线状态，等下次刷新/推送恢复。
         if (!json || !json.ok) {
-            throw new ApiError('在线名单查询失败，请稍后重试', 503);
+            throw new ApiError('在线名单查询失败，请稍后重试', 503, 'error.room.onlineListFail');
         }
         online = json.online || {};
     }
@@ -157,7 +157,7 @@ async function overview(request, env, ctx) {
 async function detail(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const row = await first(env, `${ROOM_SELECT} WHERE r.id = ? AND r.isDeleted = 0`, id);
-    if (!row) throw new ApiError(`id为${id}的房间不存在`, 404);
+    if (!row) throw new ApiError(`id为${id}的房间不存在`, 404, 'error.room.notFoundId', { id });
 
     /* 群资料只对成员开放：否则任何登录用户都能按 id 枚举出全部群名与群主邮箱 */
     const member = await first(
@@ -165,7 +165,7 @@ async function detail(request, env, ctx, id) {
         'SELECT id FROM member WHERE room_id = ? AND user_id = ? AND isDeleted = 0',
         id, me.id
     );
-    if (!member) throw new ApiError('你不是该房间成员', 403);
+    if (!member) throw new ApiError('你不是该房间成员', 403, 'error.room.notMember');
     return ok(roomView(row), ctx.cors);
 }
 
@@ -173,19 +173,19 @@ async function update(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
     const exist = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 404);
+    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 404, 'error.room.notFoundId', { id });
     /* 契约里写的是「群主」——没有这行判断，任何登录用户都能改别人群的名称与公告 */
-    if (exist.creator !== me.id) throw new ApiError('只有群主可以修改房间信息', 403);
+    if (exist.creator !== me.id) throw new ApiError('只有群主可以修改房间信息', 403, 'error.room.onlyOwnerUpdate');
 
     const fields = [];
     const args = [];
     /* 用 !== undefined 而不是真值判断：否则把群公告清空（传空串）会被静默忽略 */
     if (body.name !== undefined) {
         const name = String(body.name).trim();
-        if (!name) throw new ApiError('房间名称不能为空', 400);
+        if (!name) throw new ApiError('房间名称不能为空', 400, 'error.room.nameRequired');
         if (name !== exist.name) {
             const duplicated = await first(env, 'SELECT id FROM room WHERE name = ? AND id <> ?', name, id);
-            if (duplicated) throw new ApiError('房间名称已被使用，换一个名字吧', 400);
+            if (duplicated) throw new ApiError('房间名称已被使用，换一个名字吧', 400, 'error.room.nameTaken');
             fields.push('name = ?'); args.push(name);
         }
     }
@@ -207,8 +207,8 @@ async function update(request, env, ctx, id) {
 async function remove(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const exist = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 404);
-    if (exist.creator !== me.id) throw new ApiError('只有群主可以解散房间', 403);
+    if (!exist) throw new ApiError(`id为${id}的房间不存在`, 404, 'error.room.notFoundId', { id });
+    if (exist.creator !== me.id) throw new ApiError('只有群主可以解散房间', 403, 'error.room.onlyOwnerDelete');
 
     /* name 上有 UNIQUE 约束，软删后如果不释放名字，同名房间永远建不回来。
        改名成带后缀的形式（列表只查 isDeleted = 0，用户看不到这个后缀） */

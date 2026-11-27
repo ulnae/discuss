@@ -1,36 +1,36 @@
 <template>
     <div class="create-page">
-        <BackButton class="page-back" title="返回房间列表" @click="goBack" />
+        <BackButton class="page-back" :title="t('room.backToList')" @click="goBack" />
         <div class="create-card">
             <header class="create-head">
                 <div class="create-logo" aria-hidden="true">
                     <AppIcon name="room" :size="20" />
                 </div>
-                <h1 class="create-title">创建房间</h1>
-                <p class="create-sub">起个名字，拉上朋友一起聊</p>
+                <h1 class="create-title">{{ t('room.createRoom') }}</h1>
+                <p class="create-sub">{{ t('room.createSubtitle') }}</p>
             </header>
 
             <div class="create-form">
                 <label class="field">
-                    <span class="ui-label">房间名</span>
+                    <span class="ui-label">{{ t('room.nameLabel') }}</span>
                     <div class="ui-field">
                         <span class="ui-field-icon">
                             <AppIcon name="house" :size="15" />
                         </span>
-                        <input v-model.trim="room.name" type="text" placeholder="例如：深夜代码局" />
+                        <input v-model.trim="room.name" type="text" :placeholder="t('room.namePlaceholder')" />
                     </div>
                 </label>
 
                 <label class="field">
-                    <span class="ui-label">房间描述</span>
+                    <span class="ui-label">{{ t('room.descLabel') }}</span>
                     <div class="ui-field ui-field-area">
-                        <textarea v-model.trim="room.description" rows="5" placeholder="简单介绍一下这个房间聊什么"></textarea>
+                        <textarea v-model.trim="room.description" rows="5" :placeholder="t('room.descPlaceholder')"></textarea>
                     </div>
                 </label>
 
                 <button type="button" class="btn btn-primary btn-block"
                     :disabled="!room.name || !room.description" @click="handleCreate">
-                    创建房间
+                    {{ t('room.createRoom') }}
                 </button>
             </div>
         </div>
@@ -40,6 +40,7 @@
 <script lang="ts" setup>
 import { reactive } from "vue";
 import ServerApi from "@/api";
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from "@/store/modules/room";
 import { NAV, useGoBack } from "@/utils/nav";
 import { toast } from "@/components/ui/toast";
@@ -47,6 +48,7 @@ import { AppIcon, BackButton } from '@/components/ui'
 
 
 const roomStore = useRoomStore()
+const { t } = useI18n()
 
 /** 移动端创建页是独立一屏，提供返回列表的入口 */
 const goBack = useGoBack(NAV.roomList)
@@ -57,12 +59,12 @@ const room = reactive({
 
 const handleCreate = () => {
     if (!room.name || !room.description) {
-        toast.warning('请填写房间名和描述')
+        toast.warning(t('room.warnRequired'))
         return
     }
     ServerApi.CreateRoom(room).then((res: any) => {
         if (res.code == 200) {
-            toast.success('房间创建成功')
+            toast.success(t('room.created'))
             room.description = ''
             room.name = ''
             roomStore.getRooms()

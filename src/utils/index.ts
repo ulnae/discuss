@@ -1,4 +1,7 @@
 import { toast } from '@/components/ui/toast';
+import { i18n } from '@/locales'
+
+const t = i18n.global.t
 /**
  * 文件大小格式化选项
  */
@@ -70,7 +73,7 @@ function downloadJSON(data: Object, filename = 'data.json', indent = 2) {
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error('导出 JSON 文件失败：', error);
-    toast.error('导出失败，请稍后重试或检查数据格式。');
+    toast.error(t('cache.exportFail'));
   }
 }
 

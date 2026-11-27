@@ -1,0 +1,27 @@
+{
+    "call": {
+        "reject": "Decline",
+        "accept": "Accept",
+        "mute": "Mute",
+        "unmute": "Unmute",
+        "hangup": "Hang up",
+        "incomingInvite": "Inviting you to a voice call",
+        "waitingAnswer": "Waiting for them to answer…",
+        "unknownUser": "Unknown user",
+        "micDenied": "Cannot access the microphone. Please check your browser's microphone permissions.",
+        "micDeniedRejected": "Microphone unavailable, call declined",
+        "connectFailed": "Failed to connect the call",
+        "rejected": "Call declined by the other party",
+        "noAnswerCanceled": "No answer, call canceled",
+        "canceled": "Call canceled by the other party",
+        "noAnswer": "No answer, please try again later",
+        "peerOfflineEnded": "The other party went offline, call ended",
+        "peerHungUp": "The other party hung up, call ended",
+        "reasonOffline": "The other party is offline",
+        "reasonBusy": "The other party is on another call",
+        "reasonBusySelf": "You already have a call in progress",
+        "reasonInvalid": "Invalid call parameters",
+        "reasonUnavailable": "The other party is temporarily unavailable",
+        "networkFailed": "Network connection failed, call ended"
+    }
+}

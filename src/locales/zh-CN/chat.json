@@ -1,0 +1,29 @@
+{
+    "chat": {
+        "composerPh": "输入消息，回车发送",
+        "mdBold": "粗体 **",
+        "mdItalic": "斜体 *",
+        "mdInlineCode": "行内代码 `",
+        "mdCodeBlock": "代码块 ```",
+        "mdLink": "链接 [文本](地址)",
+        "mdQuote": "引用 >",
+        "mdBoldText": "粗体",
+        "mdItalicText": "斜体",
+        "mdCodeText": "代码",
+        "mdLinkText": "链接文本",
+        "mdQuoteText": "引用内容",
+        "previewEdit": "返回编辑",
+        "previewMd": "预览 Markdown",
+        "previewEmpty": "暂无内容可预览",
+        "sendImage": "发送图片",
+        "sendFile": "发送文件",
+        "imgBroken": "图片已失效",
+        "statusSending": "发送中…",
+        "statusSendFailed": "发送失败，点击重试",
+        "fileFallback": "下载文件",
+        "file": "文件",
+        "searchEmpty": "搜索结果会显示在这里",
+        "noData": "暂无数据",
+        "details": "详情"
+    }
+}

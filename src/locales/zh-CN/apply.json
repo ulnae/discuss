@@ -1,0 +1,32 @@
+{
+    "apply": {
+        "pendingHeader": "待我审批",
+        "sentHeader": "我发起的申请",
+        "filterAll": "全部",
+        "filterFriend": "好友",
+        "filterRoom": "入群",
+        "pendingFilterAria": "待审批申请类型筛选",
+        "sentFilterAria": "我发起的申请类型筛选",
+        "loadingPending": "正在加载待审批申请…",
+        "loadingSent": "正在加载我发起的申请…",
+        "emptyPendingAll": "暂无待处理申请",
+        "emptyPendingFriend": "暂无好友申请",
+        "emptyPendingRoom": "暂无入群申请",
+        "emptySent": "还没有发起过申请",
+        "defaultUser": "用户",
+        "defaultRoom": "房间",
+        "addFriend": "申请加为好友",
+        "joinRoom": "申请加入「{room}」",
+        "sentRoomDesc": "申请加入该群",
+        "sentFriendDesc": "申请添加好友",
+        "typeFriend": "好友申请",
+        "typeRoom": "入群申请",
+        "statusPending": "待处理",
+        "statusApproved": "已同意",
+        "statusRejected": "已拒绝",
+        "timeSent": "申请",
+        "timeHandled": "处理",
+        "approve": "同意",
+        "reject": "拒绝"
+    }
+}

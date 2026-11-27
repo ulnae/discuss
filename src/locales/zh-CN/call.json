@@ -1,0 +1,27 @@
+{
+    "call": {
+        "reject": "拒绝",
+        "accept": "接听",
+        "mute": "静音",
+        "unmute": "取消静音",
+        "hangup": "挂断",
+        "incomingInvite": "邀请你进行语音通话",
+        "waitingAnswer": "正在等待对方接听…",
+        "unknownUser": "未知用户",
+        "micDenied": "无法访问麦克风，请检查浏览器麦克风权限",
+        "micDeniedRejected": "无法访问麦克风，已拒绝通话",
+        "connectFailed": "通话连接失败",
+        "rejected": "对方已拒绝通话",
+        "noAnswerCanceled": "无人接听，通话已取消",
+        "canceled": "对方已取消通话",
+        "noAnswer": "无人接听，请稍后再拨",
+        "peerOfflineEnded": "对方已掉线，通话结束",
+        "peerHungUp": "对方已挂断，通话结束",
+        "reasonOffline": "对方不在线",
+        "reasonBusy": "对方正在通话中",
+        "reasonBusySelf": "您当前已有通话进行中",
+        "reasonInvalid": "通话参数错误",
+        "reasonUnavailable": "对方暂时无法接听",
+        "networkFailed": "网络连接失败，通话已结束"
+    }
+}

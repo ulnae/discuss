@@ -1,6 +1,6 @@
 <template>
   <div class="search-page">
-    <BackButton class="page-back" :title="backTitle" @click="emit('back')" />
+    <BackButton class="page-back" :title="backTitle ?? t('common.back')" @click="emit('back')" />
 
     <header class="search-head">
       <h1 class="search-title">{{ title }}</h1>
@@ -12,12 +12,12 @@
         </span>
         <input :value="modelValue" type="text" :placeholder="placeholder" @input="onInput"
           @keyup.enter="emit('submit', modelValue)" />
-        <button type="button" class="btn btn-primary btn-sm" @click="emit('submit', modelValue)">搜索</button>
+        <button type="button" class="btn btn-primary btn-sm" @click="emit('submit', modelValue)">{{ t('common.search') }}</button>
       </div>
     </header>
 
     <div class="search-body">
-      <EmptyState v-if="!results.length" :icon="emptyIcon" :text="emptyText" />
+      <EmptyState v-if="!results.length" :icon="emptyIcon" :text="emptyText ?? t('chat.searchEmpty')" />
       <template v-for="item in results" :key="itemKey(item)">
         <slot name="result" :item="item" />
       </template>
@@ -26,8 +26,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { AppIcon, BackButton, EmptyState } from '@/components/ui'
 
+const { t } = useI18n()
 
 
 type ResultIcon = 'search' | 'users' | 'room' | 'house' | 'chat' | 'bell' | 'list' | 'plus' | 'group'
@@ -43,8 +45,6 @@ withDefaults(defineProps<{
   results?: any[]
   itemKey?: (item: any) => string | number
 }>(), {
-  backTitle: '返回',
-  emptyText: '搜索结果会显示在这里',
   emptyIcon: 'search',
   results: () => [],
   itemKey: (item: any) => item?.id

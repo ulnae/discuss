@@ -4,17 +4,17 @@
             <div class="welcome-logo" aria-hidden="true">
                 <AppIcon name="chat" :size="22" />
             </div>
-            <h1 class="welcome-title">欢迎使用 Discuss</h1>
-            <p class="welcome-sub">选择好友或房间，开始一段对话</p>
+            <h1 class="welcome-title">{{ t('dash.welcomeTitle') }}</h1>
+            <p class="welcome-sub">{{ t('dash.welcomeSub') }}</p>
         </header>
 
         <section class="notice">
             <header class="notice-head">
-                <span>系统通知</span>
+                <span>{{ t('dash.alerts') }}</span>
                 <span v-if="alertStore.alerts.length" class="chip">{{ alertStore.alerts.length }}</span>
             </header>
 
-            <EmptyState v-if="alertStore.alerts.length === 0" icon="bell" text="暂无通知，一切都安静" />
+            <EmptyState v-if="alertStore.alerts.length === 0" icon="bell" :text="t('dash.noAlerts')" />
 
             <div v-else class="notice-list">
                 <div v-for="(item, idx) in alertStore.alerts" :key="`${item.timestamp}-${item.senderName}-${item.message}`"
@@ -22,7 +22,7 @@
                     <span class="notice-sender">{{ item.senderName }}</span>
                     <span class="notice-text">{{ item.message }}</span>
                     <span class="notice-time">{{ formatShortTime(item.timestamp) }}</span>
-                    <button type="button" class="icon-btn notice-del" title="删除这条通知"
+                    <button type="button" class="icon-btn notice-del" :title="t('dash.deleteNotice')"
                         @click="alertStore.removeAlert(idx)">
                         <AppIcon name="close" :size="15" />
                     </button>
@@ -35,10 +35,12 @@
 <script setup lang="ts">
 import { useAlertStore } from '@/store/modules/alert'
 import { AppIcon, EmptyState } from '@/components/ui'
+import { useI18n } from 'vue-i18n'
 
 
 import { formatShortTime } from '@/utils/format'
 
+const { t } = useI18n()
 const alertStore = useAlertStore()
 </script>
 

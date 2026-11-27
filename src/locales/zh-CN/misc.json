@@ -1,0 +1,65 @@
+{
+    "lang": {
+        "zh": "中文",
+        "en": "English",
+        "label": "语言"
+    },
+    "nav": {
+        "home": "首页",
+        "friend": "好友",
+        "room": "房间",
+        "apply": "申请",
+        "setting": "设置",
+        "login": "登陆",
+        "welcome": "欢迎页",
+        "chat": "消息",
+        "friendSearch": "搜索好友",
+        "roomSearch": "搜索房间",
+        "roomCreate": "创建房间",
+        "roomChat": "房间消息",
+        "mainNav": "主导航"
+    },
+    "cache": {
+        "invalidJson": "文件内容不是有效的 JSON 格式",
+        "notBackup": "不是 Discuss 聊天记录备份文件",
+        "unsupportedVersion": "不支持的备份版本：{version}",
+        "wrongAccount": "该备份属于其他账号，不能导入当前账号",
+        "exportFail": "导出失败，请稍后重试或检查数据格式。"
+    },
+    "dash": {
+        "welcomeTitle": "欢迎使用 Discuss",
+        "welcomeSub": "选择好友或房间，开始一段对话",
+        "alerts": "系统通知",
+        "noAlerts": "暂无通知，一切都安静",
+        "deleteNotice": "删除这条通知"
+    },
+    "notfound": {
+        "title": "页面走丢了",
+        "desc": "链接可能已失效，或者你没有访问权限",
+        "backHome": "回到首页"
+    },
+    "ws": {
+        "someone": "有人",
+        "peer": "对方",
+        "unknownRoom": "房间",
+        "member": "成员",
+        "newMember": "新成员",
+        "owner": "群主",
+        "friendOnline": "[{name}] 上线",
+        "friendOffline": "[{name}] 离线",
+        "friendRequest": "好友申请：{name} 申请加你为好友",
+        "friendAccepted": "{name} 通过了你的好友申请",
+        "friendRejected": "{name} 拒绝了你的好友申请",
+        "friendRemoved": "{name} 已将你删除好友",
+        "roomApply": "入群申请：{name} 申请加入「{roomName}」",
+        "roomApplyAccepted": "已加入「{name}」",
+        "roomApplyRejected": "加入「{name}」的申请被拒绝",
+        "roomJoined": "你已加入「{name}」",
+        "memberJoined": "{name} 加入了房间",
+        "memberLeft": "{name} 退出了房间",
+        "memberKicked": "{name} 移出了一名成员",
+        "roomKicked": "你已被 {name} 移出「{roomName}」",
+        "roomLeft": "你已退出「{roomName}」",
+        "roomDeleted": "「{roomName}」已被 {name} 解散"
+    }
+}

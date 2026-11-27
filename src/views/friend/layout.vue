@@ -1,10 +1,10 @@
 <template>
   <SidePanel v-model="username" :items="getFriends" :item-key="(item: any) => item.friend_info.id"
     :active-id="paramsID" :has-detail="hasDetail" :loading="friendStore.loading && !friendStore.friends.length"
-    loading-text="正在加载好友…" :empty="getFriends.length === 0" empty-icon="users"
-    empty-text="还没有好友，点右上角 + 搜索添加" search-placeholder="搜索好友" @select="handleFriendClick">
+    :loading-text="t('friend.loadingFriends')" :empty="getFriends.length === 0" empty-icon="users"
+    :empty-text="t('friend.emptyList')" :search-placeholder="t('friend.searchPh')" @select="handleFriendClick">
     <template #head-actions>
-      <router-link to="/friend/search" class="icon-btn" title="添加好友">
+      <router-link to="/friend/search" class="icon-btn" :title="t('friend.addFriend')">
         <AppIcon name="plus" :size="17" :stroke-width="1.6" />
       </router-link>
     </template>
@@ -25,12 +25,14 @@ import { useFriendStore } from "@/store/modules/friend";
 import router from "@/router";
 import { useRoute } from "vue-router";
 import { ref, computed, watchEffect } from "vue";
+import { useI18n } from 'vue-i18n'
 import { AppIcon, UserAvatar } from '@/components/ui'
 
 
 import { SidePanel } from '@/components'
 
 
+const { t } = useI18n()
 const friendStore = useFriendStore();
 const username = ref('')
 const getFriends = computed(() => {

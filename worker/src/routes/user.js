@@ -41,7 +41,7 @@ async function register(request, env, ctx) {
     const username = String(body.username || '').trim();
     const password = String(body.password || '');
     const email = String(body.email || '').trim();
-    if (!username || !password) throw new ApiError('用户名和密码不能为空', 400);
+    if (!username || !password) throw new ApiError('用户名和密码不能为空', 400, 'error.user.requireUserPass');
 
     await assertCaptcha(env, body);
     await ensureUnique(env, 'username', username, '用户名已存在');
@@ -60,13 +60,13 @@ async function login(request, env, ctx) {
     const body = (await readJson(request)) || {};
     const username = String(body.username || '').trim();
     const password = String(body.password || '');
-    if (!username || !password) throw new ApiError('用户名和密码不能为空', 400);
+    if (!username || !password) throw new ApiError('用户名和密码不能为空', 400, 'error.user.requireUserPass');
 
     await assertCaptcha(env, body);
 
     const row = await first(env, 'SELECT * FROM user WHERE username = ? AND isDeleted = 0', username);
-    if (!row) throw new ApiError('用户名或密码错误', 401);
-    if (!(await verifyPassword(password, row.password))) throw new ApiError('用户名或密码错误', 401);
+    if (!row) throw new ApiError('用户名或密码错误', 401, 'error.user.userOrPassWrong');
+    if (!(await verifyPassword(password, row.password))) throw new ApiError('用户名或密码错误', 401, 'error.user.userOrPassWrong');
 
     const expiresIn = env.JWT_EXPIRES_IN || '24h';
     const accessToken = await signToken({ id: row.id, username: row.username }, env.JWT_SECRET, expiresIn);
@@ -104,7 +104,7 @@ async function search(request, env, ctx) {
 async function detail(request, env, ctx, id) {
     await currentUser(request, env);
     const row = await first(env, 'SELECT id, username, email, createdAt, updatedAt FROM user WHERE id = ? AND isDeleted = 0', id);
-    if (!row) throw new ApiError('该用户不存在', 404);
+    if (!row) throw new ApiError('该用户不存在', 404, 'error.user.notFound');
     return ok(userView(row), ctx.cors);
 }
 
@@ -112,8 +112,8 @@ async function update(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const body = (await readJson(request)) || {};
     const exist = await first(env, 'SELECT * FROM user WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404);
-    if (me.id !== id) throw new ApiError('您没有权限更新该用户', 403);
+    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404, 'error.user.notFoundId', { id });
+    if (me.id !== id) throw new ApiError('您没有权限更新该用户', 403, 'error.user.noUpdatePermission');
 
     /* 一次更新用户名 / 邮箱 / 密码。
        但要改密码或邮箱时必须有原密码（oldPassword）确认身份，
@@ -123,7 +123,7 @@ async function update(request, env, ctx, id) {
     const wantEmail = !!body.email && String(body.email).trim() !== exist.email;
     if (wantPassword || wantEmail) {
         if (!oldPassword || !(await verifyPassword(oldPassword, exist.password))) {
-            throw new ApiError('原密码错误', 400);
+            throw new ApiError('原密码错误', 400, 'error.user.oldPassWrong');
         }
     }
 
@@ -144,7 +144,7 @@ async function update(request, env, ctx, id) {
     if (wantPassword) {
         const password = String(body.password);
         if (password.length < 6 || password.length > 32) {
-            throw new ApiError('密码长度需为 6-32 位', 400);
+            throw new ApiError('密码长度需为 6-32 位', 400, 'error.user.passLenInvalid');
         }
         fields.push('password = ?'); args.push(await hashPassword(password, iterationsOf(env)));
     }
@@ -158,9 +158,9 @@ async function update(request, env, ctx, id) {
 async function remove(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const exist = await first(env, 'SELECT id FROM user WHERE id = ? AND isDeleted = 0', id);
-    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404);
+    if (!exist) throw new ApiError(`id为${id}的用户不存在`, 404, 'error.user.notFoundId', { id });
     /* 只能注销自己：否则任何登录用户都能把别人的账号软删掉 */
-    if (me.id !== id) throw new ApiError('您没有权限删除该用户', 403);
+    if (me.id !== id) throw new ApiError('您没有权限删除该用户', 403, 'error.user.noDeletePermission');
     await run(env, 'UPDATE user SET isDeleted = 1, updatedAt = ? WHERE id = ?', now(), id);
     return ok('删除用户成功', ctx.cors);
 }
@@ -187,7 +187,7 @@ async function upload(request, env, ctx) {
     const limits = uploadLimits(env);
     const form = await request.formData().catch(() => null);
     const file = form && form.get('file');
-    if (!file || typeof file === 'string') throw new ApiError('未选择文件', 400);
+    if (!file || typeof file === 'string') throw new ApiError('未选择文件', 400, 'error.upload.noFile');
 
     const originalname = file.name || 'file';
     const ext = (originalname.match(/\.[^.]+$/) || [''])[0].toLowerCase();
@@ -195,24 +195,24 @@ async function upload(request, env, ctx) {
 
     /* SVG / HTML 会在同域下执行脚本，直接拒绝；只放行图片与常见文档 */
     if (ext === '.svg' || ext === '.svgz' || mime === 'image/svg+xml' || mime.startsWith('text/html')) {
-        throw new ApiError('不支持该文件类型', 415);
+        throw new ApiError('不支持该文件类型', 415, 'error.upload.typeUnsupported');
     }
     const isImage = IMAGE_EXT.has(ext) || mime.startsWith('image/');
-    if (!isImage && !DOC_EXT.has(ext)) throw new ApiError('不支持该文件类型', 415);
-    if (!file.size) throw new ApiError('文件内容为空', 400);
+    if (!isImage && !DOC_EXT.has(ext)) throw new ApiError('不支持该文件类型', 415, 'error.upload.typeUnsupported');
+    if (!file.size) throw new ApiError('文件内容为空', 400, 'error.upload.emptyFile');
 
     const limit = isImage ? limits.maxImage : limits.maxDoc;
     if (file.size > limit) {
-        throw new ApiError(`文件不能超过 ${fmtMB(limit)}`, 400);
+        throw new ApiError(`文件不能超过 ${fmtMB(limit)}`, 400, 'error.upload.tooLarge', { limit: fmtMB(limit) });
     }
 
     /* 三级水位：85% 起拒图片，95% 起拒绝全部上传（文字消息始终不受影响） */
     const usage = await storageUsage(env);
     if (usage.ratio >= FULL_RATIO) {
-        throw new ApiError('存储空间已满，暂时无法上传，文字消息不受影响', 507);
+        throw new ApiError('存储空间已满，暂时无法上传，文字消息不受影响', 507, 'error.upload.storageFull');
     }
     if (usage.ratio >= REJECT_RATIO && isImage) {
-        throw new ApiError('图片存储空间已满，暂时无法发送图片，文字消息不受影响', 507);
+        throw new ApiError('图片存储空间已满，暂时无法发送图片，文字消息不受影响', 507, 'error.upload.imageStorageFull');
     }
 
     const since = now() - DAY;
@@ -222,10 +222,10 @@ async function upload(request, env, ctx) {
         me.id, since
     );
     if (Number(daily.c) >= limits.userDailyCount) {
-        throw new ApiError(`今日上传次数已达上限（${limits.userDailyCount} 次），请明天再试`, 429);
+        throw new ApiError(`今日上传次数已达上限（${limits.userDailyCount} 次），请明天再试`, 429, 'error.upload.dailyCountLimit', { count: limits.userDailyCount });
     }
     if (Number(daily.b) + file.size > limits.userDailyBytes) {
-        throw new ApiError(`今日上传流量已达上限（${fmtMB(limits.userDailyBytes)}），请明天再试`, 429);
+        throw new ApiError(`今日上传流量已达上限（${fmtMB(limits.userDailyBytes)}），请明天再试`, 429, 'error.upload.dailyBytesLimit', { limit: fmtMB(limits.userDailyBytes) });
     }
 
     /* KV 免费版每天只有 1000 次写。全站次数到顶时继续放行会让 KV 直接报错，
@@ -236,12 +236,12 @@ async function upload(request, env, ctx) {
         since
     );
     if (Number(globalDaily.c) >= limits.globalDailyCount) {
-        throw new ApiError('今日全站上传次数已达上限，请明天再试，文字消息不受影响', 429);
+        throw new ApiError('今日全站上传次数已达上限，请明天再试，文字消息不受影响', 429, 'error.upload.globalCountLimit');
     }
 
     const mine = await first(env, 'SELECT COALESCE(SUM(size),0) AS b FROM upload WHERE userId = ?', me.id);
     if (Number(mine.b) + file.size > limits.userTotal) {
-        throw new ApiError(`个人存储空间已满（${fmtMB(limits.userTotal)}），旧文件会自动清理`, 507);
+        throw new ApiError(`个人存储空间已满（${fmtMB(limits.userTotal)}），旧文件会自动清理`, 507, 'error.upload.userStorageFull', { limit: fmtMB(limits.userTotal) });
     }
 
     const filename = `${crypto.randomUUID()}${ext}`;
@@ -260,7 +260,7 @@ async function upload(request, env, ctx) {
         });
     } catch (error) {
         console.error('KV put failed', key, error && error.message);
-        throw new ApiError('存储服务暂时不可用，请稍后重试', 503);
+        throw new ApiError('存储服务暂时不可用，请稍后重试', 503, 'error.upload.storageUnavailable');
     }
 
     await run(
@@ -288,12 +288,12 @@ async function upload(request, env, ctx) {
 /** /public/<userId>/<filename> → KV（带边缘缓存，避免每次浏览都消耗 KV 读额度） */
 export async function servePublicFile(request, env, ctx, key) {
     if (!env.UPLOAD || typeof env.UPLOAD.getWithMetadata !== 'function') {
-        throw new ApiError('文件不存在', 404);
+        throw new ApiError('文件不存在', 404, 'error.upload.notFound');
     }
 
     let clean = key;
     try { clean = decodeURIComponent(key); } catch { /* 保持原样 */ }
-    if (!clean || clean.includes('..')) throw new ApiError('文件不存在', 404);
+    if (!clean || clean.includes('..')) throw new ApiError('文件不存在', 404, 'error.upload.notFound');
 
     const isGet = request.method === 'GET';
     const cache = caches.default;
@@ -305,7 +305,7 @@ export async function servePublicFile(request, env, ctx, key) {
     }
 
     const stored = await env.UPLOAD.getWithMetadata(clean, { type: 'arrayBuffer' });
-    if (!stored || !stored.value) throw new ApiError('文件不存在', 404);
+    if (!stored || !stored.value) throw new ApiError('文件不存在', 404, 'error.upload.notFound');
 
     const meta = stored.metadata || {};
     const type = meta.contentType || 'application/octet-stream';

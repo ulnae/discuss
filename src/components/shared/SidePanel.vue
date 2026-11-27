@@ -6,19 +6,19 @@
           <span class="ui-field-icon">
             <AppIcon name="search" :size="15" />
           </span>
-          <input :value="modelValue" type="text" :placeholder="searchPlaceholder" @input="onInput" />
+          <input :value="modelValue" type="text" :placeholder="searchPlaceholder ?? t('common.search')" @input="onInput" />
         </div>
         <slot name="head-actions" />
       </div>
 
       <div class="side-list">
-        <LoadingBlock v-if="loading" :text="loadingText" />
+        <LoadingBlock v-if="loading" :text="loadingText ?? t('common.loading')" />
         <template v-else>
           <button v-for="item in items" :key="itemKey(item)" type="button" class="list-row"
             :class="{ 'is-active': activeId === itemKey(item) }" @click="emit('select', item)">
             <slot name="row" :item="item" />
           </button>
-          <EmptyState v-if="empty" :icon="emptyIcon" :text="emptyText" />
+          <EmptyState v-if="empty" :icon="emptyIcon" :text="emptyText ?? t('chat.noData')" />
         </template>
       </div>
     </aside>
@@ -31,8 +31,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AppIcon, LoadingBlock, EmptyState } from '@/components/ui'
 
+const { t } = useI18n()
 
 
 import { useResizable } from '@/hooks/useResizable'
@@ -56,11 +58,8 @@ withDefaults(defineProps<{
   itemKey: (item: any) => item?.id,
   hasDetail: false,
   loading: false,
-  loadingText: '正在加载…',
   empty: false,
-  emptyText: '暂无数据',
-  emptyIcon: 'list',
-  searchPlaceholder: '搜索'
+  emptyIcon: 'list'
 })
 
 const emit = defineEmits<{

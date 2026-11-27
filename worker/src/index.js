@@ -84,7 +84,7 @@ export default {
             /* 配置自检：没配 JWT_SECRET 时 HMAC 会以空密钥导入并抛出晦涩错误，
                这里提前拦下，返回可直接照做的提示（health 不受影响）。 */
             if (!env.JWT_SECRET) {
-                return fail('服务端未配置 JWT_SECRET：请执行 wrangler secret put JWT_SECRET 后重试', 500, cors);
+                return fail('服务端未配置 JWT_SECRET：请执行 wrangler secret put JWT_SECRET 后重试', 500, cors, 'error.auth.jwtMissing');
             }
 
             if (!path.startsWith('/api/')) throw notFound();
@@ -106,7 +106,7 @@ export default {
                 default: throw notFound();
             }
         } catch (error) {
-            if (error instanceof ApiError) return fail(error.message, error.status, cors);
+            if (error instanceof ApiError) return fail(error.message, error.status, cors, error.i18nKey, error.i18nParams);
             console.error(rc.method, path, error);
             return fail('服务内部错误: ' + (error && error.message), 500, cors);
         }
@@ -147,14 +147,14 @@ async function handleAlert(request, env, rc, rest) {
     if (rc.method !== 'POST' || rest.length) return null;
 
     const secret = String(env.ALERT_SECRET || '');
-    if (!secret) return fail('系统广播未启用：请先配置 ALERT_SECRET', 403, rc.cors);
+    if (!secret) return fail('系统广播未启用：请先配置 ALERT_SECRET', 403, rc.cors, 'error.alert.disabled');
     const provided = request.headers.get('x-alert-secret') || '';
-    if (provided !== secret) return fail('无权发送系统广播', 403, rc.cors);
+    if (provided !== secret) return fail('无权发送系统广播', 403, rc.cors, 'error.alert.forbidden');
 
     let body = null;
     try { body = await request.json(); } catch { body = null; }
     const message = String((body && body.message) || '').trim();
-    if (!message) return fail('缺少 message', 400, rc.cors);
+    if (!message) return fail('缺少 message', 400, rc.cors, 'error.alert.missingMessage');
 
     const sender = String((body && body.sender) || '').trim();
 
@@ -196,12 +196,12 @@ async function handleSocket(request, env, rc, rest) {
     if (rest[0] === 'ticket') return await handleWsTicket(request, env, rc);
 
     if (request.headers.get('Upgrade') !== 'websocket') {
-        return fail('请使用 WebSocket 连接', 426, rc.cors);
+        return fail('请使用 WebSocket 连接', 426, rc.cors, 'error.auth.notWebSocket');
     }
 
     const token = rc.url.searchParams.get('token') || '';
     const payload = await verifyToken(token, env.JWT_SECRET);
-    if (!payload || !payload.id) return fail('未授权，请登录', 401, rc.cors);
+    if (!payload || !payload.id) return fail('未授权，请登录', 401, rc.cors, 'error.auth.notLoggedIn');
 
     const headers = new Headers(request.headers);
     headers.set('x-user-id', payload.id);

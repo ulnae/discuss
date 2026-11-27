@@ -9,28 +9,28 @@
             <path d="M9 11l3 3L22 4" />
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
           </svg>
-          待我审批
+          {{ t('apply.pendingHeader') }}
         </span>
         <span class="count-badge" :class="{ 'is-emphasis': applyStore.pendingCount > 0 }">{{ applyStore.pendingLoading ? '…' : applyStore.pendingCount }}</span>
 
         <FilterTabs :tabs="filterTabs" :model-value="pendingFilter" :show-count="true"
-          aria-label="待审批申请类型筛选"
+          :aria-label="t('apply.pendingFilterAria')"
           @update:model-value="onPendingFilter" />
       </header>
 
       <div class="apply-body">
-        <LoadingBlock v-if="applyStore.pendingLoading" text="正在加载待审批申请…" />
+        <LoadingBlock v-if="applyStore.pendingLoading" :text="t('apply.loadingPending')" />
         <template v-else>
           <div v-if="filteredPending.length > 0" class="apply-list">
             <ApplyCard v-for="item in filteredPending" :key="item.id" :item="item" mode="pending"
-              :title="item.user_info?.username || '用户'" :reason="describe(item)"
+              :title="item.user_info?.username || t('apply.defaultUser')" :reason="describe(item)"
               :avatar-name="item.user_info?.username"
               @approve="id => applyStore.handleApply(id, true)"
               @reject="id => applyStore.handleApply(id, false)" />
           </div>
 
           <EmptyState v-else icon="list"
-            :text="pendingFilter === 'all' ? '暂无待处理申请' : `暂无${pendingFilter === 'friend' ? '好友' : '入群'}申请`" />
+            :text="pendingFilter === 'all' ? t('apply.emptyPendingAll') : pendingFilter === 'friend' ? t('apply.emptyPendingFriend') : t('apply.emptyPendingRoom')" />
         </template>
       </div>
     </section>
@@ -43,23 +43,23 @@
             stroke-linejoin="round">
             <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
           </svg>
-          我发起的申请
+          {{ t('apply.sentHeader') }}
         </span>
         <span class="count-badge">{{ applyStore.sentLoading ? '…' : applyStore.applies.length }}</span>
 
-        <FilterTabs :tabs="filterTabs" :model-value="sentFilter" aria-label="我发起的申请类型筛选"
+        <FilterTabs :tabs="filterTabs" :model-value="sentFilter" :aria-label="t('apply.sentFilterAria')"
           @update:model-value="onSentFilter" />
       </header>
 
       <div class="apply-body">
-        <LoadingBlock v-if="applyStore.sentLoading" text="正在加载我发起的申请…" />
+        <LoadingBlock v-if="applyStore.sentLoading" :text="t('apply.loadingSent')" />
         <template v-else>
           <div v-if="filteredSent.length > 0" class="apply-list">
             <ApplyCard v-for="item in filteredSent" :key="item.id" :item="item" mode="sent"
               :title="sentTarget(item)" :reason="sentDescribe(item)" :avatar-name="friendName(item)" />
           </div>
 
-          <EmptyState v-else icon="plus" text="还没有发起过申请" />
+          <EmptyState v-else icon="plus" :text="t('apply.emptySent')" />
         </template>
       </div>
     </section>
@@ -68,6 +68,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useI18n } from 'vue-i18n'
 import { useApplyStore, type Apply } from "@/store/modules/apply";
 import { ApplyCard } from '@/components'
 
@@ -77,6 +78,7 @@ import { FilterTabs, LoadingBlock, EmptyState } from '@/components/ui'
 
 
 const applyStore = useApplyStore();
+const { t } = useI18n();
 // 两栏数据已纳入 userStore.getInfo() 全局启动链路（刷新 / 登录都会拉取），
 // 这里不再重复请求；socket 事件的增量刷新由 store 内部以 silent 方式处理。
 
@@ -89,9 +91,9 @@ const onPendingFilter = (value: string) => { pendingFilter.value = value as Filt
 const onSentFilter = (value: string) => { sentFilter.value = value as FilterValue };
 
 const filterTabs = computed(() => [
-    { value: 'all' as FilterValue, label: '全部', count: applyStore.pendingCount },
-    { value: 'friend' as FilterValue, label: '好友', count: applyStore.pendingFriendApplies.filter(a => !a.handle_status).length },
-    { value: 'room' as FilterValue, label: '入群', count: applyStore.pendingRoomApplies.filter(a => !a.handle_status).length },
+    { value: 'all' as FilterValue, label: t('apply.filterAll'), count: applyStore.pendingCount },
+    { value: 'friend' as FilterValue, label: t('apply.filterFriend'), count: applyStore.pendingFriendApplies.filter(a => !a.handle_status).length },
+    { value: 'room' as FilterValue, label: t('apply.filterRoom'), count: applyStore.pendingRoomApplies.filter(a => !a.handle_status).length },
 ]);
 
 const isRoom = (item: Apply) => !!item.room_id;
@@ -103,19 +105,19 @@ const filteredSent = computed(() => applyStore.applies.filter(a => match(a, sent
 
 /** 待审批列表的描述：区分「申请加为好友」和「申请加入房间」 */
 const describe = (item: Apply) => isRoom(item)
-    ? `申请加入「${item.room_info?.name || '房间'}」`
-    : '申请加为好友';
+    ? t('apply.joinRoom', { room: item.room_info?.name || t('apply.defaultRoom') })
+    : t('apply.addFriend');
 
 /** 我发起的列表目标：入群显示房间名，好友显示被申请人 */
 const sentTarget = (item: Apply) => isRoom(item)
-    ? item.room_info?.name || '房间'
-    : item.apply_user_info?.username || '用户';
+    ? item.room_info?.name || t('apply.defaultRoom')
+    : item.apply_user_info?.username || t('apply.defaultUser');
 
 /** 我发起的列表事由：与顶部「目标」配合，说明申请类型 */
-const sentDescribe = (item: Apply) => isRoom(item) ? '申请加入该群' : '申请添加好友';
+const sentDescribe = (item: Apply) => isRoom(item) ? t('apply.sentRoomDesc') : t('apply.sentFriendDesc');
 
 /** 我发起的·好友申请里「对方」的名字（与待我审批取申请人的视角一致） */
-const friendName = (item: Apply) => item.apply_user_info?.username || '用户';
+const friendName = (item: Apply) => item.apply_user_info?.username || t('apply.defaultUser');
 </script>
 
 <style lang="scss" scoped>

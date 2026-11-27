@@ -1,17 +1,17 @@
 <template>
     <div class="settings">
         <header class="settings-head">
-            <h1 class="settings-title">设置</h1>
-            <p class="settings-sub">账号信息与本地聊天记录</p>
+            <h1 class="settings-title">{{ t('setting.title') }}</h1>
+            <p class="settings-sub">{{ t('setting.sub') }}</p>
         </header>
 
         <div class="settings-body">
             <!-- PC 侧边分组导航：移动端隐藏，四组面板全部展开 -->
-            <nav class="settings-nav" aria-label="设置分组">
-                <button v-for="t in SETTING_TABS" :key="t.id" type="button" class="settings-nav-item"
-                    :class="{ 'is-active': activeTab === t.id }"
-                    :aria-current="activeTab === t.id ? 'true' : undefined" @click="activeTab = t.id">
-                    <span class="nav-bar"></span>{{ t.label }}
+            <nav class="settings-nav" :aria-label="t('setting.groupNav')">
+                <button v-for="tab in SETTING_TABS" :key="tab.id" type="button" class="settings-nav-item"
+                    :class="{ 'is-active': activeTab === tab.id }"
+                    :aria-current="activeTab === tab.id ? 'true' : undefined" @click="activeTab = tab.id">
+                    <span class="nav-bar"></span>{{ t(tab.label) }}
                 </button>
             </nav>
 
@@ -19,7 +19,7 @@
                 <!-- 账号信息：查看 / 编辑两种模式切换 -->
                 <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'account' }">
             <header class="card-head card-head-action">
-                <span>账号信息</span>
+                <span>{{ t('setting.accountTitle') }}</span>
                 <!-- 查看模式：编辑按钮；编辑模式：取消 / 保存，二者都放在标题行右侧 -->
                 <button v-if="!accountEditing" type="button" class="edit-toggle" @click="startEdit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -27,14 +27,14 @@
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                     </svg>
-                    编辑
+                    {{ t('common.edit') }}
                 </button>
                 <div v-else class="head-actions">
                     <button type="button" class="btn btn-ghost btn-sm" :disabled="accountSaving" @click="cancelEdit">
-                        取消
+                        {{ t('common.cancel') }}
                     </button>
                     <button type="submit" form="account-form" class="btn btn-primary btn-sm" :disabled="accountSaving">
-                        {{ accountSaving ? '保存中…' : '保存' }}
+                        {{ accountSaving ? t('common.saving') : t('common.save') }}
                     </button>
                 </div>
             </header>
@@ -50,36 +50,36 @@
             <!-- 编辑模式：用户名 / 邮箱 / 密码一次提交，改密码或邮箱需填原密码 -->
             <form v-else id="account-form" class="card-form" @submit.prevent="handleSaveAccount">
                 <label class="form-field">
-                    <span class="form-label">用户名</span>
+                    <span class="form-label">{{ t('setting.username') }}</span>
                     <input v-model.trim="accountForm.username" type="text" autocomplete="username"
-                        placeholder="请输入用户名" maxlength="100" />
+                        :placeholder="t('setting.usernamePh')" maxlength="100" />
                 </label>
                 <label class="form-field">
-                    <span class="form-label">邮箱</span>
+                    <span class="form-label">{{ t('setting.email') }}</span>
                     <input v-model.trim="accountForm.email" type="email" autocomplete="email"
-                        placeholder="请输入邮箱" maxlength="100" />
+                        :placeholder="t('setting.emailPh')" maxlength="100" />
                 </label>
                 <label class="form-field">
-                    <span class="form-label">新密码 <em>（留空则不修改）</em></span>
+                    <span class="form-label">{{ t('setting.newPassword') }} <em>{{ t('setting.newPasswordHint') }}</em></span>
                     <input v-model="accountForm.password" type="password" autocomplete="new-password"
-                        placeholder="6-32 位，留空不改" maxlength="32" />
+                        :placeholder="t('setting.newPasswordPh')" maxlength="32" />
                 </label>
                 <label class="form-field">
-                    <span class="form-label">确认新密码</span>
+                    <span class="form-label">{{ t('setting.confirmPassword') }}</span>
                     <input v-model="accountForm.confirmPassword" type="password" autocomplete="new-password"
-                        placeholder="再次输入新密码" maxlength="32" />
+                        :placeholder="t('setting.confirmPasswordPh')" maxlength="32" />
                 </label>
                 <label class="form-field">
-                    <span class="form-label">当前密码 <em>（改邮箱或密码时必填）</em></span>
+                    <span class="form-label">{{ t('setting.currentPassword') }} <em>{{ t('setting.currentPasswordHint') }}</em></span>
                     <input v-model="accountForm.oldPassword" type="password" autocomplete="current-password"
-                        placeholder="请输入当前密码以确认身份" />
+                        :placeholder="t('setting.currentPasswordPh')" />
                 </label>
             </form>
         </section>
 
                 <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'records' }">
-            <header class="card-head">本地聊天记录</header>
-            <p class="card-desc">聊天记录只保存在这台设备的浏览器里。清理缓存或更换设备前，建议先导出备份。</p>
+            <header class="card-head">{{ t('setting.recordsTitle') }}</header>
+            <p class="card-desc">{{ t('setting.recordsDesc') }}</p>
             <div class="card-actions">
                 <button type="button" class="btn btn-ghost" @click="handleExport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
@@ -87,7 +87,7 @@
                         <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
                         <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
                     </svg>
-                    导出
+                    {{ t('setting.export') }}
                 </button>
                 <button type="button" class="btn btn-ghost" @click="handleImport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
@@ -95,21 +95,21 @@
                         <path d="M12 15V3m0 0 4 4m-4-4-4 4" />
                         <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
                     </svg>
-                    导入
+                    {{ t('setting.import') }}
                 </button>
             </div>
         </section>
 
                 <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'markdown' }">
-            <header class="card-head">消息 Markdown</header>
+            <header class="card-head">{{ t('setting.mdTitle') }}</header>
             <!-- Markdown 编辑模式开关：只影响输入区 UI 与上传行为，不影响消息渲染 -->
             <div class="md-setting-row">
                 <div class="md-setting-info">
-                    <span class="md-setting-label">编辑模式</span>
-                    <span class="md-setting-desc">开启后输入区显示格式工具栏，上传的图片 / 文件以 Markdown 片段插入输入框。</span>
+                    <span class="md-setting-label">{{ t('setting.mdEditLabel') }}</span>
+                    <span class="md-setting-desc">{{ t('setting.mdEditDesc') }}</span>
                 </div>
                 <button type="button" class="md-switch" :class="{ on: mdInputEnabled }" role="switch"
-                    :aria-checked="mdInputEnabled" :title="mdInputEnabled ? '关闭 Markdown 编辑模式' : '开启 Markdown 编辑模式'"
+                    :aria-checked="mdInputEnabled" :title="mdInputEnabled ? t('setting.mdEditOn') : t('setting.mdEditOff')"
                     @click="setMdInputEnabled(!mdInputEnabled)">
                     <span class="md-switch-thumb"></span>
                 </button>
@@ -117,24 +117,24 @@
             <!-- 渲染主题：独立于上面的开关，只管消息正文的视觉样式 -->
             <div class="md-setting-row">
                 <div class="md-setting-info">
-                    <span class="md-setting-label">渲染主题</span>
-                    <span class="md-setting-desc">消息正文的 Markdown 样式，自动适配日间 / 夜间模式。</span>
+                    <span class="md-setting-label">{{ t('setting.mdThemeLabel') }}</span>
+                    <span class="md-setting-desc">{{ t('setting.mdThemeDesc') }}</span>
                 </div>
                 <div class="md-theme-select-wrap">
                     <select class="md-theme-select" :value="mdTheme" @change="onThemeChange">
-                        <option v-for="t in MD_THEMES" :key="t.id" :value="t.id">{{ t.label }}</option>
+                        <option v-for="m in MD_THEMES" :key="m.id" :value="m.id">{{ t(m.label) }}</option>
                     </select>
                 </div>
             </div>
             <!-- 渲染字号：等比缩放主题全部字号（正文/标题/代码块） -->
             <div class="md-setting-row">
                 <div class="md-setting-info">
-                    <span class="md-setting-label">字号</span>
-                    <span class="md-setting-desc">Markdown 消息的渲染字号，标准为各主题默认大小。</span>
+                    <span class="md-setting-label">{{ t('setting.mdFontLabel') }}</span>
+                    <span class="md-setting-desc">{{ t('setting.mdFontDesc') }}</span>
                 </div>
                 <div class="md-theme-select-wrap">
                     <select class="md-theme-select" :value="mdFontScale" @change="onFontScaleChange">
-                        <option v-for="f in MD_FONT_SCALES" :key="f.value" :value="f.value">{{ f.label }}</option>
+                        <option v-for="f in MD_FONT_SCALES" :key="f.value" :value="f.value">{{ t(f.label) }}</option>
                     </select>
                 </div>
             </div>
@@ -142,8 +142,8 @@
 
                 <!-- 界面外观：自定义配色方案（颜色，日夜各一套） -->
                 <section class="settings-card settings-panel" :class="{ 'is-active': activeTab === 'appearance' }">
-            <header class="card-head">界面外观</header>
-            <p class="card-desc">自定义界面配色，即时生效；日间 / 夜间各自独立保存。Markdown 主题与字号请在「消息 Markdown」中设置。</p>
+            <header class="card-head">{{ t('setting.appearanceTitle') }}</header>
+            <p class="card-desc">{{ t('setting.appearanceDesc') }}</p>
 
             <!-- 编辑模式切换：日间 / 夜间 -->
             <div class="scheme-mode-bar">
@@ -151,33 +151,33 @@
                     @click="schemeEditMode = 'light'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
-                    日间
+                    {{ t('setting.day') }}
                 </button>
                 <button type="button" class="scheme-mode-btn" :class="{ on: schemeEditMode === 'dark' }"
                     @click="schemeEditMode = 'dark'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>
-                    夜间
+                    {{ t('setting.night') }}
                 </button>
-                <span class="scheme-mode-hint">正在编辑：{{ schemeEditMode === 'light' ? '日间' : '夜间' }}配色</span>
+                <span class="scheme-mode-hint">{{ t('setting.editingHint', { mode: schemeEditMode === 'light' ? t('setting.day') : t('setting.night') }) }}</span>
             </div>
 
             <!-- 按分组列出颜色 token -->
-            <div v-for="group in [...new Set(schemeTokens.map((t) => t.group))]" :key="group" class="scheme-group">
-                <div class="scheme-group-title">{{ group }}</div>
-                <div v-for="t in schemeTokens.filter((x) => x.group === group)" :key="t.key" class="scheme-color-row">
-                    <span class="scheme-color-label">{{ t.label }}</span>
-                    <span class="scheme-color-var">{{ t.key }}</span>
+            <div v-for="group in [...new Set(schemeTokens.map((item) => item.group))]" :key="group" class="scheme-group">
+                <div class="scheme-group-title">{{ t(group) }}</div>
+                <div v-for="item in schemeTokens.filter((x) => x.group === group)" :key="item.key" class="scheme-color-row">
+                    <span class="scheme-color-label">{{ t(item.label) }}</span>
+                    <span class="scheme-color-var">{{ item.key }}</span>
                     <button type="button" class="scheme-color-reset"
-                        :class="{ 'is-placeholder': !colorModified(t.key) }"
-                        :aria-hidden="!colorModified(t.key)" :tabindex="colorModified(t.key) ? 0 : -1"
-                        title="恢复默认" @click="onResetOneColor(t.key)">
+                        :class="{ 'is-placeholder': !colorModified(item.key) }"
+                        :aria-hidden="!colorModified(item.key)" :tabindex="colorModified(item.key) ? 0 : -1"
+                        :title="t('setting.resetColor')" @click="onResetOneColor(item.key)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
                             stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
                     </button>
-                    <span class="scheme-color-swatch" :style="{ background: schemeValue(schemeEditMode, t.key) }"></span>
-                    <input type="color" class="scheme-color-input" :value="colorPickerValue(t.key)"
-                        :aria-label="`设置${t.label}`" @input="onSchemeColorInput(t.key, $event)" />
+                    <span class="scheme-color-swatch" :style="{ background: schemeValue(schemeEditMode, item.key) }"></span>
+                    <input type="color" class="scheme-color-input" :value="colorPickerValue(item.key)"
+                        :aria-label="t('setting.setColorAria', { label: t(item.label) })" @input="onSchemeColorInput(item.key, $event)" />
                 </div>
             </div>
 
@@ -186,32 +186,40 @@
                 <button type="button" class="btn btn-ghost btn-sm" @click="handleSchemeExport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-                    导出方案
+                    {{ t('setting.exportScheme') }}
                 </button>
                 <button type="button" class="btn btn-ghost btn-sm" @click="handleSchemeImport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round"><path d="M12 15V3m0 0 4 4m-4-4-4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-                    导入方案
+                    {{ t('setting.importScheme') }}
                 </button>
                 <button v-if="schemeCustomized" type="button" class="btn btn-ghost btn-sm danger-text"
-                    @click="handleSchemeReset">恢复默认</button>
+                    @click="handleSchemeReset">{{ t('setting.resetScheme') }}</button>
             </div>
         </section>
 
                 <section class="settings-card settings-panel settings-account"
                 :class="{ 'is-active': activeTab === 'general' }">
-            <header class="card-head">外观与账号</header>
+            <header class="card-head">{{ t('setting.generalTitle') }}</header>
             <!-- 深色模式：左描述右开关，与 Markdown 编辑模式开关同一套视觉 -->
             <div class="md-setting-row">
                 <div class="md-setting-info">
-                    <span class="md-setting-label">深色模式</span>
-                    <span class="md-setting-desc">切换日间 / 夜间外观。</span>
+                    <span class="md-setting-label">{{ t('setting.darkLabel') }}</span>
+                    <span class="md-setting-desc">{{ t('setting.darkDesc') }}</span>
                 </div>
                 <button type="button" class="md-switch" :class="{ on: isDark }" role="switch"
-                    :aria-checked="isDark" :title="isDark ? '关闭深色模式' : '开启深色模式'"
+                    :aria-checked="isDark" :title="isDark ? t('setting.darkOn') : t('setting.darkOff')"
                     @click="toggleTheme">
                     <span class="md-switch-thumb"></span>
                 </button>
+            </div>
+            <!-- 语言：左描述右分段切换，与深色模式行同一套视觉 -->
+            <div class="md-setting-row">
+                <div class="md-setting-info">
+                    <span class="md-setting-label">{{ t('setting.langLabel') }}</span>
+                    <span class="md-setting-desc">{{ t('setting.langDesc') }}</span>
+                </div>
+                <LanguageSwitch />
             </div>
             <!-- 退出登录：自定义危险操作区，图标 + 文案 + 描边按钮 -->
             <div class="logout-row">
@@ -223,11 +231,11 @@
                         </svg>
                     </span>
                     <div class="logout-info">
-                        <span class="logout-title">退出登录</span>
-                        <span class="logout-desc">退出当前账号，下次进入需重新登录。</span>
+                        <span class="logout-title">{{ t('setting.logoutTitle') }}</span>
+                        <span class="logout-desc">{{ t('setting.logoutDesc') }}</span>
                     </div>
                 </div>
-                <button type="button" class="btn btn-danger btn-sm logout-btn" @click="handleLogout">退出</button>
+                <button type="button" class="btn btn-danger btn-sm logout-btn" @click="handleLogout">{{ t('setting.logoutBtn') }}</button>
             </div>
         </section>
             </div>
@@ -247,21 +255,24 @@ import { MessageCache } from '@/utils/messageCache'
 import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { useMdPreference, MD_THEMES, MD_FONT_SCALES } from '@/hooks/useMdPreference'
 import { useUiScheme, cssColorToHex, type ThemeMode } from '@/hooks/useUiScheme'
 import { useFilePicker } from '@/hooks/useFilePicker'
 import { mergeAlerts, mergeChatMessages } from '@/utils/messageMerge'
+import LanguageSwitch from '@/components/ui/LanguageSwitch.vue'
 const userStore = useUserStore()
 const socketStore = useSocketStore()
+const { t } = useI18n()
 
-/** 侧边分组导航：id 与每个面板的 is-active 判断一一对应 */
+/** 侧边分组导航：label 是 i18n key，渲染时经 t() 转换 */
 const SETTING_TABS = [
-    { id: 'account', label: '账号信息' },
-    { id: 'records', label: '本地聊天记录' },
-    { id: 'markdown', label: '消息 Markdown' },
-    { id: 'appearance', label: '界面外观' },
-    { id: 'general', label: '通用' },
+    { id: 'account', label: 'setting.tabAccount' },
+    { id: 'records', label: 'setting.tabRecords' },
+    { id: 'markdown', label: 'setting.tabMarkdown' },
+    { id: 'appearance', label: 'setting.tabAppearance' },
+    { id: 'general', label: 'setting.tabGeneral' },
 ] as const
 /** 默认展示账号信息 */
 const activeTab = ref<string>(SETTING_TABS[0].id)
@@ -312,7 +323,7 @@ const handleSchemeExport = () => {
   const data = exportScheme()
   const date = new Date().toISOString().slice(0, 10)
   downloadJSON(data, `discuss-ui-scheme-${date}.json`)
-  toast.success('配色方案已导出')
+  toast.success(t('setting.schemeExported'))
 }
 
 /** 导入配色方案：走隐藏 file input */
@@ -322,35 +333,35 @@ useFilePicker('chooseSchemeFile', async (file) => {
   try {
     const parsed = JSON.parse(await file.text())
     if (!importScheme(parsed)) {
-      toast.error('方案文件格式不正确或版本不兼容')
+      toast.error(t('setting.schemeBadFile'))
       return
     }
-    toast.success('配色方案已导入并应用')
+    toast.success(t('setting.schemeImported'))
   } catch {
-    toast.error('导入失败：无法解析方案文件')
+    toast.error(t('setting.schemeParseFail'))
   }
 })
 
 /** 一键恢复默认配色（带确认由按钮自身二次点击简化，这里直接恢复 + 提示） */
 const handleSchemeReset = () => {
   resetSchemeAll()
-  toast.success('已恢复默认配色')
+  toast.success(t('setting.schemeResetOk'))
 }
 
-/** 账号信息展示：隐藏令牌类字段，常见字段换成中文标签 */
+/** 账号信息展示：隐藏令牌类字段，常见字段换成已翻译标签 */
 const LABELS: Record<string, string> = {
-    id: '用户 ID',
-    username: '用户名',
-    email: '邮箱',
-    createdAt: '创建时间',
-    updatedAt: '更新时间',
-    expires_in: '过期时间'
+    id: 'setting.labelId',
+    username: 'setting.username',
+    email: 'setting.email',
+    createdAt: 'setting.labelCreated',
+    updatedAt: 'setting.labelUpdated',
+    expires_in: 'setting.labelExpires'
 }
 const HIDDEN = ['access_token', 'token_type']
 const accountRows = computed(() =>
     Object.entries(userStore.userInfo)
         .filter(([k, v]) => !HIDDEN.includes(k) && v !== null && v !== undefined && v !== '')
-        .map(([k, v]) => ({ k: LABELS[k] || k, v: String(v) }))
+        .map(([k, v]) => ({ k: t(LABELS[k] || k), v: String(v) }))
 )
 
 const currentUid = () => userStore.userInfo.id as string
@@ -379,15 +390,15 @@ const handleSaveAccount = async () => {
     if (accountSaving.value) return
 
     if (!accountForm.username) {
-        toast.warning('用户名不能为空')
+        toast.warning(t('setting.warnUsernameEmpty'))
         return
     }
     if (!accountForm.email) {
-        toast.warning('邮箱不能为空')
+        toast.warning(t('setting.warnEmailEmpty'))
         return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountForm.email)) {
-        toast.warning('邮箱格式不正确')
+        toast.warning(t('setting.warnEmailBad'))
         return
     }
 
@@ -397,21 +408,21 @@ const handleSaveAccount = async () => {
 
     if (passwordChanged) {
         if (password.length < 6 || password.length > 32) {
-            toast.warning('新密码长度需为 6-32 位')
+            toast.warning(t('setting.warnPasswordLen'))
             return
         }
         if (password !== accountForm.confirmPassword) {
-            toast.warning('两次输入的新密码不一致')
+            toast.warning(t('setting.warnPasswordMismatch'))
             return
         }
         if (password === accountForm.oldPassword) {
-            toast.warning('新密码不能与原密码相同')
+            toast.warning(t('setting.warnPasswordSame'))
             return
         }
     }
     /* 改邮箱或密码都要原密码确认 */
     if ((emailChanged || passwordChanged) && !accountForm.oldPassword) {
-        toast.warning('修改邮箱或密码时，请填写当前密码确认身份')
+        toast.warning(t('setting.warnNeedOldPassword'))
         return
     }
 
@@ -428,7 +439,7 @@ const handleSaveAccount = async () => {
 
         if (passwordChanged) {
             // 改了密码：前端登出让旧 token 失效（决策：不做服务端 tokenVersion）
-            toast.success('账号信息已更新，请重新登录')
+            toast.success(t('setting.savedNeedRelogin'))
             accountEditing.value = false
             userStore.logout()
         } else {
@@ -437,7 +448,7 @@ const handleSaveAccount = async () => {
                 username: accountForm.username,
                 email: accountForm.email
             })
-            toast.success('账号信息已更新')
+            toast.success(t('setting.saved'))
             accountEditing.value = false
         }
     } catch {
@@ -453,10 +464,10 @@ const handleExport = async () => {
         const backup = await MessageCache.exportBackup(currentUid(), userStore.userInfo.username)
         const date = new Date().toISOString().slice(0, 10)
         downloadJSON(backup, `discuss-chat-${currentUid()}-${date}.json`)
-        toast.success('聊天记录已导出')
+        toast.success(t('setting.chatExported'))
     } catch (error) {
-        console.error('导出失败:', error)
-        toast.error('聊天记录导出失败')
+        console.error('export failed:', error)
+        toast.error(t('setting.chatExportFail'))
     }
 }
 
@@ -485,10 +496,10 @@ useFilePicker('chooseHistoryFile', async (file) => {
             const alertStore = useAlertStore()
             alertStore.replaceAlerts(mergeAlerts(alertStore.alerts, alerts))
         }
-        toast.success('聊天记录导入成功')
+        toast.success(t('setting.chatImported'))
     } catch (error: any) {
-        console.error('解析失败:', error)
-        toast.error(error?.message || '导入失败')
+        console.error('parse failed:', error)
+        toast.error(error?.message || t('setting.importFail'))
     }
 })
 

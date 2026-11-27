@@ -2,16 +2,18 @@
     <div class="nf-page">
         <div class="nf-card">
             <div class="nf-code" aria-hidden="true">404</div>
-            <h1 class="nf-title">页面走丢了</h1>
-            <p class="nf-sub">链接可能已失效，或者你没有访问权限</p>
-            <button type="button" class="btn btn-primary" @click="goHome">回到首页</button>
+            <h1 class="nf-title">{{ t('notfound.title') }}</h1>
+            <p class="nf-sub">{{ t('notfound.desc') }}</p>
+            <button type="button" class="btn btn-primary" @click="goHome">{{ t('notfound.backHome') }}</button>
         </div>
     </div>
 </template>
 
 <script lang="ts" setup>
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const router = useRouter()
 const goHome = () => router.push('/')
 </script>

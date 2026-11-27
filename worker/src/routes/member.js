@@ -41,11 +41,11 @@ async function create(request, env, ctx) {
     const body = (await readJson(request)) || {};
     const userId = String(body.user_id || '');
     const roomId = String(body.room_id || '');
-    if (!userId || !roomId) throw new ApiError('缺少 user_id 或 room_id', 400);
+    if (!userId || !roomId) throw new ApiError('缺少 user_id 或 room_id', 400, 'error.member.requireUserRoom');
 
     const room = await first(env, 'SELECT id, name, creator FROM room WHERE id = ? AND isDeleted = 0', roomId);
-    if (!room) throw new ApiError('房间不存在', 404);
-    if (room.creator !== me.id) throw new ApiError('只有群主可以添加成员', 403);
+    if (!room) throw new ApiError('房间不存在', 404, 'error.apply.roomNotFound');
+    if (room.creator !== me.id) throw new ApiError('只有群主可以添加成员', 403, 'error.member.onlyOwnerAdd');
 
     const existing = await first(env, 'SELECT id FROM member WHERE user_id = ? AND room_id = ? AND isDeleted = 0', userId, roomId);
     if (existing) {
@@ -76,7 +76,7 @@ async function list(request, env, ctx) {
     const me = await currentUser(request, env);
     const roomId = ctx.url.searchParams.get('room_id') || '';
     const userId = ctx.url.searchParams.get('user_id') || '';
-    if (!roomId && !userId) throw new ApiError('缺少 room_id 或 user_id', 400);
+    if (!roomId && !userId) throw new ApiError('缺少 room_id 或 user_id', 400, 'error.member.requireUserRoom');
 
     /* 群成员名单只对群成员开放：否则任何登录用户都能按 id 批量拉取别人的成员表 */
     if (roomId) {
@@ -85,9 +85,9 @@ async function list(request, env, ctx) {
             'SELECT id FROM member WHERE room_id = ? AND user_id = ? AND isDeleted = 0',
             roomId, me.id
         );
-        if (!mine) throw new ApiError('你不是该房间成员', 403);
+        if (!mine) throw new ApiError('你不是该房间成员', 403, 'error.room.notMember');
     }
-    if (!roomId && userId !== me.id) throw new ApiError('只能查询自己的成员关系', 403);
+    if (!roomId && userId !== me.id) throw new ApiError('只能查询自己的成员关系', 403, 'error.member.onlySelfQuery');
 
     const conditions = ['m.isDeleted = 0'];
     const args = [];
@@ -101,17 +101,17 @@ async function list(request, env, ctx) {
 async function remove(request, env, ctx, id) {
     const me = await currentUser(request, env);
     const row = await first(env, `${MEMBER_SELECT} WHERE m.id = ? AND m.isDeleted = 0`, id);
-    if (!row) throw new ApiError('该成员不存在', 404);
+    if (!row) throw new ApiError('该成员不存在', 404, 'error.member.notFound');
 
     /* row 是 JOIN 原始行（r_creator），视图转换后才叫 room_info.creator */
     const view = memberView(row);
     const isSelf = row.user_id === me.id;
     const isOwner = !!(view.room_info && view.room_info.creator === me.id);
-    if (!isSelf && !isOwner) throw new ApiError('只有群主可以移出成员', 403);
+    if (!isSelf && !isOwner) throw new ApiError('只有群主可以移出成员', 403, 'error.member.onlyOwnerRemove');
 
     /* M-2：群主不能以「退出房间」的方式离开，否则会留下「不在成员表、但 room.creator
        仍是他」的幽灵管理员（收不到消息却仍能改名/解散）。群主必须先解散房间。 */
-    if (isSelf && isOwner) throw new ApiError('群主不能直接退出房间，请先解散房间', 409);
+    if (isSelf && isOwner) throw new ApiError('群主不能直接退出房间，请先解散房间', 409, 'error.member.ownerCannotLeave');
 
     await run(env, 'UPDATE member SET isDeleted = 1 WHERE id = ?', id);
 

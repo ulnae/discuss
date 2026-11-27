@@ -11,6 +11,9 @@
  * 每会话最多保留 MAX 条。
  */
 import localforage from 'localforage'
+import { i18n } from '@/locales'
+
+const t = i18n.global.t
 
 const store = localforage.createInstance({
     name: 'discuss-messages',
@@ -186,16 +189,16 @@ export const MessageCache = {
         try {
             parsed = JSON.parse(text)
         } catch {
-            throw new Error('文件内容不是有效的 JSON 格式')
+            throw new Error(t('cache.invalidJson'))
         }
         if (!parsed || parsed.format !== 'discuss-chat-backup') {
-            throw new Error('不是 Discuss 聊天记录备份文件')
+            throw new Error(t('cache.notBackup'))
         }
         if (parsed.version !== 2) {
-            throw new Error(`不支持的备份版本：${parsed.version}`)
+            throw new Error(t('cache.unsupportedVersion', { version: parsed.version }))
         }
         if (!parsed.owner || parsed.owner.id !== userId) {
-            throw new Error('该备份属于其他账号，不能导入当前账号')
+            throw new Error(t('cache.wrongAccount'))
         }
         const d = parsed.data || {}
         const users = Array.isArray(d.users) ? d.users : []

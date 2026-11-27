@@ -1,0 +1,29 @@
+{
+    "chat": {
+        "composerPh": "Type a message, press Enter to send",
+        "mdBold": "Bold **",
+        "mdItalic": "Italic *",
+        "mdInlineCode": "Inline code `",
+        "mdCodeBlock": "Code block ```",
+        "mdLink": "Link [text](url)",
+        "mdQuote": "Quote >",
+        "mdBoldText": "bold text",
+        "mdItalicText": "italic text",
+        "mdCodeText": "code",
+        "mdLinkText": "link text",
+        "mdQuoteText": "quoted text",
+        "previewEdit": "Back to editing",
+        "previewMd": "Preview Markdown",
+        "previewEmpty": "Nothing to preview",
+        "sendImage": "Send image",
+        "sendFile": "Send file",
+        "imgBroken": "Image unavailable",
+        "statusSending": "Sending…",
+        "statusSendFailed": "Send failed, click to retry",
+        "fileFallback": "Download file",
+        "file": "File",
+        "searchEmpty": "Search results will appear here",
+        "noData": "No data",
+        "details": "Details"
+    }
+}

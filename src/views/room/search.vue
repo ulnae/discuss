@@ -1,23 +1,23 @@
 <template>
-  <SearchPage v-model.trim="roomName" title="搜索房间" subtitle="输入房间名后回车，可申请加入感兴趣的聊天室"
-    placeholder="输入房间名" back-title="返回房间列表" empty-icon="house" :results="result"
+  <SearchPage v-model.trim="roomName" :title="t('room.searchRooms')" :subtitle="t('room.searchSubtitle')"
+    :placeholder="t('room.searchPlaceholder')" :back-title="t('room.backToList')" empty-icon="house" :results="result"
     @back="goBack" @submit="handleSearch">
     <template #result="{ item }">
       <div class="result-card">
         <UserAvatar :name="item.name" size="lg" />
         <div class="result-main">
           <div class="result-name">{{ item.name }}</div>
-          <div class="result-desc">{{ item.description || '这个房间还没有描述' }}</div>
+          <div class="result-desc">{{ item.description || t('room.noDescription') }}</div>
           <div class="result-meta">
-            <span class="chip">群主 {{ item.user_info?.username || '—' }}</span>
+            <span class="chip">{{ t('room.ownerLabel', { name: item.user_info?.username || '—' }) }}</span>
           </div>
         </div>
 
         <button v-if="!roomStore.getRoomMap[item.id]" type="button" class="btn btn-primary btn-sm"
           @click="handleJoin(item.id)">
-          申请加入
+          {{ t('room.applyJoin') }}
         </button>
-        <span v-else class="chip chip-success">已加入</span>
+        <span v-else class="chip chip-success">{{ t('room.joined') }}</span>
       </div>
     </template>
   </SearchPage>
@@ -25,6 +25,7 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from "@/store/modules/room";
 import { NAV, useGoBack } from "@/utils/nav";
 import ServerApi from "@/api";
@@ -41,16 +42,17 @@ const roomName = ref("");
 
 const result = ref<Room[]>([]);
 const roomStore = useRoomStore();
+const { t } = useI18n();
 
 const handleSearch = () => {
   if (!roomName.value) {
-    toast.warning('请输入要搜索的房间名')
+    toast.warning(t('room.warnEmpty'))
     return
   }
   ServerApi.SearchRoom(roomName.value).then((res: any) => {
     if (res.code === 200) {
       result.value = res.data;
-      if (!res.data?.length) toast.info('没有找到匹配的房间')
+      if (!res.data?.length) toast.info(t('room.noMatch'))
     }
   });
 };
@@ -58,7 +60,7 @@ const handleSearch = () => {
 const handleJoin = (room_id: string) => {
   ServerApi.apply({ room_id }).then((res: any) => {
     if (res.code === 200) {
-      toast.success('已提交加入申请，等待群主同意')
+      toast.success(t('room.applied'))
       roomName.value = ''
       result.value = []
     }

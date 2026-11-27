@@ -1,5 +1,6 @@
 import { ref, computed, watch, readonly } from 'vue'
 import { useUserStore } from '@/store/modules/user'
+import { i18n } from '@/locales'
 
 /**
  * 自定义 UI 配色方案（全局单例，模式仿 useMdPreference / useTheme）：
@@ -28,34 +29,34 @@ interface Token {
     group: string
 }
 
-/** 可覆盖的颜色变量白名单（含分组，供设置页渲染） */
+/** 可覆盖的颜色变量白名单（含分组，供设置页渲染）；label/group 为 i18n key（prefs.json 的 ui.*） */
 export const SCHEME_TOKENS: ReadonlyArray<Token> = [
-    { key: '--accent', label: '主色', group: '主色' },
-    { key: '--accent-hover', label: '主色（悬停）', group: '主色' },
-    { key: '--accent-fg', label: '主色文字', group: '主色' },
-    { key: '--brand-bg', label: '品牌块底色', group: '主色' },
-    { key: '--brand-fg', label: '品牌块文字', group: '主色' },
-    { key: '--text', label: '正文文字', group: '文字' },
-    { key: '--text-2', label: '次要文字', group: '文字' },
-    { key: '--text-3', label: '辅助文字', group: '文字' },
-    { key: '--surface-solid', label: '卡片底色', group: '表面' },
-    { key: '--surface', label: '表面底色', group: '表面' },
-    { key: '--surface-2', label: '浅层表面', group: '表面' },
-    { key: '--surface-3', label: '悬浮表面', group: '表面' },
-    { key: '--border', label: '边框', group: '表面' },
-    { key: '--border-strong', label: '强调边框', group: '表面' },
-    { key: '--bubble-in-bg', label: '气泡底色', group: '聊天' },
-    { key: '--success', label: '成功色', group: '状态' },
-    { key: '--success-fg', label: '成功色文字', group: '状态' },
-    { key: '--success-soft', label: '成功色浅底', group: '状态' },
-    { key: '--warning', label: '警告色', group: '状态' },
-    { key: '--warning-fg', label: '警告色文字', group: '状态' },
-    { key: '--warning-soft', label: '警告色浅底', group: '状态' },
-    { key: '--danger', label: '危险色', group: '状态' },
-    { key: '--danger-fg', label: '危险色文字', group: '状态' },
-    { key: '--danger-soft', label: '危险色浅底', group: '状态' },
-    { key: '--info', label: '信息色', group: '状态' },
-    { key: '--online-ring', label: '在线光晕', group: '状态' },
+    { key: '--accent', label: 'ui.accent', group: 'ui.groupAccent' },
+    { key: '--accent-hover', label: 'ui.accentHover', group: 'ui.groupAccent' },
+    { key: '--accent-fg', label: 'ui.accentFg', group: 'ui.groupAccent' },
+    { key: '--brand-bg', label: 'ui.brandBg', group: 'ui.groupAccent' },
+    { key: '--brand-fg', label: 'ui.brandFg', group: 'ui.groupAccent' },
+    { key: '--text', label: 'ui.text', group: 'ui.groupText' },
+    { key: '--text-2', label: 'ui.text2', group: 'ui.groupText' },
+    { key: '--text-3', label: 'ui.text3', group: 'ui.groupText' },
+    { key: '--surface-solid', label: 'ui.surfaceSolid', group: 'ui.groupSurface' },
+    { key: '--surface', label: 'ui.surface', group: 'ui.groupSurface' },
+    { key: '--surface-2', label: 'ui.surface2', group: 'ui.groupSurface' },
+    { key: '--surface-3', label: 'ui.surface3', group: 'ui.groupSurface' },
+    { key: '--border', label: 'ui.border', group: 'ui.groupSurface' },
+    { key: '--border-strong', label: 'ui.borderStrong', group: 'ui.groupSurface' },
+    { key: '--bubble-in-bg', label: 'ui.bubbleInBg', group: 'ui.groupChat' },
+    { key: '--success', label: 'ui.success', group: 'ui.groupStatus' },
+    { key: '--success-fg', label: 'ui.successFg', group: 'ui.groupStatus' },
+    { key: '--success-soft', label: 'ui.successSoft', group: 'ui.groupStatus' },
+    { key: '--warning', label: 'ui.warning', group: 'ui.groupStatus' },
+    { key: '--warning-fg', label: 'ui.warningFg', group: 'ui.groupStatus' },
+    { key: '--warning-soft', label: 'ui.warningSoft', group: 'ui.groupStatus' },
+    { key: '--danger', label: 'ui.danger', group: 'ui.groupStatus' },
+    { key: '--danger-fg', label: 'ui.dangerFg', group: 'ui.groupStatus' },
+    { key: '--danger-soft', label: 'ui.dangerSoft', group: 'ui.groupStatus' },
+    { key: '--info', label: 'ui.info', group: 'ui.groupStatus' },
+    { key: '--online-ring', label: 'ui.onlineRing', group: 'ui.groupStatus' },
 ] as const
 
 const TOKEN_KEYS = SCHEME_TOKENS.map((t) => t.key)
@@ -163,7 +164,7 @@ function validateFile(raw: unknown): raw is UiSchemeFile {
 const defaults: Record<ThemeMode, SchemeColors> = { light: {}, dark: {} }
 let defaultsLoaded = false
 const custom = ref<Record<ThemeMode, SchemeColors> | null>(null)
-const schemeName = ref('自定义方案')
+const schemeName = ref(i18n.global.t('ui.schemeDefaultName'))
 let initialized = false
 
 function ensureDefaults() {
@@ -187,7 +188,7 @@ function loadUserScheme() {
         }
     } catch { /* 坏数据回落默认 */ }
     custom.value = null
-    schemeName.value = '自定义方案'
+    schemeName.value = i18n.global.t('ui.schemeDefaultName')
 }
 
 function applyScheme() {
@@ -275,7 +276,7 @@ export function useUiScheme() {
 
     function resetAll() {
         custom.value = null
-        schemeName.value = '自定义方案'
+        schemeName.value = i18n.global.t('ui.schemeDefaultName')
     }
 
     function exportScheme(): UiSchemeFile {

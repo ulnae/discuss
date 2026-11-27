@@ -5,7 +5,7 @@ export const initRoutes = [
         name: 'dashboard',
         meta: {
             keepAlive: true,
-            title: '首页',
+            title: 'nav.home',
             auth: true,
             affix: true,
             icon: `
@@ -22,7 +22,7 @@ export const initRoutes = [
         name: 'friend',
         meta: {
             keepAlive: true,
-            title: '好友',
+            title: 'nav.friend',
             auth: true,
             affix: true,
             icon: `
@@ -39,7 +39,7 @@ export const initRoutes = [
                 name: 'friend-dashboard',
                 meta: {
                     keepAlive: true,
-                    title: '欢迎页',
+                    title: 'nav.welcome',
                     auth: true,
                     affix: true,
                     icon: 'IconUser'
@@ -51,7 +51,7 @@ export const initRoutes = [
                 name: 'friend-search',
                 meta: {
                     keepAlive: true,
-                    title: '搜索好友',
+                    title: 'nav.friendSearch',
                     auth: true,
                     affix: true,
                     icon: 'IconSearch'
@@ -63,7 +63,7 @@ export const initRoutes = [
                 name: 'friend-info',
                 meta: {
                     keepAlive: true,
-                    title: '消息',
+                    title: 'nav.chat',
                     auth: true,
                     affix: true,
                     icon: 'IconMessage'
@@ -79,7 +79,7 @@ export const initRoutes = [
         name: 'room',
         meta: {
             keepAlive: true,
-            title: '房间',
+            title: 'nav.room',
             auth: true,
             affix: true,
             icon: `
@@ -96,7 +96,7 @@ export const initRoutes = [
                 name: 'room-dashboard',
                 meta: {
                     keepAlive: true,
-                    title: '欢迎页',
+                    title: 'nav.welcome',
                     auth: true,
                     affix: true,
                     icon: 'IconUser'
@@ -108,7 +108,7 @@ export const initRoutes = [
                 name: 'room-search',
                 meta: {
                     keepAlive: true,
-                    title: '搜索房间',
+                    title: 'nav.roomSearch',
                     auth: true,
                     affix: true,
                     icon: 'IconSearch'
@@ -120,7 +120,7 @@ export const initRoutes = [
                 name: 'room-create',
                 meta: {
                     keepAlive: true,
-                    title: '创建房间',
+                    title: 'nav.roomCreate',
                     auth: true,
                     affix: true,
                     icon: 'IconAdd'
@@ -132,7 +132,7 @@ export const initRoutes = [
                 name: 'room-message',
                 meta: {
                     keepAlive: true,
-                    title: '房间消息',
+                    title: 'nav.roomChat',
                     auth: true,
                     affix: true,
                     icon: 'IconMessage'
@@ -147,7 +147,7 @@ export const initRoutes = [
         name: 'apply',
         meta: {
             keepAlive: true,
-            title: '申请',
+            title: 'nav.apply',
             auth: true,
             affix: true,
             icon: `
@@ -168,7 +168,7 @@ export const frameLogin = [
         name: 'login',
         meta: {
             keepAlive: false,
-            title: '登陆',
+            title: 'nav.login',
             auth: true,
             affix: true,
             icon: 'IconHome'
@@ -183,7 +183,7 @@ export const frameSetting = [
         name: 'setting',
         meta: {
             keepAlive: true,
-            title: '设置',
+            title: 'nav.setting',
             auth: true,
             affix: true,
             icon: 'IconSetting'

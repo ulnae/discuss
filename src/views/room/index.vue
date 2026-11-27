@@ -1,16 +1,16 @@
 <template>
   <div class="chat-shell">
     <div class="chat-main">
-      <ChatHeader :title="getRoomInfo.name || (roomStore.loading ? '加载中…' : '未知房间')"
-        :subtitle="getRoomInfo.description || (roomStore.loading ? '' : '这个房间还没有描述')"
-        back-title="返回房间列表" info-title="群成员" :info-active="infoVisiable" @back="goBack"
+      <ChatHeader :title="getRoomInfo.name || (roomStore.loading ? t('common.loading') : t('room.unknownRoom'))"
+        :subtitle="getRoomInfo.description || (roomStore.loading ? '' : t('room.noDescription'))"
+        :back-title="t('room.backToList')" :info-title="t('room.members')" :info-active="infoVisiable" @back="goBack"
         @toggle-info="handleSwitchInfo" />
 
       <div id="messageContainer" ref="containerRef" class="chat-body">
         <div class="msg-list">
           <!-- 房间信息 / 成员（overview）在途：展示 loading；本地已有消息缓存则不打扰 -->
-          <LoadingBlock v-if="roomStore.loading && !getHistory.length" text="正在加载…" />
-          <EmptyState v-else-if="!getHistory.length" icon="room" text="群里还很安静，说点什么吧" />
+          <LoadingBlock v-if="roomStore.loading && !getHistory.length" :text="t('common.loading')" />
+          <EmptyState v-else-if="!getHistory.length" icon="room" :text="t('room.emptyMessages')" />
 
           <div v-for="message in visibleMessages" :key="message.id" class="msg"
             :class="{ 'is-me': message.from === userStore.userInfo.id }">
@@ -30,10 +30,10 @@
         @send="handleSend" @image="handleSendImage" @file="handleSendFile" />
     </div>
 
-    <DetailPanel :open="infoVisiable" title="群成员" :width="240" :loading="memberLoading"
-      loading-text="正在加载群成员…" @close="infoVisiable = false">
+    <DetailPanel :open="infoVisiable" :title="t('room.members')" :width="240" :loading="memberLoading"
+      :loading-text="t('room.loadingMembers')" @close="infoVisiable = false">
       <template #title>
-        群成员
+        {{ t('room.members') }}
         <span class="chip">{{ memberLoading ? '…' : getMember.length }}</span>
       </template>
 
@@ -50,10 +50,10 @@
               <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <path d="M3 6.5l4.5 3.5L12 4l4.5 6L21 6.5 19 18H5L3 6.5z" />
               </svg>
-              群主
+              {{ t('room.owner') }}
             </span>
             <button v-if="getRoomInfo.creator !== member.user_id && roomStore.isOwnerOf(currentId())"
-              type="button" class="icon-btn kick" title="移出群聊" @click="handleRemoveMember(member.id)">
+              type="button" class="icon-btn kick" :title="t('room.kick')" @click="handleRemoveMember(member.id)">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
                 stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 18 18 6M6 6l12 12" />
@@ -65,7 +65,7 @@
 
       <template #footer>
         <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleLeaveRoom">
-          {{ isOwner ? '解散房间' : '退出房间' }}
+          {{ isOwner ? t('room.dissolveRoom') : t('room.leaveRoom') }}
         </button>
       </template>
     </DetailPanel>
@@ -81,6 +81,7 @@ import { useUserStore } from "@/store/modules/user";
 import { useRoomStore } from "@/store/modules/room";
 import { computed, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from 'vue-i18n';
 
 import serverApi from "@/api";
 import { formatFileSize } from "@/utils";
@@ -94,6 +95,7 @@ import { showConfirm } from '@/components/ui/confirm'
 const socketStore = useSocketStore();
 const userStore = useUserStore();
 const roomStore = useRoomStore();
+const { t } = useI18n();
 
 const route = useRoute();
 const router = useRouter()
@@ -149,8 +151,7 @@ const mentionMembers = computed(() => sortedMember.value.map((m: any) => ({
   ...m,
   online: getMemberOnline.value.has(m.user_id),
 })));
-// 群成员名字兜底文案：成员已退出/被移出（不在当前成员列表）时统一显示
-const LEFT_MEMBER_LABEL = '已退出成员';
+// 群成员名字兜底文案：成员已退出/被移出（不在当前成员列表）时统一显示（渲染点用 t()）
 // 发送者是否已退出（自己发的消息不算）
 const isLeftMember = (user_id: string) => {
   if (user_id === userStore.userInfo.id) return false;
@@ -160,7 +161,7 @@ const isLeftMember = (user_id: string) => {
 const getSenderName = (user_id: string) => {
   if (user_id === userStore.userInfo.id) return userStore.userInfo.username;
   return getMember.value.find((item: any) => item.user_id === user_id)
-    ?.user_info?.username || LEFT_MEMBER_LABEL;
+    ?.user_info?.username || t('room.leftMember');
 };
 // 获取房间信息
 const getRoomInfo = computed(() => {
@@ -177,17 +178,17 @@ const isOwner = computed(() => !!getRoomInfo.value.creator && getRoomInfo.value.
 
 async function handleLeaveRoom() {
   const roomId = currentId()
-  const name = getRoomInfo.value.name || '房间'
+  const name = getRoomInfo.value.name || t('room.defaultRoomName')
 
   if (isOwner.value) {
-    if (!(await showConfirm(`解散后所有成员都会被移出，确定解散「${name}」吗？`, {
-      title: '解散房间',
+    if (!(await showConfirm(t('room.confirmDissolve', { name }), {
+      title: t('room.dissolveRoom'),
       danger: true
     }))) return
     const res: any = await serverApi.DeleteRoom(roomId)
     if (res.code === 200) {
       roomStore.removeRoom(roomId)
-      toast.success('房间已解散')
+      toast.success(t('room.dissolved'))
       router.replace(NAV.roomList)
     }
     return
@@ -195,11 +196,11 @@ async function handleLeaveRoom() {
 
   const self = getMember.value.find((item: any) => item.user_id === userStore.userInfo.id)
   if (!self) {
-    toast.warning('你已不在该房间')
+    toast.warning(t('room.notInRoom'))
     router.replace(NAV.roomList)
     return
   }
-  if (!(await showConfirm(`确定退出「${name}」吗？`, { title: '退出房间', danger: true }))) return
+  if (!(await showConfirm(t('room.confirmLeave', { name }), { title: t('room.leaveRoom'), danger: true }))) return
 
   const res: any = await serverApi.RemoveMember(self.id)
   if (res.code === 200) {
@@ -210,14 +211,14 @@ async function handleLeaveRoom() {
 }
 
 async function handleRemoveMember(id: string) {
-  if (!(await showConfirm('确定把该成员移出房间吗？对方会立刻收到通知', {
-    title: '移出成员',
+  if (!(await showConfirm(t('room.confirmKick'), {
+    title: t('room.removeMember'),
     danger: true
   }))) return
   const res: any = await serverApi.RemoveMember(id)
   if (res.code === 200) {
     roomStore.getRoomMember(currentId());
-    toast.success('已移出成员')
+    toast.success(t('room.memberRemoved'))
   }
 }
 

@@ -1,0 +1,32 @@
+{
+    "apply": {
+        "pendingHeader": "Awaiting approval",
+        "sentHeader": "My requests",
+        "filterAll": "All",
+        "filterFriend": "Friend",
+        "filterRoom": "Room",
+        "pendingFilterAria": "Filter pending requests by type",
+        "sentFilterAria": "Filter my requests by type",
+        "loadingPending": "Loading pending requests…",
+        "loadingSent": "Loading my requests…",
+        "emptyPendingAll": "No pending requests",
+        "emptyPendingFriend": "No friend requests",
+        "emptyPendingRoom": "No room requests",
+        "emptySent": "No requests sent yet",
+        "defaultUser": "User",
+        "defaultRoom": "Room",
+        "addFriend": "Wants to add you as a friend",
+        "joinRoom": "Wants to join {room}",
+        "sentRoomDesc": "Request to join this room",
+        "sentFriendDesc": "Friend request sent",
+        "typeFriend": "Friend request",
+        "typeRoom": "Room request",
+        "statusPending": "Pending",
+        "statusApproved": "Approved",
+        "statusRejected": "Rejected",
+        "timeSent": "Sent",
+        "timeHandled": "Handled",
+        "approve": "Approve",
+        "reject": "Reject"
+    }
+}

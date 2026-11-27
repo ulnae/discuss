@@ -1,0 +1,30 @@
+{
+    "friend": {
+        "addFriend": "Add Friend",
+        "loadingFriends": "Loading friends…",
+        "emptyList": "No friends yet. Tap + at the top right to search and add.",
+        "searchPh": "Search friends",
+        "backToList": "Back to Friends",
+        "unknownFriend": "Unknown friend",
+        "infoTitle": "Friend Profile",
+        "loadingInfo": "Loading friend profile…",
+        "emptyChat": "No messages yet. Say hello!",
+        "voiceCall": "Voice call",
+        "fieldUsername": "Username",
+        "fieldEmail": "Email",
+        "fieldJoined": "Joined",
+        "deleteFriend": "Delete Friend",
+        "thisFriend": "this friend",
+        "confirmDelete": "Once deleted, this friend will be removed from both friend lists. Delete \"{name}\"?",
+        "deleted": "Friend removed",
+        "subtitle": "Enter a username and press Enter to search and send a friend request",
+        "usernamePh": "Enter a username",
+        "me": "Me",
+        "noEmail": "No email",
+        "addBtn": "Add",
+        "added": "Added",
+        "inputRequired": "Please enter a username to search",
+        "noMatch": "No matching users found",
+        "requestSent": "Friend request sent"
+    }
+}

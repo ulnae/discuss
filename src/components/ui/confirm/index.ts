@@ -1,4 +1,7 @@
 import { reactive } from 'vue'
+import { i18n } from '@/locales'
+
+const t = i18n.global.t
 
 export interface ConfirmOptions {
   title?: string
@@ -19,10 +22,10 @@ export interface ConfirmState {
 
 export const confirmState = reactive<ConfirmState>({
   open: false,
-  title: '请确认',
+  title: '',
   message: '',
-  confirmText: '确定',
-  cancelText: '取消',
+  confirmText: '',
+  cancelText: '',
   danger: false
 })
 
@@ -46,10 +49,10 @@ export function showConfirm(message: string, options: ConfirmOptions = {}): Prom
   // 极端情况下连续触发两次：先把上一个按取消处理，避免 resolver 被覆盖后永远挂起
   resolveConfirm(false)
 
-  confirmState.title = options.title ?? '请确认'
+  confirmState.title = options.title ?? t('confirm.title')
   confirmState.message = message
-  confirmState.confirmText = options.confirmText ?? '确定'
-  confirmState.cancelText = options.cancelText ?? '取消'
+  confirmState.confirmText = options.confirmText ?? t('common.confirm')
+  confirmState.cancelText = options.cancelText ?? t('common.cancel')
   confirmState.danger = options.danger ?? false
   confirmState.open = true
 

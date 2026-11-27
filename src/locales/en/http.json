@@ -1,0 +1,18 @@
+{
+    "http": {
+        "400": "Invalid request parameters, please check and retry",
+        "401": "Session expired, please log in again",
+        "403": "You don't have permission to perform this action",
+        "404": "Endpoint not found or removed",
+        "408": "Request timed out, please retry",
+        "413": "Content too large, please compress and retry",
+        "429": "Too many requests, please retry later",
+        "500": "Server hiccup, please retry later",
+        "501": "This feature is not yet available",
+        "502": "Bad gateway, please retry later",
+        "503": "Service temporarily unavailable, please retry later",
+        "504": "Gateway timeout, please retry later",
+        "timeout": "Request timed out, check your network and retry",
+        "network": "Network error, check your connection"
+    }
+}

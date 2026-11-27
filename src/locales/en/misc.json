@@ -1,0 +1,65 @@
+{
+    "lang": {
+        "zh": "中文",
+        "en": "English",
+        "label": "Language"
+    },
+    "nav": {
+        "home": "Home",
+        "friend": "Friends",
+        "room": "Rooms",
+        "apply": "Requests",
+        "setting": "Settings",
+        "login": "Login",
+        "welcome": "Welcome",
+        "chat": "Messages",
+        "friendSearch": "Find friends",
+        "roomSearch": "Find rooms",
+        "roomCreate": "Create room",
+        "roomChat": "Room messages",
+        "mainNav": "Main navigation"
+    },
+    "cache": {
+        "invalidJson": "The file is not valid JSON",
+        "notBackup": "This is not a Discuss chat backup file",
+        "unsupportedVersion": "Unsupported backup version: {version}",
+        "wrongAccount": "This backup belongs to another account and cannot be imported here",
+        "exportFail": "Export failed. Try again later or check the data format."
+    },
+    "dash": {
+        "welcomeTitle": "Welcome to Discuss",
+        "welcomeSub": "Pick a friend or a room to start a conversation",
+        "alerts": "System notices",
+        "noAlerts": "No notices yet, all is quiet",
+        "deleteNotice": "Delete this notice"
+    },
+    "notfound": {
+        "title": "Page lost",
+        "desc": "The link may have expired, or you don't have access",
+        "backHome": "Back to home"
+    },
+    "ws": {
+        "someone": "Someone",
+        "peer": "Them",
+        "unknownRoom": "the room",
+        "member": "A member",
+        "newMember": "New member",
+        "owner": "The owner",
+        "friendOnline": "[{name}] is online",
+        "friendOffline": "[{name}] is offline",
+        "friendRequest": "Friend request: {name} wants to add you",
+        "friendAccepted": "{name} accepted your friend request",
+        "friendRejected": "{name} declined your friend request",
+        "friendRemoved": "{name} removed you from their friends",
+        "roomApply": "Room request: {name} wants to join \"{roomName}\"",
+        "roomApplyAccepted": "Joined \"{name}\"",
+        "roomApplyRejected": "Your request to join \"{name}\" was declined",
+        "roomJoined": "You have joined \"{name}\"",
+        "memberJoined": "{name} joined the room",
+        "memberLeft": "{name} left the room",
+        "memberKicked": "{name} removed a member",
+        "roomKicked": "You were removed from \"{roomName}\" by {name}",
+        "roomLeft": "You have left \"{roomName}\"",
+        "roomDeleted": "\"{roomName}\" was disbanded by {name}"
+    }
+}

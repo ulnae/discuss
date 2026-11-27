@@ -1,21 +1,21 @@
 <template>
-    <SearchPage v-model.trim="username" title="添加好友" subtitle="输入用户名后回车，即可搜索并发送好友申请"
-        placeholder="输入用户名" back-title="返回好友列表" :results="result" @back="goBack" @submit="handleSearch">
+    <SearchPage v-model.trim="username" :title="t('friend.addFriend')" :subtitle="t('friend.subtitle')"
+        :placeholder="t('friend.usernamePh')" :back-title="t('friend.backToList')" :results="result" @back="goBack" @submit="handleSearch">
         <template #result="{ item }">
             <div class="result-card result-card--compact">
                 <UserAvatar :name="item.username" size="lg" />
                 <div class="result-main result-main--tight">
                     <div class="result-name result-name--with-chip">
                         {{ item.username }}
-                        <span v-if="item.id === userStore.userInfo.id" class="chip">我</span>
+                        <span v-if="item.id === userStore.userInfo.id" class="chip">{{ t('friend.me') }}</span>
                     </div>
-                    <div class="result-meta">{{ item.email || '未设置邮箱' }}</div>
+                    <div class="result-meta">{{ item.email || t('friend.noEmail') }}</div>
                 </div>
 
                 <button v-if="canAdd(item)" type="button" class="btn btn-primary btn-sm" @click="handleJoin(item.id)">
-                    加好友
+                    {{ t('friend.addBtn') }}
                 </button>
-                <span v-else-if="item.id !== userStore.userInfo.id" class="chip chip-success">已添加</span>
+                <span v-else-if="item.id !== userStore.userInfo.id" class="chip chip-success">{{ t('friend.added') }}</span>
             </div>
         </template>
     </SearchPage>
@@ -23,6 +23,7 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import ServerApi from "@/api";
 import { NAV, useGoBack } from "@/utils/nav";
 import type { User } from "@/store/modules/user";
@@ -42,16 +43,17 @@ const username = ref('')
 const result = ref<User[]>([]);
 const friendStore = useFriendStore()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const handleSearch = () => {
     if (!username.value) {
-        toast.warning('请输入要搜索的用户名')
+        toast.warning(t('friend.inputRequired'))
         return
     }
     ServerApi.SearchUser(username.value).then((res: any) => {
         if (res.code === 200) {
             result.value = res.data;
-            if (!res.data?.length) toast.info('没有找到匹配的用户')
+            if (!res.data?.length) toast.info(t('friend.noMatch'))
         }
     });
 };
@@ -61,7 +63,7 @@ const canAdd = (item: User) => !!item.id && !friendStore.getFriendMap[item.id] &
 const handleJoin = (apply_user_id?: string) => {
     ServerApi.apply({ apply_user_id }).then((res: any) => {
         if (res.code === 200) {
-            toast.success('好友申请已发送')
+            toast.success(t('friend.requestSent'))
             username.value = ''
             result.value = []
         }

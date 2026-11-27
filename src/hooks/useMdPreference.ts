@@ -30,37 +30,38 @@ const themeLoaders = import.meta.glob('../assets/md-themes/*.min.css', {
 
 const idFromKey = (key: string) => key.split('/').pop()!.replace(/\.min\.css$/, '')
 
+/** label 为 i18n key（prefs.json 的 md.*），渲染处经 t() 转换 */
 const THEME_LABELS: Record<string, string> = {
-    'github': 'GitHub',
-    'juejin': '掘金',
-    'cyanosis': '青蓝',
-    'awesome-green': '青绿',
-    'Chinese-red': '中国红',
-    'arknights': '明日方舟',
-    'channing-cyan': '禅意青',
-    'condensed-night-purple': '凝夜紫',
-    'devui-blue': 'DevUI 蓝',
-    'geek-black': '极客黑',
-    'greenwillow': '柳绿',
-    'healer-readable': '治愈系',
-    'hydrogen': '氢',
-    'jzman': 'jzman',
-    'keepnice': 'KeepNice',
-    'lilsnake': '小蛇',
-    'minimalism': '极简',
-    'mk-cute': '萌可爱',
-    'nico': 'Nico',
-    'orange': '橙心',
-    'qklhk-chocolate': '巧克力',
-    'scrolls-light': '卷轴·浅',
-    'serene-rose': '静谧玫瑰',
-    'simplicity-green': '简约绿',
-    'smartblue': '智能蓝',
-    'v-green': 'V 绿',
-    'vue-pro': 'Vue Pro',
-    'vuepress': 'VuePress',
-    'yu': '余',
-    'z-blue': 'Z 蓝',
+    'github': 'md.themeGithub',
+    'juejin': 'md.themeJuejin',
+    'cyanosis': 'md.themeCyanosis',
+    'awesome-green': 'md.themeAwesomeGreen',
+    'Chinese-red': 'md.themeChineseRed',
+    'arknights': 'md.themeArknights',
+    'channing-cyan': 'md.themeChanningCyan',
+    'condensed-night-purple': 'md.themeCondensedNightPurple',
+    'devui-blue': 'md.themeDevuiBlue',
+    'geek-black': 'md.themeGeekBlack',
+    'greenwillow': 'md.themeGreenwillow',
+    'healer-readable': 'md.themeHealerReadable',
+    'hydrogen': 'md.themeHydrogen',
+    'jzman': 'md.themeJzman',
+    'keepnice': 'md.themeKeepnice',
+    'lilsnake': 'md.themeLilsnake',
+    'minimalism': 'md.themeMinimalism',
+    'mk-cute': 'md.themeMkCute',
+    'nico': 'md.themeNico',
+    'orange': 'md.themeOrange',
+    'qklhk-chocolate': 'md.themeQklhkChocolate',
+    'scrolls-light': 'md.themeScrollsLight',
+    'serene-rose': 'md.themeSereneRose',
+    'simplicity-green': 'md.themeSimplicityGreen',
+    'smartblue': 'md.themeSmartblue',
+    'v-green': 'md.themeVGreen',
+    'vue-pro': 'md.themeVuePro',
+    'vuepress': 'md.themeVuepress',
+    'yu': 'md.themeYu',
+    'z-blue': 'md.themeZBlue',
 }
 
 /** 下拉框里靠前的常用主题，其余按 id 字母序追加 */
@@ -72,10 +73,10 @@ const THEME_ORDER = ['github', 'juejin', 'cyanosis', 'awesome-green']
 export const DEFAULT_MD_FONT_SCALE = 0.875
 
 export const MD_FONT_SCALES: ReadonlyArray<{ value: number; label: string }> = [
-    { value: 0.75, label: '小' },
-    { value: 0.875, label: '标准' },
-    { value: 1, label: '大' },
-    { value: 1.125, label: '特大' },
+    { value: 0.75, label: 'md.fontSmall' },
+    { value: 0.875, label: 'md.fontStandard' },
+    { value: 1, label: 'md.fontLarge' },
+    { value: 1.125, label: 'md.fontXl' },
 ]
 
 const isValidFontScale = (v: unknown): v is number =>
