@@ -2,6 +2,8 @@
     "call": {
         "reject": "Decline",
         "accept": "Accept",
+        "accepting": "Answering…",
+        "connecting": "Connecting…",
         "mute": "Mute",
         "unmute": "Unmute",
         "hangup": "Hang up",

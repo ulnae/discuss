@@ -1,6 +1,6 @@
 <template>
     <SearchPage v-model.trim="username" :title="t('friend.addFriend')" :subtitle="t('friend.subtitle')"
-        :placeholder="t('friend.usernamePh')" :back-title="t('friend.backToList')" :results="result" @back="goBack" @submit="handleSearch">
+        :placeholder="t('friend.usernamePh')" :back-title="t('friend.backToList')" :results="result" :loading="searching" @back="goBack" @submit="handleSearch">
         <template #result="{ item }">
             <div class="result-card result-card--compact">
                 <UserAvatar :name="item.username" size="lg" />
@@ -42,6 +42,10 @@ const goBack = useGoBack(NAV.friendList)
 
 const username = ref('')
 const result = ref<User[]>([]);
+/** 搜索中：控制按钮禁用与 loading 展示 */
+const searching = ref(false);
+/** 自增序号守卫：只接受最后一次搜索的回包，避免竞态覆盖 */
+let searchId = 0;
 /** 正在发送的好友申请（一次只处理一个，防连点重复 POST /apply） */
 const applyingId = ref<string | null>(null);
 const friendStore = useFriendStore()
@@ -53,11 +57,19 @@ const handleSearch = () => {
         toast.warning(t('friend.inputRequired'))
         return
     }
+    const id = ++searchId;
+    searching.value = true;
     ServerApi.SearchUser(username.value).then((res: any) => {
-        if (res.code === 200) {
-            result.value = res.data;
-            if (!res.data?.length) toast.info(t('friend.noMatch'))
+        if (id === searchId) {
+            if (res.code === 200) {
+                result.value = res.data;
+                if (!res.data?.length) toast.info(t('friend.noMatch'))
+            }
         }
+    }).catch(() => {
+        // 错误提示由 axios 拦截器统一处理
+    }).finally(() => {
+        if (id === searchId) searching.value = false;
     });
 };
 

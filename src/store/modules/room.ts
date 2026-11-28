@@ -30,6 +30,11 @@ export const useRoomStore = defineStore('room', {
 
         /** 房间列表 / 详情是否正在加载；初始 true，刷新后首帧直接是 loading，避免空状态闪现 */
         loading: true,
+
+        /** 列表请求竞态守卫：自增 id，旧请求响应不再回写 */
+        roomsFetchId: 0,
+        /** 按房间独立的成员请求序号 */
+        memberFetchIds: {} as Record<string, number>,
     }),
     getters: {
         getRoomMap: (state) => {
@@ -52,11 +57,13 @@ export const useRoomStore = defineStore('room', {
         getRooms() {
             const userinfo = useUserStore().userInfo
             this.loading = true
+            const fetchId = ++this.roomsFetchId
             // 记录请求发出时间：overview 的 online 是服务端处理瞬间拍的快照，
             // 若响应期间某房间已收到更新的 online:room 推送（推送晚于请求发出），
             // 说明快照已过期，绝不能回写覆盖。
             const requestedAt = Date.now()
             return ServerApi.GetRoomOverview().then((res: any) => {
+                if (fetchId !== this.roomsFetchId) return
                 if (res.code !== 200) return
                 const data = res.data || {}
                 const socketStore = useSocketStore()
@@ -92,14 +99,19 @@ export const useRoomStore = defineStore('room', {
                 // 兜底：快照竞态漏掉自己时强制补回（自己 WS 在线就必然在线）
                 socketStore.ensureSelfOnline()
             }).finally(() => {
-                this.loading = false
+                if (fetchId === this.roomsFetchId) {
+                    this.loading = false
+                }
             })
         },
         // 获取单个房间的成员（成员变动事件后的定点刷新）
         getRoomMember(room_id: string) {
+            const fetchId = (this.memberFetchIds[room_id] || 0) + 1
+            this.memberFetchIds[room_id] = fetchId
             ServerApi.GetMemberInfo({
                 room_id,
             }).then((res: any) => {
+                if (fetchId !== this.memberFetchIds[room_id]) return
                 if (res.code === 200) {
                     useSocketStore().roomMemberMap.set(room_id, res.data || [])
                 }

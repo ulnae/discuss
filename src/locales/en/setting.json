@@ -75,6 +75,10 @@
         "chatExported": "Chat history exported",
         "chatExportFail": "Failed to export chat history",
         "chatImported": "Chat history imported",
-        "importFail": "Import failed"
+        "importFail": "Import failed",
+        "exportingScheme": "Exporting…",
+        "importingScheme": "Importing…",
+        "confirmResetScheme": "Restore default colors? Your custom colors will be discarded.",
+        "confirmLogout": "Log out of the current account?"
     }
 }

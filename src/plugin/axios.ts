@@ -1,5 +1,6 @@
 /* eslint-disable */
 import axios, { AxiosInstance, AxiosPromise, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
+import NProgress from 'nprogress'
 import { APIENUM, API_ENUM_SERVICE } from '@/settings'
 import { useUserStore } from '@/store/modules/user'
 import { pinia } from '@/store'
@@ -7,6 +8,24 @@ import { toast } from '@/components/ui/toast'
 import { i18n } from '@/locales'
 
 const t = i18n.global.t
+
+let pendingRequests = 0
+
+/** 请求开始时推进全局进度条；并发时只启动一次 */
+function beginRequest() {
+    pendingRequests++
+    if (pendingRequests === 1) {
+        NProgress.start()
+    }
+}
+
+/** 请求结束时回退计数；全部完成后关闭进度条 */
+function endRequest() {
+    pendingRequests = Math.max(0, pendingRequests - 1)
+    if (pendingRequests === 0) {
+        NProgress.done()
+    }
+}
 
 /**
  * 后端返回的 i18nKey（error.*）优先本地翻译；缺失时回退服务端原文（中文），
@@ -87,11 +106,13 @@ service.interceptors.request.use(
             customConfig.headers['Authorization'] = `Bearer ${useUserStore().getToken}`
         }
 
+        beginRequest()
         return customConfig
     },
     error => {
         // 发送失败
         console.log(error)
+        endRequest()
         return Promise.reject(error)
     }
 )
@@ -101,6 +122,7 @@ service.interceptors.response.use(
     response => {
         // dataAxios 是 axios 返回数据中的 data
         const dataAxios: any = response.data
+        endRequest()
         // 这个状态码是和后端约定的
         const { code } = dataAxios
         // console.log(code,'code');
@@ -138,6 +160,7 @@ service.interceptors.response.use(
         }
     },
     error => {
+        endRequest()
         const status = error && error.response && error.response.status
 
         // 401：清掉本地登录态并回登录页（提示由 errorLog 统一弹出）

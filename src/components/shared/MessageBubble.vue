@@ -24,7 +24,13 @@
          深色语境（夜间模式 / 自己的深色气泡）的反色适配见 design.scss -->
     <div v-else class="cm-md markdown-body md-themed" v-html="renderedHtml"></div>
     <!-- 发送状态：绝对定位成气泡角标，脱离文档流 —— 状态切换不再改变消息高度 -->
-    <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" :title="t('chat.statusSending')">
+    <span v-if="message.status === 'uploading'" class="cm-status cm-status-sending" :title="t('chat.statusUploading')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
+            aria-hidden="true">
+            <path d="M12 4a8 8 0 1 0 8 8" />
+        </svg>
+    </span>
+    <span v-else-if="message.status === 'sending'" class="cm-status cm-status-sending" :title="t('chat.statusSending')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
             aria-hidden="true">
             <path d="M12 4a8 8 0 1 0 8 8" />

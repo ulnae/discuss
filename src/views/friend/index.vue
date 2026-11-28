@@ -24,7 +24,8 @@
         </div>
       </div>
 
-      <MessageComposer v-model.trim="story" @send="handleSend" @image="handleSendImage" @file="handleSendFile">
+      <MessageComposer v-model.trim="story" :uploading-count="uploadingCount" :upload-limit="uploadLimit"
+        @send="handleSend" @image="handleSendImage" @file="handleSendFile">
         <template #actions>
           <button type="button" class="icon-btn" :title="t('friend.voiceCall')" :disabled="!isFriendOnline"
             @click="handleStartCall">
@@ -113,10 +114,14 @@ const {
   handleSendFile,
   infoVisiable,
   handleSwitchInfo,
+  uploadingCount,
+  uploadLimit,
 } = useChatSession({
   history: getHistory,
   send: (content, meta) => socketStore.sendUser(currentId(), content, meta),
   resend: message => socketStore.resendMessage(message),
+  target: currentId,
+  isRoom: false,
 });
 
 const getFriendInfo = computed(() => {

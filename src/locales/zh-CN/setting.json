@@ -75,6 +75,10 @@
         "chatExported": "聊天记录已导出",
         "chatExportFail": "聊天记录导出失败",
         "chatImported": "聊天记录导入成功",
-        "importFail": "导入失败"
+        "importFail": "导入失败",
+        "exportingScheme": "导出中…",
+        "importingScheme": "导入中…",
+        "confirmResetScheme": "确定恢复默认配色吗？当前的自定义配色会被清除。",
+        "confirmLogout": "确定退出当前账号吗？"
     }
 }

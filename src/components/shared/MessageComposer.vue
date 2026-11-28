@@ -2,7 +2,10 @@
   <div ref="inputAreaRef" class="composer">
     <div class="composer-box">
       <!-- @ 群成员候选浮层：仅在群聊传入成员列表时出现，overlay 不占输入区高度 -->
-      <div v-if="mentionActive && mentionCandidates.length" class="mention-popup">
+      <div v-if="mentionActive && (mentionCandidates.length || mentionLoading)" class="mention-popup">
+        <div v-if="!mentionCandidates.length && mentionLoading" class="mention-loading">
+          {{ t('chat.mentionLoading') }}
+        </div>
         <div v-for="(m, i) in mentionCandidates" :key="m.user_id" class="mention-option"
           :class="{ 'is-active': i === mentionIndex }" @mousedown.prevent @click="selectMention(i)">
           <UserAvatar :name="m.user_info?.username || '?'" class="mention-avatar" :online="m.online" />
@@ -49,10 +52,15 @@
 
       <div class="composer-actions">
         <slot name="actions" />
-        <button type="button" class="icon-btn" :title="t('chat.sendImage')" @click="emit('image')">
+        <span v-if="uploadingCount > 0" class="uploading-hint" :title="t('chat.uploadingCount', { count: uploadingCount })">
+          <span class="loading-spinner"></span>{{ uploadingCount }}
+        </span>
+        <button type="button" class="icon-btn" :disabled="uploadingCount >= uploadLimit" :title="t('chat.sendImage')"
+          @click="emit('image')">
           <AppIcon name="image" :size="18" :stroke-width="1.6" />
         </button>
-        <button type="button" class="icon-btn" :title="t('chat.sendFile')" @click="emit('file')">
+        <button type="button" class="icon-btn" :disabled="uploadingCount >= uploadLimit" :title="t('chat.sendFile')"
+          @click="emit('file')">
           <AppIcon name="file" :size="18" :stroke-width="1.6" />
         </button>
       </div>
@@ -73,11 +81,20 @@ import { useMention, type MentionMember } from '@/hooks/useMention'
 import type { MentionRef } from '@/constants/events'
 import { useUserStore } from '@/store/modules/user'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string
   /** 群聊成员列表；私聊不传 → @ 功能完全不激活 */
   mentionMembers?: MentionMember[]
-}>()
+  /** 群成员是否仍在加载（@ 浮层空态提示） */
+  memberLoading?: boolean
+  /** 上传中的文件数；达上限时禁用上传按钮 */
+  uploadingCount?: number
+  uploadLimit?: number
+}>(), {
+  memberLoading: false,
+  uploadingCount: 0,
+  uploadLimit: 3,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -102,6 +119,7 @@ const {
   activeIndex: mentionIndex,
   candidates: mentionCandidates,
   composing: mentionComposing,
+  loading: mentionLoading,
   onCursorChange: onMentionCursorChange,
   handleKeydown: handleMentionKeydown,
   currentMentions,

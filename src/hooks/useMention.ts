@@ -15,6 +15,8 @@ interface UseMentionOptions {
   text: Ref<string>
   /** 当前登录用户 id，候选里排除自己 */
   currentUserId: Ref<string | undefined>
+  /** 成员列表是否仍在加载（浮层空态时显示加载提示） */
+  membersLoading?: Ref<boolean>
   textareaRef: Ref<HTMLTextAreaElement | null>
   /** 选中成员后替换文本并定位光标（由组件 emit update:modelValue + nextTick 完成） */
   onReplace: (next: string, caret: number) => void
@@ -30,7 +32,7 @@ const MAX_CANDIDATES = 10
  * userId/用户名作为结构化元数据（MentionRef）随消息 meta 发送。
  */
 export function useMention(options: UseMentionOptions) {
-  const { members, text, currentUserId, textareaRef, onReplace } = options
+  const { members, text, currentUserId, membersLoading, textareaRef, onReplace } = options
 
   const active = ref(false)
   const query = ref('')
@@ -163,6 +165,8 @@ export function useMention(options: UseMentionOptions) {
     activeIndex,
     candidates,
     composing,
+    /** 浮层空态且成员仍在加载：显示"正在加载群成员…" */
+    loading: computed(() => !!membersLoading?.value),
     detect,
     handleKeydown,
     /** 组件事件：input/click/keyup 后调用 */

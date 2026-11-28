@@ -988,6 +988,31 @@ html.dark .md-themed {
     }
 }
 
+.mention-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem;
+    color: var(--text-3);
+    font-size: 0.72rem;
+}
+
+/* 上传计数提示：与上传按钮同排，紧凑显示并发中的文件数 */
+.uploading-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 0.15rem;
+    color: var(--text-3);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.icon-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .mention-avatar {
     width: 24px;
     height: 24px;

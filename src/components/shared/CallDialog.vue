@@ -27,14 +27,17 @@
       <div class="call-actions">
         <!-- 来电：拒绝 / 接听 -->
         <template v-if="callStore.status === 'incoming'">
-          <button type="button" class="call-btn call-btn-reject" :title="t('call.reject')" @click="callStore.rejectCall()">
+          <button type="button" class="call-btn call-btn-reject" :disabled="callStore.accepting" :title="t('call.reject')"
+            @click="callStore.rejectCall()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
               stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
-          <button type="button" class="call-btn call-btn-accept" :title="t('call.accept')" @click="callStore.acceptCall()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+          <button type="button" class="call-btn call-btn-accept" :disabled="callStore.accepting"
+            :title="callStore.accepting ? t('call.accepting') : t('call.accept')" @click="callStore.acceptCall()">
+            <span v-if="callStore.accepting" class="call-spinner" aria-hidden="true"></span>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
               stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
               <path d="m4.5 12.75 6 6 9-13.5" />
             </svg>
@@ -64,7 +67,8 @@
 
         <!-- 主叫等待中：取消 -->
         <template v-else-if="callStore.status === 'calling'">
-          <button type="button" class="call-btn call-btn-reject" :title="t('common.cancel')" @click="callStore.hangup()">
+          <button type="button" class="call-btn call-btn-reject" :disabled="callStore.actionPending" :title="t('common.cancel')"
+            @click="callStore.hangup()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
               stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 18 18 6M6 6l12 12" />
@@ -95,7 +99,7 @@ const statusText = computed(() => {
     case 'incoming':
       return t('call.incomingInvite')
     case 'calling':
-      return t('call.waitingAnswer')
+      return callStore.actionPending ? t('call.connecting') : t('call.waitingAnswer')
     case 'active':
       return formatDuration(callStore.duration)
     default:
@@ -251,6 +255,31 @@ watch(() => callStore.remoteStream, (stream) => {
 .call-btn svg {
   width: 20px;
   height: 20px;
+}
+
+.call-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.call-btn:disabled:active {
+  transform: none;
+}
+
+.call-spinner {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: call-spin 0.7s linear infinite;
+}
+
+@keyframes call-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .call-btn-reject {

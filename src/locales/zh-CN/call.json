@@ -2,6 +2,8 @@
     "call": {
         "reject": "拒绝",
         "accept": "接听",
+        "accepting": "接听中…",
+        "connecting": "正在建立通话…",
         "mute": "静音",
         "unmute": "取消静音",
         "hangup": "挂断",

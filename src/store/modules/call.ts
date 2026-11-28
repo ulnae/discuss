@@ -39,6 +39,8 @@ let pendingCandidates: RTCIceCandidateInit[] = []
 let durationTimer: ReturnType<typeof setInterval> | null = null
 let failTimer: ReturnType<typeof setTimeout> | null = null
 let boundSocket: Socket | null = null
+// 通话代数：每次发起/结束通话都会自增，用于在异步等待完成后作废过期操作
+let callGeneration = 0
 
 // 振铃提示音（Web Audio 合成，无需音频资源文件）
 let ringCtx: AudioContext | null = null
@@ -73,6 +75,10 @@ export const useCallStore = defineStore('call', {
     errorMsg: '',
     // 远端音频流
     remoteStream: null as MediaStream | null,
+    // 接听中（await 麦克风/ICE 期间，防止重复点接听）
+    accepting: false,
+    // 发起通话中（await 麦克风/ICE 期间，INVITE 尚未发出）
+    actionPending: false,
   }),
   getters: {
     // 是否处于通话相关状态
@@ -119,7 +125,10 @@ export const useCallStore = defineStore('call', {
      * 主叫：拨打电话
      */
     async startCall(peer: CallPeer) {
-      if (this.isBusy) return
+      if (this.isBusy || this.actionPending) return
+
+      const gen = ++callGeneration
+      this.actionPending = true
 
       clearFailTimer()
       this.direction = 'caller'
@@ -134,32 +143,52 @@ export const useCallStore = defineStore('call', {
       // 提前获取麦克风与 ICE 配置（含 TURN 凭证），接听后可立即建立媒体
       try {
         const [stream] = await Promise.all([this.getUserAudio(), loadIceServers()])
+        // await 期间若被取消/复位，本次操作已作废：释放流，绝不发 INVITE/响铃
+        if (gen !== callGeneration) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
         localStream = stream
+        this.emit(Event.CALL_INVITE, { to: peer.id })
+        playRing('ringback')
       } catch (err) {
         console.error('getUserMedia failed:', err)
-        this.fail(i18n.global.t('call.micDenied'))
+        // 仅最新一代才提示失败，避免过期异步污染当前通话
+        if (gen === callGeneration) {
+          this.fail(i18n.global.t('call.micDenied'))
+        }
         return
+      } finally {
+        if (gen === callGeneration) this.actionPending = false
       }
-
-      this.emit(Event.CALL_INVITE, { to: peer.id })
-      playRing('ringback')
     },
 
     /**
      * 被叫：接听电话
      */
     async acceptCall() {
-      if (this.status !== 'incoming') return
+      if (this.status !== 'incoming' || this.accepting) return
+      const gen = ++callGeneration
+      this.accepting = true
       stopRing()
 
       try {
         const [stream] = await Promise.all([this.getUserAudio(), loadIceServers()])
+        // await 期间若被拒绝/复位/再次操作，本次接听作废
+        if (gen !== callGeneration || this.status !== 'incoming') {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
         localStream = stream
       } catch (err) {
         console.error('getUserMedia failed:', err)
-        this.emit(Event.CALL_REJECT, { callId: this.callId })
-        this.fail(i18n.global.t('call.micDeniedRejected'))
+        if (gen === callGeneration) {
+          this.emit(Event.CALL_REJECT, { callId: this.callId })
+          this.fail(i18n.global.t('call.micDeniedRejected'))
+        }
         return
+      } finally {
+        if (gen === callGeneration) this.accepting = false
       }
 
       // 先创建 PeerConnection 等待 Offer（Offer 到达时复用，不重复创建）
@@ -174,6 +203,8 @@ export const useCallStore = defineStore('call', {
      */
     rejectCall() {
       if (this.status !== 'incoming') return
+      // 作废 await 中的接听，避免拒绝后连接又被建立
+      ++callGeneration
       this.emit(Event.CALL_REJECT, { callId: this.callId })
       this.resetAll()
     },
@@ -182,8 +213,13 @@ export const useCallStore = defineStore('call', {
      * 挂断：振铃中主叫取消，通话中任意一方结束
      */
     hangup() {
+      // 放在最前面：await 中的 startCall 立即作废，不会在取消后仍发出 INVITE
+      ++callGeneration
       if (this.status === 'calling') {
-        this.emit(Event.CALL_CANCEL, { callId: this.callId })
+        // INVITE 还没发出（callId 为空）时无需也无法取消
+        if (this.callId) {
+          this.emit(Event.CALL_CANCEL, { callId: this.callId })
+        }
       } else if (this.status === 'active') {
         this.emit(Event.CALL_END, { callId: this.callId })
       }
@@ -415,6 +451,8 @@ export const useCallStore = defineStore('call', {
      * 静默释放全部通话资源并回到空闲
      */
     resetAll() {
+      // fail() 内部也调用 resetAll，故仅在此处自增，覆盖所有在途异步
+      callGeneration++
       stopRing()
       closeMedia()
       closePeerConnection()
@@ -428,6 +466,8 @@ export const useCallStore = defineStore('call', {
       this.duration = 0
       this.remoteStream = null
       this.errorMsg = ''
+      this.accepting = false
+      this.actionPending = false
     },
   },
 })

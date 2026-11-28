@@ -26,7 +26,8 @@
         </div>
       </div>
 
-      <MessageComposer v-model.trim="story" :mention-members="mentionMembers"
+      <MessageComposer v-model.trim="story" :mention-members="mentionMembers" :member-loading="memberLoading"
+        :uploading-count="uploadingCount" :upload-limit="uploadLimit"
         @send="handleSend" @image="handleSendImage" @file="handleSendFile" />
     </div>
 
@@ -120,10 +121,14 @@ const {
   handleSendFile,
   infoVisiable,
   handleSwitchInfo,
+  uploadingCount,
+  uploadLimit,
 } = useChatSession({
   history: getHistory,
   send: (content, meta) => socketStore.sendRoom(currentId(), content, meta),
   resend: message => socketStore.resendMessage(message),
+  target: currentId,
+  isRoom: true,
 });
 // 获取房间成员
 const getMember = computed(() => {

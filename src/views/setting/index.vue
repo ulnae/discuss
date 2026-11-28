@@ -81,21 +81,21 @@
             <header class="card-head">{{ t('setting.recordsTitle') }}</header>
             <p class="card-desc">{{ t('setting.recordsDesc') }}</p>
             <div class="card-actions">
-                <button type="button" class="btn btn-ghost" @click="handleExport">
+                <button type="button" class="btn btn-ghost" :disabled="exporting" @click="handleExport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round">
                         <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
                         <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
                     </svg>
-                    {{ t('setting.export') }}
+                    {{ exporting ? t('common.exporting') : t('setting.export') }}
                 </button>
-                <button type="button" class="btn btn-ghost" @click="handleImport">
+                <button type="button" class="btn btn-ghost" :disabled="importing" @click="handleImport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round">
                         <path d="M12 15V3m0 0 4 4m-4-4-4 4" />
                         <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
                     </svg>
-                    {{ t('setting.import') }}
+                    {{ importing ? t('common.importing') : t('setting.import') }}
                 </button>
             </div>
         </section>
@@ -183,15 +183,15 @@
 
             <!-- 方案操作：导出 / 导入 / 恢复默认 -->
             <div class="card-actions scheme-actions">
-                <button type="button" class="btn btn-ghost btn-sm" @click="handleSchemeExport">
+                <button type="button" class="btn btn-ghost btn-sm" :disabled="schemeExporting" @click="handleSchemeExport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-                    {{ t('setting.exportScheme') }}
+                    {{ schemeExporting ? t('setting.exportingScheme') : t('setting.exportScheme') }}
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm" @click="handleSchemeImport">
+                <button type="button" class="btn btn-ghost btn-sm" :disabled="schemeImporting" @click="handleSchemeImport">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
                         stroke-linejoin="round"><path d="M12 15V3m0 0 4 4m-4-4-4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-                    {{ t('setting.importScheme') }}
+                    {{ schemeImporting ? t('setting.importingScheme') : t('setting.importScheme') }}
                 </button>
                 <button v-if="schemeCustomized" type="button" class="btn btn-ghost btn-sm danger-text"
                     @click="handleSchemeReset">{{ t('setting.resetScheme') }}</button>
@@ -254,6 +254,7 @@ import userApi from '@/api/user'
 import { MessageCache } from '@/utils/messageCache'
 import { downloadJSON } from '@/utils/index'
 import { toast } from '@/components/ui/toast'
+import { showConfirm } from '@/components/ui/confirm'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/hooks/useTheme'
@@ -279,7 +280,10 @@ const activeTab = ref<string>(SETTING_TABS[0].id)
 
 // 主题切换与退出登录统一收敛在设置页（导航栏仅保留设置入口）
 const { isDark, toggleTheme } = useTheme()
-const handleLogout = () => userStore.logout()
+const handleLogout = async () => {
+  if (!(await showConfirm(t('setting.confirmLogout'), { title: t('setting.logoutTitle'), danger: true }))) return
+  userStore.logout()
+}
 
 // 消息 Markdown 偏好：编辑模式开关 + 渲染主题 + 渲染字号
 const { mdInputEnabled, mdTheme, mdFontScale, setMdInputEnabled, setMdTheme, setMdFontScale } = useMdPreference()
@@ -319,17 +323,29 @@ const onSchemeColorInput = (key: string, e: Event) => {
 const onResetOneColor = (key: string) => resetSchemeColor(schemeEditMode.value, key)
 
 /** 导出配色方案 JSON */
+const schemeExporting = ref(false)
 const handleSchemeExport = () => {
-  const data = exportScheme()
-  const date = new Date().toISOString().slice(0, 10)
-  downloadJSON(data, `discuss-ui-scheme-${date}.json`)
-  toast.success(t('setting.schemeExported'))
+  if (schemeExporting.value) return
+  schemeExporting.value = true
+  try {
+    const data = exportScheme()
+    const date = new Date().toISOString().slice(0, 10)
+    downloadJSON(data, `discuss-ui-scheme-${date}.json`)
+    toast.success(t('setting.schemeExported'))
+  } finally {
+    schemeExporting.value = false
+  }
 }
 
 /** 导入配色方案：走隐藏 file input */
-const handleSchemeImport = () => document.getElementById('chooseSchemeFile')?.click()
+const schemeImporting = ref(false)
+const handleSchemeImport = () => {
+  if (schemeImporting.value) return
+  document.getElementById('chooseSchemeFile')?.click()
+}
 
 useFilePicker('chooseSchemeFile', async (file) => {
+  schemeImporting.value = true
   try {
     const parsed = JSON.parse(await file.text())
     if (!importScheme(parsed)) {
@@ -339,11 +355,14 @@ useFilePicker('chooseSchemeFile', async (file) => {
     toast.success(t('setting.schemeImported'))
   } catch {
     toast.error(t('setting.schemeParseFail'))
+  } finally {
+    schemeImporting.value = false
   }
 })
 
-/** 一键恢复默认配色（带确认由按钮自身二次点击简化，这里直接恢复 + 提示） */
-const handleSchemeReset = () => {
+/** 一键恢复默认配色：危险操作先二次确认，再恢复 + 提示 */
+const handleSchemeReset = async () => {
+  if (!(await showConfirm(t('setting.confirmResetScheme'), { title: t('setting.resetScheme'), danger: true }))) return
   resetSchemeAll()
   toast.success(t('setting.schemeResetOk'))
 }
@@ -458,7 +477,10 @@ const handleSaveAccount = async () => {
     }
 }
 
+const exporting = ref(false)
 const handleExport = async () => {
+    if (exporting.value) return
+    exporting.value = true
     try {
         // 导出当前账号的备份：v2 自描述结构，带版本与账号归属
         const backup = await MessageCache.exportBackup(currentUid(), userStore.userInfo.username)
@@ -468,15 +490,20 @@ const handleExport = async () => {
     } catch (error) {
         console.error('export failed:', error)
         toast.error(t('setting.chatExportFail'))
+    } finally {
+        exporting.value = false
     }
 }
 
+const importing = ref(false)
 const handleImport = () => {
+    if (importing.value) return
     document.getElementById('chooseHistoryFile')?.click()
 }
 
 
 useFilePicker('chooseHistoryFile', async (file) => {
+    importing.value = true
     try {
         const text = await file.text()
         // 解析 + 校验格式 / 版本 / 账号归属（他人备份会被拒绝），并落盘到当前账号
@@ -500,6 +527,8 @@ useFilePicker('chooseHistoryFile', async (file) => {
     } catch (error: any) {
         console.error('parse failed:', error)
         toast.error(error?.message || t('setting.importFail'))
+    } finally {
+        importing.value = false
     }
 })
 

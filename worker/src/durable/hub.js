@@ -195,7 +195,10 @@ export class DiscussHub {
 
         /* 只对发消息做限流：通话信令与 init 本来就低频，不能因为限流丢掉状态机 */
         if ((event === EVENTS.SEND_USER || event === EVENTS.SEND_ROOM) && this.overRate(ws)) {
-            this.safeSend(ws, frame(EVENTS.EXCEPTION, { event, message: '发送太快了，请稍后再试', i18nKey: 'error.ws.rateLimited', timestamp: now() }));
+            this.safeSend(ws, frame(EVENTS.EXCEPTION, {
+                event, message: '发送太快了，请稍后再试', i18nKey: 'error.ws.rateLimited',
+                clientId: data && data.clientId, timestamp: now()
+            }));
             return;
         }
 
@@ -217,7 +220,10 @@ export class DiscussHub {
         } catch (error) {
             /* 与 NestJS 网关的语义对齐：处理失败时回一条 exception，前端据此提示 */
             console.error('[hub] handle event failed', event, error && error.message);
-            this.safeSend(ws, frame(EVENTS.EXCEPTION, { event, message: '消息处理失败，请重试', i18nKey: 'error.ws.handleFailed', timestamp: now() }));
+            this.safeSend(ws, frame(EVENTS.EXCEPTION, {
+                event, message: '消息处理失败，请重试', i18nKey: 'error.ws.handleFailed',
+                clientId: data && data.clientId, timestamp: now()
+            }));
         }
     }
 

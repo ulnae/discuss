@@ -12,14 +12,17 @@
         </span>
         <input :value="modelValue" type="text" :placeholder="placeholder" @input="onInput"
           @keyup.enter="emit('submit', modelValue)" />
-        <button type="button" class="btn btn-primary btn-sm" @click="emit('submit', modelValue)">{{ t('common.search') }}</button>
+        <button type="button" class="btn btn-primary btn-sm" :disabled="loading" @click="emit('submit', modelValue)">{{ loading ? t('common.searching') : t('common.search') }}</button>
       </div>
     </header>
 
     <div class="search-body">
-      <EmptyState v-if="!results.length" :icon="emptyIcon" :text="emptyText ?? t('chat.searchEmpty')" />
-      <template v-for="item in results" :key="itemKey(item)">
-        <slot name="result" :item="item" />
+      <LoadingBlock v-if="loading" class="list-loading" :text="t('common.searching')" />
+      <EmptyState v-else-if="!results.length" :icon="emptyIcon" :text="emptyText ?? t('chat.searchEmpty')" />
+      <template v-else>
+        <template v-for="item in results" :key="itemKey(item)">
+          <slot name="result" :item="item" />
+        </template>
       </template>
     </div>
   </div>
@@ -27,7 +30,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { AppIcon, BackButton, EmptyState } from '@/components/ui'
+import { AppIcon, BackButton, EmptyState, LoadingBlock } from '@/components/ui'
 
 const { t } = useI18n()
 
@@ -44,10 +47,12 @@ withDefaults(defineProps<{
   emptyIcon?: ResultIcon
   results?: any[]
   itemKey?: (item: any) => string | number
+  loading?: boolean
 }>(), {
   emptyIcon: 'search',
   results: () => [],
-  itemKey: (item: any) => item?.id
+  itemKey: (item: any) => item?.id,
+  loading: false
 })
 
 const emit = defineEmits<{
@@ -61,3 +66,14 @@ const onInput = (e: Event) => {
   emit('update:modelValue', (e.target as HTMLInputElement).value)
 }
 </script>
+
+<style scoped>
+.search-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-body > .list-loading {
+  flex: 1;
+}
+</style>

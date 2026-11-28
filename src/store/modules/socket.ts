@@ -40,6 +40,8 @@ function pushCapped(list: any[], message: any) {
  */
 function upsertMessage(list: any[], data: any) {
     const { status: _drop, ...message } = data
+    // 服务端回执到达：消息已被确认，清掉 ack 超时定时器
+    if (data?.clientId) clearAckTimer(data.clientId)
     const optimistic = data?.clientId
         ? list.find((m: any) => m.clientId === data.clientId)
         : undefined
@@ -58,6 +60,15 @@ function upsertMessage(list: any[], data: any) {
 
 /** 图片 / 文件消息的附加字段（与文字消息共用一条发送链路） */
 type MessageMeta = { type?: string; size?: number; originalname?: string; mentions?: MentionRef[] }
+
+/** 发送确认超时：超过这个时间仍是 sending 就置为 failed，避免旋转环永久卡死 */
+const ACK_TIMEOUT_MS = 15000
+const ackTimers = new Map<string, ReturnType<typeof setTimeout>>()
+function clearAckTimer(clientId?: string) {
+    if (!clientId) return
+    const timer = ackTimers.get(clientId)
+    if (timer) { clearTimeout(timer); ackTimers.delete(clientId) }
+}
 
 /** 当前 hash 路径（项目用 hash 路由，避免和 window.location.pathname 混淆） */
 const hashPath = () => (typeof location === 'undefined' ? '' : location.hash.replace(/^#/, ''))
@@ -93,6 +104,9 @@ export const useSocketStore = defineStore('socket', {
     actions: {
         /** 清空内存中的运行时状态（切账号 / 登出时用），不碰本地持久化数据 */
         resetRuntime() {
+            // 清掉所有在途 ack 定时器，避免切账号后定时器回写旧账号数据
+            ackTimers.forEach(timer => clearTimeout(timer))
+            ackTimers.clear()
             this.userMessageMap.clear()
             this.roomMessageMap.clear()
             this.roomMemberMap.clear()
@@ -197,6 +211,12 @@ export const useSocketStore = defineStore('socket', {
                         ? t(key, (data && data.i18nParams) || {})
                         : (data && data.message)
                     toast.error(fallback || t('common.failedRetry'))
+                    // 带 clientId 时把对应乐观消息置为失败，避免旋转环永久卡死
+                    const clientId = data && data.clientId
+                    if (clientId) {
+                        clearAckTimer(clientId)
+                        this.markMessageFailed(clientId)
+                    }
                 })
 
 
@@ -417,6 +437,94 @@ export const useSocketStore = defineStore('socket', {
 
         /* ==================== 消息落库与乐观发送 ==================== */
 
+        /** 按 clientId 在两个会话 Map 中定位消息并置为失败（服务端 EXCEPTION / ack 超时共用） */
+        markMessageFailed(clientId: string) {
+            const flip = (map: Map<string, any[]>, save: (uid: string, target: string, list: any[]) => void, targetKey: string) => {
+                map.forEach((list, target) => {
+                    const msg = list.find((m: any) => m.clientId === clientId)
+                    if (!msg) return
+                    msg.status = 'failed'
+                    save(currentUid(), target, list)
+                })
+            }
+            flip(this.userMessageMap, MessageCache.saveUser, 'to')
+            flip(this.roomMessageMap, MessageCache.saveRoom, 'roomId')
+        },
+
+        /**
+         * 上传占位消息：上传开始前先上屏一条 status=uploading 的乐观消息，
+         * 上传成功后由 replaceUploadWithSend 原地转成 sending 并 emit，失败则转 failed。
+         */
+        addUploadingMessage(isRoom: boolean, target: string, meta: MessageMeta) {
+            const clientId = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+            const connected = !!this.socket?.connected
+            const targetField = isRoom ? 'roomId' : 'to'
+            const message: any = {
+                id: clientId,
+                clientId,
+                from: useUserStore().userInfo.id,
+                [targetField]: target,
+                content: meta.originalname || t('chat.file'),
+                timestamp: Date.now(),
+                ...meta,
+                status: connected ? 'uploading' : 'failed',
+            }
+            const map = isRoom ? this.roomMessageMap : this.userMessageMap
+            const list = pushCapped(map.get(target) || [], message)
+            map.set(target, list)
+            if (isRoom) MessageCache.saveRoom(currentUid(), target, list)
+            else MessageCache.saveUser(currentUid(), target, list)
+            return clientId
+        },
+
+        /** 上传成功：把占位消息的内容替换为上传后的 URL，转 sending 并真正 emit */
+        replaceUploadWithSend(isRoom: boolean, target: string, clientId: string, content: string, meta: MessageMeta) {
+            const map = isRoom ? this.roomMessageMap : this.userMessageMap
+            const list = map.get(target)
+            const message = list?.find((m: any) => m.clientId === clientId)
+            if (!message) return
+            message.content = content
+            Object.assign(message, meta)
+            const connected = !!this.socket?.connected
+            message.status = connected ? 'sending' : 'failed'
+            if (isRoom) MessageCache.saveRoom(currentUid(), target, list!)
+            else MessageCache.saveUser(currentUid(), target, list!)
+            if (connected) {
+                const event = isRoom ? Event.SEND_ROOM : Event.SEND_USER
+                const targetField = isRoom ? 'roomId' : 'to'
+                this.socket!.emit(event, { [targetField]: target, content, clientId, ...meta })
+                this.scheduleAck(isRoom, target, clientId)
+            }
+        },
+
+        /** 上传失败：把占位消息直接置为 failed（无重试意义，提示由 toast 给出） */
+        failUploadingMessage(isRoom: boolean, target: string, clientId: string) {
+            const map = isRoom ? this.roomMessageMap : this.userMessageMap
+            const list = map.get(target)
+            const message = list?.find((m: any) => m.clientId === clientId)
+            if (!message) return
+            message.status = 'failed'
+            if (isRoom) MessageCache.saveRoom(currentUid(), target, list!)
+            else MessageCache.saveUser(currentUid(), target, list!)
+        },
+
+        /** ack 超时守卫：超时后仍是 sending 就置 failed 并提示，避免旋转环永久卡死 */
+        scheduleAck(isRoom: boolean, target: string, clientId: string) {
+            clearAckTimer(clientId)
+            const timer = setTimeout(() => {
+                ackTimers.delete(clientId)
+                const map = isRoom ? this.roomMessageMap : this.userMessageMap
+                const list = map.get(target)
+                const message = list?.find((m: any) => m.clientId === clientId)
+                if (!message || message.status !== 'sending') return
+                message.status = 'failed'
+                if (isRoom) MessageCache.saveRoom(currentUid(), target, list!)
+                else MessageCache.saveUser(currentUid(), target, list!)
+                toast.warning(t('chat.ackTimeout'))
+            }, ACK_TIMEOUT_MS)
+            ackTimers.set(clientId, timer)
+        },
+
         /** 追加一条私聊消息；带 clientId 的回显会原地替换本地待确认消息 */
         appendUserMessage(data: any, peerId: string) {
             if (!data || !peerId) return
@@ -460,6 +568,7 @@ export const useSocketStore = defineStore('socket', {
             if (connected) {
                 const event = isRoom ? Event.SEND_ROOM : Event.SEND_USER
                 this.socket!.emit(event, { [targetField]: target, content, clientId, ...meta })
+                this.scheduleAck(isRoom, target, clientId)
             }
         },
 
@@ -475,7 +584,11 @@ export const useSocketStore = defineStore('socket', {
 
         /** 重发失败的消息（气泡上点击「发送失败，点击重试」） */
         resendMessage(message: any) {
-            if (!message || message.status !== 'failed' || !this.socket?.connected) return
+            if (!message || message.status !== 'failed') return
+            if (!this.socket?.connected) {
+                toast.warning(t('http.network'))
+                return
+            }
             message.status = 'sending'
             const meta = {
                 type: message.type,
@@ -484,12 +597,14 @@ export const useSocketStore = defineStore('socket', {
                 // 失败重发也要带上 @ 元数据，否则本地缓存的消息会丢高亮
                 mentions: message.mentions,
             }
+            const clientId = message.clientId
             if (message.roomId) {
-                this.socket.emit(Event.SEND_ROOM, { roomId: message.roomId, content: message.content, clientId: message.clientId, ...meta })
-                // 重发即视作已发出：同步落盘（写入时剥离 sending），避免刷新后又显示失败
+                this.socket.emit(Event.SEND_ROOM, { roomId: message.roomId, content: message.content, clientId, ...meta })
+                this.scheduleAck(true, message.roomId, clientId)
                 MessageCache.saveRoom(currentUid(), message.roomId, this.roomMessageMap.get(message.roomId) || [])
             } else if (message.to) {
-                this.socket.emit(Event.SEND_USER, { to: message.to, content: message.content, clientId: message.clientId, ...meta })
+                this.socket.emit(Event.SEND_USER, { to: message.to, content: message.content, clientId, ...meta })
+                this.scheduleAck(false, message.to, clientId)
                 MessageCache.saveUser(currentUid(), message.to, this.userMessageMap.get(message.to) || [])
             }
         },

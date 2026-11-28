@@ -1,7 +1,7 @@
 <template>
   <SearchPage v-model.trim="roomName" :title="t('room.searchRooms')" :subtitle="t('room.searchSubtitle')"
     :placeholder="t('room.searchPlaceholder')" :back-title="t('room.backToList')" empty-icon="house" :results="result"
-    @back="goBack" @submit="handleSearch">
+    :loading="searching" @back="goBack" @submit="handleSearch">
     <template #result="{ item }">
       <div class="result-card">
         <UserAvatar :name="item.name" size="lg" />
@@ -42,6 +42,10 @@ const goBack = useGoBack(NAV.roomList)
 const roomName = ref("");
 
 const result = ref<Room[]>([]);
+/** 搜索中：控制按钮禁用与 loading 展示 */
+const searching = ref(false);
+/** 自增序号守卫：只接受最后一次搜索的回包，避免竞态覆盖 */
+let searchId = 0;
 /** 申请中的房间 id（防连点重复 POST /apply） */
 const joiningId = ref<string | null>(null);
 /** 本次会话已提交申请的房间：等 WS 回推期间也保持「已申请」，避免按钮瞬间复活 */
@@ -54,11 +58,19 @@ const handleSearch = () => {
     toast.warning(t('room.warnEmpty'))
     return
   }
+  const id = ++searchId;
+  searching.value = true;
   ServerApi.SearchRoom(roomName.value).then((res: any) => {
-    if (res.code === 200) {
-      result.value = res.data;
-      if (!res.data?.length) toast.info(t('room.noMatch'))
+    if (id === searchId) {
+      if (res.code === 200) {
+        result.value = res.data;
+        if (!res.data?.length) toast.info(t('room.noMatch'))
+      }
     }
+  }).catch(() => {
+    // 错误提示由 axios 拦截器统一处理
+  }).finally(() => {
+    if (id === searchId) searching.value = false;
   });
 };
 
