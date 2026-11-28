@@ -41,6 +41,11 @@ let failTimer: ReturnType<typeof setTimeout> | null = null
 let boundSocket: Socket | null = null
 // 通话代数：每次发起/结束通话都会自增，用于在异步等待完成后作废过期操作
 let callGeneration = 0
+// INVITE 是否已发出：服务端回的 RINGING 才带 callId，两者之间有空窗
+let inviteSent = false
+// 空窗期主叫取消时先记下来，等 RINGING 带回 callId 后补发 CALL_CANCEL，
+// 否则对端会一直振铃（旧逻辑把 callId 为空误判成"INVITE 还没发"而不发取消）
+let pendingCancelCaller = false
 
 // 振铃提示音（Web Audio 合成，无需音频资源文件）
 let ringCtx: AudioContext | null = null
@@ -128,6 +133,7 @@ export const useCallStore = defineStore('call', {
       if (this.isBusy || this.actionPending) return
 
       const gen = ++callGeneration
+      pendingCancelCaller = false
       this.actionPending = true
 
       clearFailTimer()
@@ -150,6 +156,7 @@ export const useCallStore = defineStore('call', {
         }
         localStream = stream
         this.emit(Event.CALL_INVITE, { to: peer.id })
+        inviteSent = true
         playRing('ringback')
       } catch (err) {
         console.error('getUserMedia failed:', err)
@@ -215,15 +222,20 @@ export const useCallStore = defineStore('call', {
     hangup() {
       // 放在最前面：await 中的 startCall 立即作废，不会在取消后仍发出 INVITE
       ++callGeneration
+      let cancelPending = false
       if (this.status === 'calling') {
-        // INVITE 还没发出（callId 为空）时无需也无法取消
         if (this.callId) {
           this.emit(Event.CALL_CANCEL, { callId: this.callId })
+        } else if (inviteSent) {
+          // INVITE 已发出但 RINGING 未到：先记下，回执到达后补发取消
+          cancelPending = true
         }
       } else if (this.status === 'active') {
         this.emit(Event.CALL_END, { callId: this.callId })
       }
       this.resetAll()
+      // resetAll 会清标记，待取消标记要在它之后设置
+      if (cancelPending) pendingCancelCaller = true
     },
 
     /**
@@ -240,6 +252,15 @@ export const useCallStore = defineStore('call', {
     // ===================== 信令事件处理 =====================
 
     handleRinging(data: CallSignalPayload) {
+      // 空窗期已取消：用回执里的 callId 补发取消，避免对端一直振铃
+      if (pendingCancelCaller) {
+        pendingCancelCaller = false
+        this.emit(Event.CALL_CANCEL, { callId: data.callId })
+        this.resetAll()
+        return
+      }
+      // 过期/乱序回执不再污染当前状态
+      if (this.status !== 'calling' || this.direction !== 'caller') return
       // 记录服务端生成的 callId，供振铃阶段取消通话使用
       this.callId = data.callId
     },
@@ -453,6 +474,8 @@ export const useCallStore = defineStore('call', {
     resetAll() {
       // fail() 内部也调用 resetAll，故仅在此处自增，覆盖所有在途异步
       callGeneration++
+      inviteSent = false
+      pendingCancelCaller = false
       stopRing()
       closeMedia()
       closePeerConnection()

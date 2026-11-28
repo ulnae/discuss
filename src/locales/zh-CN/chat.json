@@ -21,6 +21,7 @@
         "statusSending": "发送中…",
         "statusSendFailed": "发送失败，点击重试",
         "statusUploading": "上传中…",
+        "uploadRetryExpired": "文件已失效，请重新选择文件",
         "uploadingCount": "有 {count} 个文件正在上传",
         "uploadLimit": "最多同时上传 {count} 个文件，请稍后再试",
         "ackTimeout": "消息发送超时，请点击重试",

@@ -1,5 +1,12 @@
 <template>
-    <img v-if="message.type === 'image'" :src="`${VITE_APP_API_BASE_URL}${message.content}`" :alt="t('chat.imgBroken')"
+    <!-- 上传中 / 上传失败占位：此时 content 只是本地文件名，绝不能拼成 URL 渲染
+         （否则图片裂图、文件变成 404 下载链接）。真实 URL 要等上传成功后才替换进来。 -->
+    <div v-if="message.status === 'uploading' || message.uploadFailed" class="cm-upload-placeholder">
+        <span v-if="message.status === 'uploading'" class="loading-spinner"></span>
+        <span class="cm-upload-label">{{ message.status === 'uploading' ? t('chat.statusUploading') : t('chat.statusSendFailed') }}</span>
+        <span class="cm-upload-name">{{ fileDisplayName }}</span>
+    </div>
+    <img v-else-if="message.type === 'image'" :src="`${VITE_APP_API_BASE_URL}${message.content}`" :alt="t('chat.imgBroken')"
         class="cm-image" @click="handlePreviewImage(message.content)" />
     <template v-else-if="message.type === 'file'">
         <video class="cm-media" controls v-if="isUrlEndWith(`${VITE_APP_API_BASE_URL}${message.content}`, ['mp4', 'webm'])">
@@ -24,13 +31,7 @@
          深色语境（夜间模式 / 自己的深色气泡）的反色适配见 design.scss -->
     <div v-else class="cm-md markdown-body md-themed" v-html="renderedHtml"></div>
     <!-- 发送状态：绝对定位成气泡角标，脱离文档流 —— 状态切换不再改变消息高度 -->
-    <span v-if="message.status === 'uploading'" class="cm-status cm-status-sending" :title="t('chat.statusUploading')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
-            aria-hidden="true">
-            <path d="M12 4a8 8 0 1 0 8 8" />
-        </svg>
-    </span>
-    <span v-else-if="message.status === 'sending'" class="cm-status cm-status-sending" :title="t('chat.statusSending')">
+    <span v-if="message.status === 'sending'" class="cm-status cm-status-sending" :title="t('chat.statusSending')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"
             aria-hidden="true">
             <path d="M12 4a8 8 0 1 0 8 8" />
@@ -93,6 +94,31 @@ const handlePreviewImage = (url: string) => {
 </script>
 
 <style lang="scss" scoped>
+.cm-upload-placeholder {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+    color: var(--text-2);
+    font-size: 0.82rem;
+
+    .loading-spinner {
+        flex-shrink: 0;
+        width: 13px;
+        height: 13px;
+    }
+}
+
+.cm-upload-label {
+    flex-shrink: 0;
+}
+
+.cm-upload-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .cm-image {
     display: block;
     max-width: min(320px, 100%);

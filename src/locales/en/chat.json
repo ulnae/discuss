@@ -21,6 +21,7 @@
         "statusSending": "Sending…",
         "statusSendFailed": "Send failed, click to retry",
         "statusUploading": "Uploading…",
+        "uploadRetryExpired": "The file is no longer available, please select it again",
         "uploadingCount": "{count} file(s) uploading",
         "uploadLimit": "At most {count} files can be uploaded at once, please try later",
         "ackTimeout": "Message timed out, click to retry",

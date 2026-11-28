@@ -468,6 +468,9 @@ export const useSocketStore = defineStore('socket', {
                 timestamp: Date.now(),
                 ...meta,
                 status: connected ? 'uploading' : 'failed',
+                // 未连接时占位同样是「未完成上传」：content 只是本地文件名，
+                // 必须打标记走重新上传，否则窗口期内点重试会把文件名当正文 emit。
+                uploadFailed: !connected,
             }
             const map = isRoom ? this.roomMessageMap : this.userMessageMap
             const list = pushCapped(map.get(target) || [], message)
@@ -487,6 +490,9 @@ export const useSocketStore = defineStore('socket', {
             Object.assign(message, meta)
             const connected = !!this.socket?.connected
             message.status = connected ? 'sending' : 'failed'
+            // 内容已换成服务端 URL，不再是「只有本地文件名」的上传占位，
+            // 即使未连接而停留 failed，也应走普通消息重发而非重新上传
+            message.uploadFailed = false
             if (isRoom) MessageCache.saveRoom(currentUid(), target, list!)
             else MessageCache.saveUser(currentUid(), target, list!)
             if (connected) {
@@ -497,15 +503,32 @@ export const useSocketStore = defineStore('socket', {
             }
         },
 
-        /** 上传失败：把占位消息直接置为 failed（无重试意义，提示由 toast 给出） */
+        /**
+         * 上传失败：占位消息置为 failed 并打标记。
+         * uploadFailed 用于区别于「消息已发出但 ack 超时/服务端异常」的普通 failed——
+         * 前者气泡里的内容只是本地文件名，点击重试必须重新走上传流程，
+         * 绝不能走 resendMessage 把文件名当作正文 emit 出去。
+         */
         failUploadingMessage(isRoom: boolean, target: string, clientId: string) {
             const map = isRoom ? this.roomMessageMap : this.userMessageMap
             const list = map.get(target)
             const message = list?.find((m: any) => m.clientId === clientId)
             if (!message) return
             message.status = 'failed'
+            message.uploadFailed = true
             if (isRoom) MessageCache.saveRoom(currentUid(), target, list!)
             else MessageCache.saveUser(currentUid(), target, list!)
+        },
+
+        /** 重新上传前移除旧的失败占位消息（新一次上传会再插入一条新的占位） */
+        removeMessageByClientId(isRoom: boolean, target: string, clientId: string) {
+            const map = isRoom ? this.roomMessageMap : this.userMessageMap
+            const list = map.get(target)
+            if (!list) return
+            const next = list.filter((m: any) => m.clientId !== clientId)
+            map.set(target, next)
+            if (isRoom) MessageCache.saveRoom(currentUid(), target, next)
+            else MessageCache.saveUser(currentUid(), target, next)
         },
 
         /** ack 超时守卫：超时后仍是 sending 就置 failed 并提示，避免旋转环永久卡死 */

@@ -67,7 +67,9 @@
 
         <!-- 主叫等待中：取消 -->
         <template v-else-if="callStore.status === 'calling'">
-          <button type="button" class="call-btn call-btn-reject" :disabled="callStore.actionPending" :title="t('common.cancel')"
+          <!-- 授权麦克风/拉 ICE 期间同样允许取消：代际校验会作废在途 startCall，
+               不允许取消只会让用户被迫等权限弹窗处理完 -->
+          <button type="button" class="call-btn call-btn-reject" :title="t('common.cancel')"
             @click="callStore.hangup()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
               stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">

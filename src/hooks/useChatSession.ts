@@ -63,7 +63,15 @@ export function useChatSession(options: UseChatSessionOptions) {
     story.value = ''
   }
 
-  const handleResend = (message: ChatMessage) => options.resend(message)
+  const handleResend = (message: ChatMessage) => {
+    // 上传失败的占位消息内容只是本地文件名，必须重新上传原始文件，
+    // 绝不能走普通重发把文件名当正文发给对方。
+    if ((message as any).uploadFailed) {
+      retryUpload(message)
+      return
+    }
+    options.resend(message)
+  }
 
   /** Windows 下 multer 返回的 path 含反斜杠（public\1001\x.png），统一归一为正斜杠 */
   const normalizePath = (raw: unknown) => String(raw ?? '').replace(/\\/g, '/')
@@ -78,13 +86,22 @@ export function useChatSession(options: UseChatSessionOptions) {
   const uploadLimit = UPLOAD_LIMIT
 
   /**
-   * 上传统一流程：限流 → （直接发送模式）插入 uploading 占位 → HTTP 上传
+   * 失败上传的原始任务：只保留在内存，不落盘。
+   * 上传失败后气泡点「重试」要重新走 HTTP 上传；绝不能走 resendMessage
+   * 把占位消息里的本地文件名当成正文 emit 出去。刷新后这张表自然清空，
+   * 此时重试会提示用户重新选择文件。
+   */
+  const uploadTasks = new Map<string, () => Promise<void>>()
+
+  /**
+   * 上传统一流程：限流 →（直接发送模式）插入 uploading 占位 → HTTP 上传
    * → 成功时占位消息原地转 sending 并 emit / Markdown 模式插入输入框 → 失败转 failed。
    */
   const runUpload = async (
+    blob: Blob,
     buildForm: () => Promise<FormData> | FormData,
     placeholderMeta: ChatMessageMeta,
-    onSuccess: (path: string, data: any) => { content: string; meta: ChatMessageMeta } | void
+    onSuccess: (path: string, data: any, markdownMode: boolean) => { content: string; meta: ChatMessageMeta } | void
   ) => {
     if (uploadingCount.value >= UPLOAD_LIMIT) {
       toast.warning(i18n.global.t('chat.uploadLimit', { count: UPLOAD_LIMIT }))
@@ -94,32 +111,64 @@ export function useChatSession(options: UseChatSessionOptions) {
     const socketStore = useSocketStore()
     const isRoom = !!options.isRoom
     const target = options.target ? options.target() : ''
-    // Markdown 模式只插入输入框、不直接发消息，无需占位消息
-    const clientId = !mdInputEnabled.value && target
+    // 锁定本次上传开始时的模式：过程中切换 Markdown 开关不能改变已建占位/待发路径，
+    // 否则会出现「开始按非 md 建了占位、结束时按 md 不发消息」导致占位永久卡住。
+    const markdownMode = mdInputEnabled.value
+    const clientId = !markdownMode && target
       ? socketStore.addUploadingMessage(isRoom, target, placeholderMeta)
       : null
+    let succeeded = false
 
     try {
       const formData = await buildForm()
       const res: any = await serverApi.UploadUser(formData)
-      if (res.code !== 200) return
+      // 非 200 通常由 axios 拦截器抛错走到 catch；但 code=0 等分支会直接返回
+      // dataAxios.data（没有 code 字段）而不抛错，这里必须自己收尾，
+      // 否则占位消息永远停在 uploading。
+      if (res?.code !== 200) {
+        if (clientId) socketStore.failUploadingMessage(isRoom, target!, clientId)
+        return
+      }
       const path = `/${normalizePath(res.data.path)}`
-      const result = onSuccess(path, res.data)
-      if (mdInputEnabled.value || !result) return
+      const result = onSuccess(path, res.data, markdownMode)
+      if (markdownMode) { succeeded = true; return }
+      if (!result) {
+        if (clientId) socketStore.failUploadingMessage(isRoom, target!, clientId)
+        return
+      }
       if (clientId) {
         socketStore.replaceUploadWithSend(isRoom, target!, clientId, result.content, result.meta)
       } else {
         options.send(result.content, result.meta)
       }
+      succeeded = true
     } catch {
       // 错误提示由 axios 拦截器统一弹出
       if (clientId) socketStore.failUploadingMessage(isRoom, target!, clientId)
     } finally {
       uploadingCount.value = Math.max(0, uploadingCount.value - 1)
+      if (clientId) {
+        if (succeeded) uploadTasks.delete(clientId)
+        else uploadTasks.set(clientId, () => runUpload(blob, buildForm, placeholderMeta, onSuccess))
+      }
     }
   }
 
+  /** 重新上传失败的文件；刷新后内存任务已丢失，提示用户重新选择 */
+  const retryUpload = (message: ChatMessage) => {
+    const clientId = message.clientId
+    const task = clientId ? uploadTasks.get(clientId) : undefined
+    if (!clientId || !task) {
+      toast.warning(i18n.global.t('chat.uploadRetryExpired'))
+      return
+    }
+    useSocketStore().removeMessageByClientId(!!options.isRoom, options.target?.() || '', clientId)
+    uploadTasks.delete(clientId)
+    void task()
+  }
+
   const uploadImage = (file: Blob) => runUpload(
+    file,
     async () => {
       const blob = await compressImage(file)
       const formData = new FormData()
@@ -127,8 +176,8 @@ export function useChatSession(options: UseChatSessionOptions) {
       return formData
     },
     { type: 'image', originalname: (file as File).name || i18n.global.t('chat.imgBroken') },
-    (path, data) => {
-      if (mdInputEnabled.value) {
+    (path, data, markdownMode) => {
+      if (markdownMode) {
         insertIntoStory(`![](${path})`)
         return
       }
@@ -137,15 +186,16 @@ export function useChatSession(options: UseChatSessionOptions) {
   )
 
   const uploadFile = (file: Blob) => runUpload(
+    file,
     () => {
       const formData = new FormData()
       formData.append('file', file)
       return formData
     },
     { type: 'file', originalname: (file as File).name || i18n.global.t('chat.file') },
-    (path, data) => {
+    (path, data, markdownMode) => {
       const originalname = data.originalname || (file as File).name || ''
-      if (mdInputEnabled.value) {
+      if (markdownMode) {
         insertIntoStory(`[${originalname || i18n.global.t('chat.file')}](${path})`)
         return
       }

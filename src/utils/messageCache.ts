@@ -67,8 +67,12 @@ function toPlainForStore(list: any[]): any[] {
 
 /** 立即写入（按 key 串行），返回本次写入的 promise */
 function writeNow(key: string, list: any[]): Promise<void> {
+    // 未完成的上传占位消息不落盘：它只有本地文件名、没有服务端 URL，
+    // 刷新后恢复既会卡在"上传中"角标，也会被当成图片/文件链接渲染成裂图。
+    // 上传成功时占位已被替换为真实 URL 并再次落盘，失败时也不该留在历史里。
+    const active = list.filter(item => !item || item.status !== 'uploading')
     // slice 取最近 N 条，再转成无 Proxy 的普通对象数组后落盘
-    const trimmed = toPlainForStore(list.slice(-MESSAGE_CACHE_MAX))
+    const trimmed = toPlainForStore(active.slice(-MESSAGE_CACHE_MAX))
     const prev = writeChains.get(key) || Promise.resolve()
     const next = prev
         .then(() => store.setItem(key, trimmed))
@@ -93,11 +97,14 @@ async function flushKey(key: string) {
  * 一律视为已发送成功（去掉状态）。真正的失败以 status='failed' 落盘，原样保留。
  */
 function stripSending(list: any[]) {
-    return list.map(item => {
-        if (!item || typeof item !== 'object') return item
-        if (item.status === 'sending') delete item.status
-        return item
-    })
+    return list
+        // 同 writeNow：未完成的上传占位不参与恢复/导入，避免裂图与永久上传中
+        .filter(item => !item || typeof item !== 'object' || item.status !== 'uploading')
+        .map(item => {
+            if (!item || typeof item !== 'object') return item
+            if (item.status === 'sending') delete item.status
+            return item
+        })
 }
 
 /** 读取指定账号的数据（内部函数，load / exportBackup 共用，避免依赖 this） */
