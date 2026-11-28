@@ -137,22 +137,65 @@ async function update(request, env, ctx, id) {
     /* H-3：条件更新抢占 —— 只有 handle_status=0 的请求能置位成功。
        D1 的 run() 返回 changes，并发双击时仅一个请求 changes=1，其余直接 409。
        抢占必须放在建关系之前：否则并发的「同意」与「拒绝」请求里，落败的
-       「同意」可能已经写入好友/成员关系，造成「申请被拒但关系已建立」的不一致。 */
-    const claim = await run(
-        env,
-        'UPDATE apply SET status = ?, handle_status = 1, updatedAt = ? WHERE id = ? AND handle_status = 0 AND isDeleted = 0',
-        accepted ? 1 : 0, now(), id
-    );
-    if (!claim.changes) throw new ApiError('已处理，不能再操作', 409, 'error.apply.alreadyHandled');
+       「同意」可能已经写入好友/成员关系，造成「申请被拒但关系已建立」的不一致。
 
-    /* 抢占成功后才写入关系；INSERT OR IGNORE + 部分唯一索引保证幂等 */
-    if (apply.apply_user_id && accepted) {
+       数据一致性：抢占与关系写入必须放进同一个 D1 batch（原子事务）。线上曾出现
+       「申请已同意但 member 行从未写入」，导致申请人的房间列表与成员列表同时看不到——
+       根因就是这两步原本是各自独立提交的 SQL。 */
+    const timestamp = now();
+    const statements = [
+        env.DB.prepare(
+            'UPDATE apply SET status = ?, handle_status = 1, updatedAt = ? WHERE id = ? AND handle_status = 0 AND isDeleted = 0'
+        ).bind(accepted ? 1 : 0, timestamp, id)
+    ];
+    if (accepted && apply.apply_user_id) {
         /* 双向好友关系：双方列表都要立刻出现对方 */
-        await run(env, 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.apply_user_id, apply.user_id, now());
-        await run(env, 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.apply_user_id, now());
+        statements.push(
+            env.DB.prepare('INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)').bind(uuid(), apply.apply_user_id, apply.user_id, timestamp),
+            env.DB.prepare('INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)').bind(uuid(), apply.user_id, apply.apply_user_id, timestamp)
+        );
     }
-    if (apply.room_id && accepted) {
-        await run(env, 'INSERT OR IGNORE INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)', uuid(), apply.user_id, apply.room_id, now());
+    if (accepted && apply.room_id) {
+        statements.push(
+            env.DB.prepare('INSERT OR IGNORE INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)').bind(uuid(), apply.user_id, apply.room_id, timestamp)
+        );
+    }
+
+    let results;
+    try {
+        /* batch 原子：任意语句失败整体回滚，申请状态不会被单独置位 */
+        results = await env.DB.batch(statements);
+    } catch (err) {
+        throw new ApiError('审批写入失败，请稍后重试', 500, 'error.apply.writeFailed');
+    }
+    if (!results[0].changes) throw new ApiError('已处理，不能再操作', 409, 'error.apply.alreadyHandled');
+
+    /* 兜底确认：INSERT OR IGNORE 在关系已存在时 changes=0，需区分「幂等跳过」与
+       「静默失败导致关系缺失」。缺失时补偿写入；仍失败则回滚申请状态，
+       绝不给前端返回「已同意」的假成功。 */
+    if (accepted) {
+        const relationSql = apply.apply_user_id
+            ? 'SELECT id FROM friend WHERE creator = ? AND friend_id = ? AND isDeleted = 0'
+            : 'SELECT id FROM member WHERE room_id = ? AND user_id = ? AND isDeleted = 0';
+        const relationArgs = apply.apply_user_id
+            ? [apply.apply_user_id, apply.user_id]
+            : [apply.room_id, apply.user_id];
+        let relation = await first(env, relationSql, ...relationArgs);
+        if (!relation) {
+            await run(env, apply.apply_user_id
+                ? 'INSERT OR IGNORE INTO friend (id, creator, friend_id, createdAt, isDeleted) VALUES (?,?,?,?,0)'
+                : 'INSERT OR IGNORE INTO member (id, user_id, room_id, createdAt, isDeleted) VALUES (?,?,?,?,0)',
+                ...(apply.apply_user_id
+                    ? [uuid(), apply.apply_user_id, apply.user_id, timestamp]
+                    : [uuid(), apply.user_id, apply.room_id, timestamp]
+                )
+            );
+            relation = await first(env, relationSql, ...relationArgs);
+        }
+        if (!relation) {
+            await run(env, 'UPDATE apply SET status = 0, handle_status = 0, updatedAt = ? WHERE id = ? AND handle_status = 1', now(), id);
+            throw new ApiError('关系建立失败，申请已回滚，请重试', 500, 'error.apply.relationFailed');
+        }
     }
 
     /* ---------- 实时通知：申请人立刻知道结果 ---------- */

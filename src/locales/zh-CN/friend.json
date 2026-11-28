@@ -25,6 +25,8 @@
         "added": "已添加",
         "inputRequired": "请输入要搜索的用户名",
         "noMatch": "没有找到匹配的用户",
-        "requestSent": "好友申请已发送"
+        "requestSent": "好友申请已发送",
+        "applying": "发送中…",
+        "removing": "删除中…"
     }
 }

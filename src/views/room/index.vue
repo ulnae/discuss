@@ -53,7 +53,9 @@
               {{ t('room.owner') }}
             </span>
             <button v-if="getRoomInfo.creator !== member.user_id && roomStore.isOwnerOf(currentId())"
-              type="button" class="icon-btn kick" :title="t('room.kick')" @click="handleRemoveMember(member.id)">
+              type="button" class="icon-btn kick" :disabled="kickingIds.has(member.id)"
+              :title="kickingIds.has(member.id) ? t('room.kicking') : t('room.kick')"
+              @click="handleRemoveMember(member.id)">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
                 stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 18 18 6M6 6l12 12" />
@@ -64,8 +66,9 @@
       </div>
 
       <template #footer>
-        <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleLeaveRoom">
-          {{ isOwner ? t('room.dissolveRoom') : t('room.leaveRoom') }}
+        <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" :disabled="actionPending"
+          @click="handleLeaveRoom">
+          {{ actionPending ? t('common.processing') : isOwner ? t('room.dissolveRoom') : t('room.leaveRoom') }}
         </button>
       </template>
     </DetailPanel>
@@ -79,7 +82,7 @@
 import { useSocketStore } from "@/store/modules/socket";
 import { useUserStore } from "@/store/modules/user";
 import { useRoomStore } from "@/store/modules/room";
-import { computed, watchEffect } from "vue";
+import { computed, reactive, ref, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from 'vue-i18n';
 
@@ -176,49 +179,65 @@ watchEffect(() => {
 // 群主：可解散房间、移出成员；其他人只能自己退出
 const isOwner = computed(() => !!getRoomInfo.value.creator && getRoomInfo.value.creator === userStore.userInfo.id)
 
-async function handleLeaveRoom() {
-  const roomId = currentId()
-  const name = getRoomInfo.value.name || t('room.defaultRoomName')
+/** 解散/退出共用的按钮 pending；踢人按成员独立加锁 */
+const actionPending = ref(false)
+const kickingIds = reactive(new Set<string>())
 
-  if (isOwner.value) {
-    if (!(await showConfirm(t('room.confirmDissolve', { name }), {
-      title: t('room.dissolveRoom'),
-      danger: true
-    }))) return
-    const res: any = await serverApi.DeleteRoom(roomId)
+async function handleLeaveRoom() {
+  if (actionPending.value) return
+  actionPending.value = true
+  try {
+    const roomId = currentId()
+    const name = getRoomInfo.value.name || t('room.defaultRoomName')
+
+    if (isOwner.value) {
+      if (!(await showConfirm(t('room.confirmDissolve', { name }), {
+        title: t('room.dissolveRoom'),
+        danger: true
+      }))) return
+      const res: any = await serverApi.DeleteRoom(roomId)
+      if (res.code === 200) {
+        roomStore.removeRoom(roomId)
+        toast.success(t('room.dissolved'))
+        router.replace(NAV.roomList)
+      }
+      return
+    }
+
+    const self = getMember.value.find((item: any) => item.user_id === userStore.userInfo.id)
+    if (!self) {
+      toast.warning(t('room.notInRoom'))
+      router.replace(NAV.roomList)
+      return
+    }
+    if (!(await showConfirm(t('room.confirmLeave', { name }), { title: t('room.leaveRoom'), danger: true }))) return
+
+    const res: any = await serverApi.RemoveMember(self.id)
     if (res.code === 200) {
       roomStore.removeRoom(roomId)
-      toast.success(t('room.dissolved'))
+      // 提示交给服务端回推的 ROOM_LEFT（含房间名、多标签页同步），避免本地重复弹
       router.replace(NAV.roomList)
     }
-    return
-  }
-
-  const self = getMember.value.find((item: any) => item.user_id === userStore.userInfo.id)
-  if (!self) {
-    toast.warning(t('room.notInRoom'))
-    router.replace(NAV.roomList)
-    return
-  }
-  if (!(await showConfirm(t('room.confirmLeave', { name }), { title: t('room.leaveRoom'), danger: true }))) return
-
-  const res: any = await serverApi.RemoveMember(self.id)
-  if (res.code === 200) {
-    roomStore.removeRoom(roomId)
-    // 提示交给服务端回推的 ROOM_LEFT（含房间名、多标签页同步），避免本地重复弹
-    router.replace(NAV.roomList)
+  } finally {
+    actionPending.value = false
   }
 }
 
 async function handleRemoveMember(id: string) {
-  if (!(await showConfirm(t('room.confirmKick'), {
-    title: t('room.removeMember'),
-    danger: true
-  }))) return
-  const res: any = await serverApi.RemoveMember(id)
-  if (res.code === 200) {
-    roomStore.getRoomMember(currentId());
-    toast.success(t('room.memberRemoved'))
+  if (kickingIds.has(id)) return
+  kickingIds.add(id)
+  try {
+    if (!(await showConfirm(t('room.confirmKick'), {
+      title: t('room.removeMember'),
+      danger: true
+    }))) return
+    const res: any = await serverApi.RemoveMember(id)
+    if (res.code === 200) {
+      roomStore.getRoomMember(currentId());
+      toast.success(t('room.memberRemoved'))
+    }
+  } finally {
+    kickingIds.delete(id)
   }
 }
 

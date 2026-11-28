@@ -87,7 +87,9 @@
             "alreadyHandled": "This request has already been handled",
             "notReceiver": "You are not the recipient of this request",
             "notRoomOwner": "You are not the room creator",
-            "onlySelfRevoke": "You can only revoke your own requests"
+            "onlySelfRevoke": "You can only revoke your own requests",
+            "writeFailed": "Failed to save the decision, please try again later",
+            "relationFailed": "Failed to establish the relationship. The request has been reset; please retry"
         }
     }
 }

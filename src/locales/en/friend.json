@@ -25,6 +25,8 @@
         "added": "Added",
         "inputRequired": "Please enter a username to search",
         "noMatch": "No matching users found",
-        "requestSent": "Friend request sent"
+        "requestSent": "Friend request sent",
+        "applying": "Sending…",
+        "removing": "Removing…"
     }
 }

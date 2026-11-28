@@ -47,6 +47,9 @@ export const useApplyStore = defineStore('apply', {
         // 避免并发时旧请求提前关掉 loading（silent 刷新不参与竞争）
         pendingFetchId: 0,
         sentFetchId: 0,
+
+        // 审批按钮的条目级 pending：同一条申请只允许一个审批请求在途，防连点
+        handlingIds: {} as Record<string, boolean>,
     }),
     getters: {
         /** 该申请是否为入群申请 */
@@ -116,6 +119,9 @@ export const useApplyStore = defineStore('apply', {
         },
         /** 审批申请（好友 / 入群共用 PATCH /apply/:id） */
         handleApply(id: string, status: boolean) {
+            // 条目级锁：同一条申请在请求返回前拒绝再次点击，避免重复 PATCH
+            if (this.handlingIds[id]) return Promise.resolve()
+            this.handlingIds[id] = true
             return serverApi.handleApply({ id, status }).then((res: any) => {
                 if (res && res.code !== 200) return
                 // 先本地摘掉，列表立刻响应；随后拉一次权威列表兜底
@@ -126,6 +132,10 @@ export const useApplyStore = defineStore('apply', {
                     useRoomStore().getRooms()
                     useFriendStore().getFriends()
                 }
+            }).catch(() => {
+                // 错误文案已由 axios 拦截器统一提示；这里吞掉异常避免 unhandled rejection
+            }).finally(() => {
+                delete this.handlingIds[id]
             })
         }
     }

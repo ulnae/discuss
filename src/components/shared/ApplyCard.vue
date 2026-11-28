@@ -40,8 +40,12 @@
       </div>
 
       <div v-if="mode === 'pending' && !item.handle_status" class="card-actions">
-        <button type="button" class="btn btn-sm reject" @click="emit('reject', item.id)">{{ t('apply.reject') }}</button>
-        <button type="button" class="btn btn-sm approve" @click="emit('approve', item.id)">{{ t('apply.approve') }}</button>
+        <button type="button" class="btn btn-sm reject" :disabled="busy" @click="emit('reject', item.id)">
+          {{ busy ? t('common.processing') : t('apply.reject') }}
+        </button>
+        <button type="button" class="btn btn-sm approve" :disabled="busy" @click="emit('approve', item.id)">
+          {{ busy ? t('common.processing') : t('apply.approve') }}
+        </button>
       </div>
     </div>
   </article>
@@ -61,8 +65,11 @@ const props = withDefaults(defineProps<{
   reason: string
   avatarName?: string
   mode?: 'pending' | 'sent'
+  /** 审批请求在途：两个按钮同时禁用，防连点 */
+  busy?: boolean
 }>(), {
-  mode: 'pending'
+  mode: 'pending',
+  busy: false
 })
 
 const emit = defineEmits<{

@@ -38,6 +38,10 @@
         "joined": "Joined",
         "warnEmpty": "Please enter a room name to search",
         "noMatch": "No matching rooms found",
-        "applied": "Request sent. Waiting for the owner's approval"
+        "applied": "Request sent. Waiting for the owner's approval",
+        "creating": "Creating…",
+        "joining": "Requesting…",
+        "joinedPending": "Requested",
+        "kicking": "Removing…"
     }
 }

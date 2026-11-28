@@ -38,6 +38,10 @@
         "joined": "已加入",
         "warnEmpty": "请输入要搜索的房间名",
         "noMatch": "没有找到匹配的房间",
-        "applied": "已提交加入申请，等待群主同意"
+        "applied": "已提交加入申请，等待群主同意",
+        "creating": "创建中…",
+        "joining": "申请中…",
+        "joinedPending": "已申请",
+        "kicking": "移出中…"
     }
 }

@@ -87,7 +87,9 @@
             "alreadyHandled": "已处理，不能再操作",
             "notReceiver": "不是被申请人，不能操作",
             "notRoomOwner": "不是房间创建人，不能操作",
-            "onlySelfRevoke": "只能撤回自己发起的申请"
+            "onlySelfRevoke": "只能撤回自己发起的申请",
+            "writeFailed": "审批写入失败，请稍后重试",
+            "relationFailed": "关系建立失败，申请已回滚，请重试"
         }
     }
 }

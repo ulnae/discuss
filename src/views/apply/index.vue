@@ -24,7 +24,7 @@
           <div v-if="filteredPending.length > 0" class="apply-list">
             <ApplyCard v-for="item in filteredPending" :key="item.id" :item="item" mode="pending"
               :title="item.user_info?.username || t('apply.defaultUser')" :reason="describe(item)"
-              :avatar-name="item.user_info?.username"
+              :avatar-name="item.user_info?.username" :busy="!!applyStore.handlingIds[item.id]"
               @approve="id => applyStore.handleApply(id, true)"
               @reject="id => applyStore.handleApply(id, false)" />
           </div>

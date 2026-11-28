@@ -60,8 +60,9 @@
       </div>
 
       <template #footer>
-        <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" @click="handleRemoveFriend">
-          {{ t('friend.deleteFriend') }}
+        <button type="button" class="btn btn-ghost btn-block btn-sm danger-btn" :disabled="removing"
+          @click="handleRemoveFriend">
+          {{ removing ? t('friend.removing') : t('friend.deleteFriend') }}
         </button>
       </template>
     </DetailPanel>
@@ -75,7 +76,7 @@
 import { useSocketStore } from "@/store/modules/socket";
 import { useFriendStore } from "@/store/modules/friend";
 import { useCallStore } from "@/store/modules/call";
-import { computed, watchEffect } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 
@@ -134,19 +135,26 @@ watchEffect(() => {
 });
 
 // 删除好友：双向生效，对方会实时收到 friend:removed
+const removing = ref(false)
 const handleRemoveFriend = async () => {
-  const friendId = currentId()
-  const name = getFriendInfo.value.username || t('friend.thisFriend')
-  if (!(await showConfirm(t('friend.confirmDelete', { name }), {
-    title: t('friend.deleteFriend'),
-    danger: true
-  }))) return
+  if (removing.value) return
+  removing.value = true
+  try {
+    const friendId = currentId()
+    const name = getFriendInfo.value.username || t('friend.thisFriend')
+    if (!(await showConfirm(t('friend.confirmDelete', { name }), {
+      title: t('friend.deleteFriend'),
+      danger: true
+    }))) return
 
-  const res: any = await serverApi.RemoveFriend(friendId)
-  if (res.code === 200) {
-    friendStore.removeFriend(friendId)
-    toast.success(t('friend.deleted'))
-    router.replace(NAV.friendList)
+    const res: any = await serverApi.RemoveFriend(friendId)
+    if (res.code === 200) {
+      friendStore.removeFriend(friendId)
+      toast.success(t('friend.deleted'))
+      router.replace(NAV.friendList)
+    }
+  } finally {
+    removing.value = false
   }
 }
 

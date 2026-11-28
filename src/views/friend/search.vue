@@ -12,8 +12,9 @@
                     <div class="result-meta">{{ item.email || t('friend.noEmail') }}</div>
                 </div>
 
-                <button v-if="canAdd(item)" type="button" class="btn btn-primary btn-sm" @click="handleJoin(item.id)">
-                    {{ t('friend.addBtn') }}
+                <button v-if="canAdd(item)" type="button" class="btn btn-primary btn-sm"
+                    :disabled="applyingId === item.id" @click="handleJoin(item.id)">
+                    {{ applyingId === item.id ? t('friend.applying') : t('friend.addBtn') }}
                 </button>
                 <span v-else-if="item.id !== userStore.userInfo.id" class="chip chip-success">{{ t('friend.added') }}</span>
             </div>
@@ -41,6 +42,8 @@ const goBack = useGoBack(NAV.friendList)
 
 const username = ref('')
 const result = ref<User[]>([]);
+/** 正在发送的好友申请（一次只处理一个，防连点重复 POST /apply） */
+const applyingId = ref<string | null>(null);
 const friendStore = useFriendStore()
 const userStore = useUserStore()
 const { t } = useI18n()
@@ -61,12 +64,18 @@ const handleSearch = () => {
 const canAdd = (item: User) => !!item.id && !friendStore.getFriendMap[item.id] && item.id !== userStore.userInfo.id
 
 const handleJoin = (apply_user_id?: string) => {
+    if (!apply_user_id || applyingId.value) return
+    applyingId.value = apply_user_id
     ServerApi.apply({ apply_user_id }).then((res: any) => {
         if (res.code === 200) {
             toast.success(t('friend.requestSent'))
             username.value = ''
             result.value = []
         }
+    }).catch(() => {
+        // 错误提示由 axios 拦截器统一处理
+    }).finally(() => {
+        applyingId.value = null
     })
 };
 </script>

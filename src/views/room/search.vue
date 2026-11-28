@@ -13,10 +13,11 @@
           </div>
         </div>
 
-        <button v-if="!roomStore.getRoomMap[item.id]" type="button" class="btn btn-primary btn-sm"
-          @click="handleJoin(item.id)">
-          {{ t('room.applyJoin') }}
+        <button v-if="canApply(item)" type="button" class="btn btn-primary btn-sm"
+          :disabled="joiningId === item.id" @click="handleJoin(item.id)">
+          {{ joiningId === item.id ? t('room.joining') : t('room.applyJoin') }}
         </button>
+        <span v-else-if="appliedIds.has(item.id)" class="chip">{{ t('room.joinedPending') }}</span>
         <span v-else class="chip chip-success">{{ t('room.joined') }}</span>
       </div>
     </template>
@@ -41,6 +42,10 @@ const goBack = useGoBack(NAV.roomList)
 const roomName = ref("");
 
 const result = ref<Room[]>([]);
+/** 申请中的房间 id（防连点重复 POST /apply） */
+const joiningId = ref<string | null>(null);
+/** 本次会话已提交申请的房间：等 WS 回推期间也保持「已申请」，避免按钮瞬间复活 */
+const appliedIds = ref(new Set<string>());
 const roomStore = useRoomStore();
 const { t } = useI18n();
 
@@ -57,13 +62,24 @@ const handleSearch = () => {
   });
 };
 
+const canApplyId = (id?: string) =>
+  !!id && !roomStore.getRoomMap[id] && !appliedIds.value.has(id)
+const canApply = (item: Room) => canApplyId(item.id)
+
 const handleJoin = (room_id: string) => {
+  if (joiningId.value || !canApplyId(room_id)) return
+  joiningId.value = room_id
   ServerApi.apply({ room_id }).then((res: any) => {
     if (res.code === 200) {
+      appliedIds.value.add(room_id)
       toast.success(t('room.applied'))
       roomName.value = ''
       result.value = []
     }
+  }).catch(() => {
+    // 错误提示由 axios 拦截器统一处理
+  }).finally(() => {
+    joiningId.value = null
   })
 };
 </script>

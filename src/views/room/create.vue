@@ -29,8 +29,8 @@
                 </label>
 
                 <button type="button" class="btn btn-primary btn-block"
-                    :disabled="!room.name || !room.description" @click="handleCreate">
-                    {{ t('room.createRoom') }}
+                    :disabled="!room.name || !room.description || creating" @click="handleCreate">
+                    {{ creating ? t('room.creating') : t('room.createRoom') }}
                 </button>
             </div>
         </div>
@@ -38,7 +38,7 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import ServerApi from "@/api";
 import { useI18n } from 'vue-i18n';
 import { useRoomStore } from "@/store/modules/room";
@@ -56,12 +56,16 @@ const room = reactive({
     name: '',
     description: ''
 })
+/** 创建请求在途：按钮禁用，防连点重复建群 */
+const creating = ref(false)
 
 const handleCreate = () => {
+    if (creating.value) return
     if (!room.name || !room.description) {
         toast.warning(t('room.warnRequired'))
         return
     }
+    creating.value = true
     ServerApi.CreateRoom(room).then((res: any) => {
         if (res.code == 200) {
             toast.success(t('room.created'))
@@ -69,8 +73,10 @@ const handleCreate = () => {
             room.name = ''
             roomStore.getRooms()
         }
-    }).catch((err: any) => {
-        console.log(err)
+    }).catch(() => {
+        // 错误提示由 axios 拦截器统一处理
+    }).finally(() => {
+        creating.value = false
     })
 }
 </script>
